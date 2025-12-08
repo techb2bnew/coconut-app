@@ -1486,7 +1486,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   editInputField: {
-    backgroundColor: Colors.backgroundGray,
+    // backgroundColor: Colors.backgroundGray,
   },
   buttonRow: {
     flexDirection: 'row',

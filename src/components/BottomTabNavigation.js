@@ -41,14 +41,7 @@ const BottomTabNavigation = ({ navigation, activeTab = 'Orders' }) => {
           size={24}
           color={activeTab === 'Orders' ? Colors.primaryPink : Colors.textPrimary}
         />
-        {activeTab === 'Orders' && (
-          <Icon
-            name="chevron-up"
-            size={12}
-            color={Colors.primaryPink}
-            style={styles.navChevron}
-          />
-        )}
+       
         <Text
           style={[
             styles.navLabel,
