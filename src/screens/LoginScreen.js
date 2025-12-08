@@ -1,0 +1,275 @@
+/**
+ * Login Screen
+ * First screen shown to users - matches design screenshot
+ */
+
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Colors from '../theme/colors';
+import TextStyles from '../theme/textStyles';
+import Logo from '../components/Logo';
+import Input from '../components/Input';
+import Button from '../components/Button';
+import { validateEmail, validatePassword } from '../utils/validation';
+import supabase from '../config/supabase';
+
+const LoginScreen = ({ navigation }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+  });
+  const [loading, setLoading] = useState(false);
+
+  const validateForm = () => {
+    const emailError = validateEmail(email);
+    const passwordError = validatePassword(password);
+
+    setErrors({
+      email: emailError,
+      password: passwordError,
+    });
+
+    return !emailError && !passwordError;
+  };
+
+  const handleEmailChange = (text) => {
+    setEmail(text);
+    if (errors.email) {
+      setErrors({ ...errors, email: validateEmail(text) });
+    }
+  };
+
+  const handlePasswordChange = (text) => {
+    setPassword(text);
+    if (errors.password) {
+      setErrors({ ...errors, password: validatePassword(text) });
+    }
+  };
+
+  const handleLogin = async () => {
+   
+  if (!validateForm()) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password,
+      });
+      console.log('datasssss', data);
+      if (error) {
+        Alert.alert('Login Error', error.message || 'Failed to login. Please try again.');
+        console.error('Login error:', error);
+      } else if (data) {
+        // Login successful
+        console.log('Login successful:', data);
+        Alert.alert('Success', 'Logged in successfully!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              if (navigation) {
+                navigation.navigate('Home');
+              }
+            },
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error('Unexpected error during login:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = () => {
+    if (navigation) {
+      navigation.navigate('ForgotPassword');
+    }
+  };
+
+  const handleCreateAccount = () => {
+    if (navigation) {
+      navigation.navigate('CreateAccount');
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          {/* Main Card Container */}
+          <View style={styles.cardContainer}>
+            {/* Logo Section */}
+            <View style={styles.logoSection}>
+              <Logo size={100} />
+               
+            </View>
+
+            {/* Welcome Section */}
+            <View style={styles.welcomeSection}>
+              <Text style={[TextStyles.headingMedium, styles.welcomeText]}>
+                Welcome Back
+              </Text>
+              <Text style={[TextStyles.secondaryText, styles.subtitleText]}>
+                Sign in to your account
+              </Text>
+            </View>
+
+            {/* Login Form - White Panel */}
+            <View style={styles.formContainer}>
+              <Input
+                label="Email"
+                placeholder="Enter your email"
+                value={email}
+                onChangeText={handleEmailChange}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                errorMessage={errors.email}
+                icon={
+                  <Text style={styles.envelopeIcon}>📧</Text>
+                }
+                iconPosition="right"
+              />
+
+              <Input
+                label="Password"
+                placeholder="Enter your password"
+                value={password}
+                onChangeText={handlePasswordChange}
+                secureTextEntry
+                errorMessage={errors.password}
+              />
+
+              <Button
+                title="Login"
+                onPress={handleLogin}
+                variant="primary"
+                style={styles.loginButton}
+                loading={loading}
+                disabled={loading}
+              />
+
+              <TouchableOpacity
+                onPress={handleForgotPassword}
+                style={styles.forgotPasswordContainer}>
+                <Text style={[TextStyles.link, styles.forgotPasswordText]}>
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Create Account Section */}
+            <View style={styles.createAccountSection}>
+              <Text style={[TextStyles.secondaryText, styles.createAccountPrompt]}>
+                Don't have an account?
+              </Text>
+              <Button
+                title="Create New Account"
+                onPress={handleCreateAccount}
+                variant="outline"
+                style={styles.createAccountButton}
+              />
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.primaryCardBackground,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  cardContainer: {
+    backgroundColor: Colors.primaryCardBackground,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  tagline: {
+    marginTop: 8,
+    fontSize: 12,
+  },
+  welcomeSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  welcomeText: {
+    marginBottom: 8,
+  },
+  subtitleText: {
+    fontSize: 14,
+  },
+  formContainer: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  envelopeIcon: {
+    fontSize: 18,
+  },
+  loginButton: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  forgotPasswordContainer: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+  },
+  createAccountSection: {
+    alignItems: 'center',
+  },
+  createAccountPrompt: {
+    marginBottom: 16,
+    fontSize: 14,
+  },
+  createAccountButton: {
+    width: '100%',
+  },
+});
+
+export default LoginScreen;
+
