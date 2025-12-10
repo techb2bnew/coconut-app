@@ -1,67 +1,174 @@
 /**
  * Notification Screen
- * Display notifications for the logged-in user
+ * Display notifications for the logged-in user with real-time updates
  */
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import { fontFamily } from '../theme/fonts';
 import BottomTabNavigation from '../components/BottomTabNavigation';
+import {
+  getCustomerId,
+  fetchNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  subscribeToNotifications,
+  unsubscribeFromNotifications,
+} from '../services/notificationService';
+import supabase from '../config/supabase';
 
 const NotificationScreen = ({ navigation }) => {
-  // Mock notification data - later will fetch from Supabase
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'delivery',
-      title: 'Order Out for Delivery',
-      description: 'Your order ORD-2025-001 is out for delivery and will arrive today.',
-      timestamp: '2025-10-16 08:00 AM',
-      isRead: false,
-      iconColor: Colors.primaryPink,
-      iconName: 'car-outline',
-    },
-    {
-      id: 2,
-      type: 'progress',
-      title: 'Order In Progress',
-      description: 'Your order ORD-2025-001 is now being prepared with custom branding.',
-      timestamp: '2025-10-15 02:00 PM',
-      isRead: false,
-      iconColor: '#BA68C8',
-      iconName: 'cube-outline',
-    },
-    {
-      id: 3,
-      type: 'confirmed',
-      title: 'Order Confirmed',
-      description: 'Your order ORD-2025-001 has been confirmed and received.',
-      timestamp: '2025-10-15 09:45 AM',
-      isRead: true,
-      iconColor: '#81C784',
-      iconName: 'checkmark-circle',
-    },
-    {
-      id: 4,
-      type: 'payment',
-      title: 'Payment Reminder',
-      description: 'Friendly reminder: Invoice INV-2025-045 is due on October 20, 2025.',
-      timestamp: '2025-10-14 10:00 AM',
-      isRead: true,
-      iconColor: '#FFB74D',
-      iconName: 'warning',
-    },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [customerId, setCustomerId] = useState(null);
+  const [subscription, setSubscription] = useState(null);
+
+  // Fetch notifications
+  const loadNotifications = useCallback(async (customerId, showLoading = true) => {
+    if (!customerId) return;
+
+    if (showLoading) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+
+    try {
+      console.log('📥 Fetching notifications for customer:', customerId);
+      const fetchedNotifications = await fetchNotifications(customerId);
+      console.log('✅ Fetched notifications:', fetchedNotifications.length);
+      setNotifications(fetchedNotifications);
+    } catch (error) {
+      console.error('❌ Error loading notifications:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Initialize: Get customer ID and load notifications
+  useEffect(() => {
+    const initializeNotifications = async () => {
+      const id = await getCustomerId();
+      if (id) {
+        setCustomerId(id);
+        await loadNotifications(id, true);
+      } else {
+        setLoading(false);
+      }
+    };
+
+    initializeNotifications();
+  }, [loadNotifications]);
+
+  // Set up real-time subscription
+  useEffect(() => {
+    if (!customerId) {
+      console.log('⚠️ No customer ID, skipping subscription setup');
+      return;
+    }
+
+    let currentSubscription = null;
+    let isSubscribed = true;
+
+    // Subscribe to real-time notifications
+    const setupSubscription = async () => {
+      try {
+        console.log('🔧 Setting up real-time subscription for customer:', customerId);
+        const sub = await subscribeToNotifications(customerId, async (payload) => {
+          console.log('🔔 Real-time notification update received:', payload);
+          console.log('🔔 Payload event:', payload.eventType);
+          console.log('🔔 Payload new:', payload.new);
+          if (isSubscribed) {
+            // Reload notifications when change detected
+            console.log('🔄 Reloading notifications due to real-time update...');
+            await loadNotifications(customerId, false);
+          }
+        });
+
+        if (isSubscribed && sub) {
+          currentSubscription = sub;
+          setSubscription(sub);
+          console.log('✅ Subscription set up successfully for customer:', customerId);
+          
+          // Verify subscription after a delay
+          setTimeout(() => {
+            const channels = supabase.getChannels();
+            console.log('📡 Active Supabase channels:', channels.length);
+            channels.forEach((ch) => {
+              console.log('📡 Channel:', ch.topic, 'State:', ch.state);
+            });
+          }, 2000);
+        } else {
+          console.error('❌ Failed to create subscription');
+        }
+      } catch (error) {
+        console.error('❌ Error setting up subscription:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+      }
+    };
+
+    setupSubscription();
+
+    // Cleanup subscription on unmount or when customerId changes
+    return () => {
+      console.log('🧹 Cleaning up subscription for customer:', customerId);
+      isSubscribed = false;
+      if (currentSubscription) {
+        unsubscribeFromNotifications(currentSubscription);
+        currentSubscription = null;
+        setSubscription(null);
+      }
+    };
+  }, [customerId, loadNotifications]);
+
+  // Handle pull to refresh
+  const onRefresh = useCallback(async () => {
+    if (customerId) {
+      await loadNotifications(customerId, false);
+    }
+  }, [customerId, loadNotifications]);
+
+  // Handle mark all as read
+  const handleMarkAllAsRead = async () => {
+    if (!customerId) return;
+
+    const success = await markAllNotificationsAsRead(customerId);
+    if (success) {
+      // Update local state
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    }
+  };
+
+  // Handle mark single notification as read
+  const handleNotificationPress = async (notification) => {
+    if (notification.isRead || !notification.recipientId) return;
+
+    const success = await markNotificationAsRead(notification.recipientId);
+    if (success) {
+      // Update local state
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.recipientId === notification.recipientId ? { ...n, isRead: true } : n
+        )
+      );
+    }
+  };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
-  };
+  // Debug: Log subscription status
+  useEffect(() => {
+    if (subscription) {
+      console.log('📡 Current subscription:', subscription.topic);
+      console.log('📡 Subscription state:', subscription.state);
+    }
+  }, [subscription]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -73,6 +180,29 @@ const NotificationScreen = ({ navigation }) => {
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount} new</Text>
             </View>
+          )}
+          {/* Debug button - Remove in production */}
+          {__DEV__ && (
+            <TouchableOpacity
+              onPress={async () => {
+                console.log('🧪 Debug Info:');
+                console.log('Customer ID:', customerId);
+                console.log('Notifications count:', notifications.length);
+                console.log('Subscription:', subscription ? 'Active' : 'None');
+                if (subscription) {
+                  console.log('Subscription topic:', subscription.topic);
+                  console.log('Subscription state:', subscription.state);
+                }
+                // Check active channels
+                const channels = supabase.getChannels();
+                console.log('Active Supabase channels:', channels.length);
+                channels.forEach((ch) => {
+                  console.log('Channel:', ch.topic, 'State:', ch.state);
+                });
+              }}
+              style={styles.debugButton}>
+              <Text style={styles.debugButtonText}>🔍</Text>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -87,32 +217,55 @@ const NotificationScreen = ({ navigation }) => {
       )}
 
       {/* Notifications List */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-        {notifications.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No notifications yet</Text>
-            <Text style={styles.emptySubText}>You'll see notifications here when you have updates.</Text>
-          </View>
-        ) : (
-          notifications.map((notification) => (
-            <View key={notification.id} style={styles.notificationCard}>
-              <View style={[styles.iconContainer, { backgroundColor: notification.iconColor + '20' }]}>
-                <Icon name={notification.iconName} size={24} color={notification.iconColor} />
-              </View>
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationTitle}>{notification.title}</Text>
-                <Text style={styles.notificationDescription}>{notification.description}</Text>
-                <Text style={styles.notificationTime}>{notification.timestamp}</Text>
-              </View>
-              {!notification.isRead && <View style={styles.unreadDot} />}
+      {loading && notifications.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primaryPink} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryPink} />
+          }>
+          {notifications.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Icon name="notifications-outline" size={64} color={Colors.textSecondary} />
+              <Text style={styles.emptyText}>No notifications yet</Text>
+              <Text style={styles.emptySubText}>
+                You'll see notifications here when you have updates.
+              </Text>
             </View>
-          ))
-        )}
-        <View style={styles.bottomSpacing} />
-      </ScrollView>
+          ) : (
+            notifications.map((notification) => (
+              <TouchableOpacity
+                key={notification.id || notification.notification_id}
+                style={[
+                  styles.notificationCard,
+                  !notification.isRead && styles.notificationCardUnread,
+                ]}
+                activeOpacity={0.7}
+                onPress={() => handleNotificationPress(notification)}>
+                <View
+                  style={[
+                    styles.iconContainer,
+                    { backgroundColor: notification.iconColor + '20' },
+                  ]}>
+                  <Icon name={notification.iconName} size={24} color={notification.iconColor} />
+                </View>
+                <View style={styles.notificationContent}>
+                  <Text style={styles.notificationTitle}>{notification.title}</Text>
+                  <Text style={styles.notificationDescription}>{notification.message}</Text>
+                  <Text style={styles.notificationTime}>{notification.timestamp}</Text>
+                </View>
+                {!notification.isRead && <View style={styles.unreadDot} />}
+              </TouchableOpacity>
+            ))
+          )}
+          <View style={styles.bottomSpacing} />
+        </ScrollView>
+      )}
 
       {/* Bottom Navigation Bar */}
       <BottomTabNavigation navigation={navigation} activeTab="Notifications" />
@@ -176,6 +329,11 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 20,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -185,12 +343,14 @@ const styles = StyleSheet.create({
   emptyText: {
     ...TextStyles.headingMedium,
     color: Colors.textPrimary,
+    marginTop: 16,
     marginBottom: 8,
   },
   emptySubText: {
-    ...TextStyles.bodyText,
+    ...TextStyles.bodyMedium,
     color: Colors.textSecondary,
     textAlign: 'center',
+    paddingHorizontal: 40,
   },
   notificationCard: {
     flexDirection: 'row',
@@ -204,6 +364,10 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
     position: 'relative',
+  },
+  notificationCardUnread: {
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primaryPink,
   },
   iconContainer: {
     width: 48,
@@ -246,6 +410,14 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 20,
+  },
+  debugButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  debugButtonText: {
+    fontSize: 18,
+    color: Colors.cardBackground,
   },
 });
 

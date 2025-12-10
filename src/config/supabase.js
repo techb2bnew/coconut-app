@@ -21,12 +21,23 @@ try {
       persistSession: true,
       detectSessionInUrl: false,
     },
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
   });
-  console.log('Supabase client initialized successfully');
+  console.log('Supabase client initialized successfully with Realtime support');
 } catch (error) {
   console.error('Error initializing Supabase client:', error);
   // Fallback: create client without AsyncStorage
-  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
+  });
 }
 
 export default supabase;

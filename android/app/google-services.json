@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "539100517722",
+    "project_id": "coconut-app-e5361",
+    "storage_bucket": "coconut-app-e5361.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:539100517722:android:e6487259625eea88924f63",
+        "android_client_info": {
+          "package_name": "com.demo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8tWJKsVtsgyxq3cB2h3o0rzbdnQ7ODnY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

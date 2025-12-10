@@ -76,6 +76,13 @@ const LoginScreen = ({ navigation }) => {
       } else if (data) {
         // Login successful
         console.log('Login successful:', data);
+        
+        // Save FCM token after login
+        const { saveFCMTokenAfterLogin } = require('../services/firebaseMessaging');
+        saveFCMTokenAfterLogin().catch(err => {
+          console.error('Error saving FCM token after login:', err);
+        });
+        
         Alert.alert('Success', 'Logged in successfully!', [
           {
             text: 'OK',
