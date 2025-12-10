@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
+import { fontFamily } from '../theme/fonts';
 
 const OrderDetailScreen = ({ navigation, route }) => {
   const { order } = route.params || {};
@@ -359,6 +360,7 @@ const styles = StyleSheet.create({
   backText: {
     color: Colors.cardBackground,
     fontSize: 16,
+    fontFamily: fontFamily,
     marginLeft: 8,
     fontWeight: '500',
   },
@@ -376,6 +378,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
   },
   detailCard: {
@@ -397,6 +400,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
+    fontFamily: fontFamily,
     fontWeight: '600',
     color: Colors.textPrimary,
   },
@@ -407,11 +411,13 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
+    fontFamily: fontFamily,
     fontWeight: '500',
     color: Colors.cardBackground,
   },
   placedOnText: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     marginBottom: 16,
   },
@@ -426,11 +432,13 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     marginBottom: 4,
   },
   detailValue: {
     fontSize: 16,
+    fontFamily: fontFamily,
     fontWeight: '500',
     color: Colors.textPrimary,
   },
@@ -473,16 +481,19 @@ const styles = StyleSheet.create({
   },
   timelineTitle: {
     fontSize: 16,
+    fontFamily: fontFamily,
     fontWeight: '600',
     marginBottom: 4,
   },
   timelineTime: {
     fontSize: 12,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     marginBottom: 4,
   },
   timelineDescription: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
   },
 });

@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
+import { fontFamily } from '../theme/fonts';
 
 const Input = ({
   label,
@@ -117,6 +118,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
+    fontFamily: fontFamily,
     color: Colors.error,
     marginTop: 4,
     marginLeft: 4,
@@ -124,6 +126,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
     paddingVertical: 12,
   },

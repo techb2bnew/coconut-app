@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
+import { fontFamily } from '../theme/fonts';
 import supabase from '../config/supabase';
 
 const OrdersListScreen = ({ navigation }) => {
@@ -307,6 +308,7 @@ const styles = StyleSheet.create({
   backText: {
     color: Colors.cardBackground,
     fontSize: 16,
+    fontFamily: fontFamily,
     marginLeft: 8,
     fontWeight: '500',
   },
@@ -332,6 +334,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
   },
   buttonContainer: {
@@ -354,6 +357,7 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: Colors.cardBackground,
     fontSize: 16,
+    fontFamily: fontFamily,
     fontWeight: '600',
     marginLeft: 8,
   },
@@ -377,6 +381,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
   },
   orderCard: {
@@ -401,12 +406,14 @@ const styles = StyleSheet.create({
   },
   orderId: {
     fontSize: 18,
+    fontFamily: fontFamily,
     fontWeight: '600',
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   orderDate: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
   },
   statusBadge: {
@@ -416,6 +423,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
+    fontFamily: fontFamily,
     fontWeight: '500',
     color: Colors.cardBackground,
   },
@@ -429,10 +437,12 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
   },
   detailValue: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
     fontWeight: '500',
   },
@@ -446,6 +456,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   viewDetailsText: {
+    fontFamily: fontFamily,
     color: Colors.cardBackground,
     fontSize: 14,
     fontWeight: '600',

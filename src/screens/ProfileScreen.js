@@ -14,11 +14,13 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
+import { fontFamily } from '../theme/fonts';
 import BottomTabNavigation from '../components/BottomTabNavigation';
 import AddAddressModal from '../components/AddAddressModal';
 import Input from '../components/Input';
@@ -1086,6 +1088,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 36,
     fontWeight: '700',
+    fontFamily: fontFamily,
     color: Colors.primaryPink,
   },
   editAvatarButton: {
@@ -1104,6 +1107,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 24,
     fontWeight: '700',
+    fontFamily: fontFamily,
     color: Colors.cardBackground,
     marginBottom: 8,
   },
@@ -1114,6 +1118,7 @@ const styles = StyleSheet.create({
   },
   companyName: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.cardBackground,
     opacity: 0.9,
   },
@@ -1148,11 +1153,13 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 32,
     fontWeight: '700',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   summaryLabel: {
     fontSize: 12,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
   },
   recentOrdersCard: {
@@ -1177,10 +1184,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
   },
   viewAllText: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.primaryPink,
     fontWeight: '500',
   },
@@ -1205,11 +1214,13 @@ const styles = StyleSheet.create({
   orderId: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
     marginBottom: 2,
   },
   orderTime: {
     fontSize: 12,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
   },
   statusBadge: {
@@ -1220,10 +1231,12 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '500',
+    fontFamily: fontFamily,
     color: Colors.cardBackground,
   },
   noOrdersText: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     textAlign: 'center',
     paddingVertical: 20,
@@ -1250,6 +1263,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
   },
   editButton: {
@@ -1259,6 +1273,7 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.primaryPink,
     fontWeight: '500',
   },
@@ -1273,12 +1288,14 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     marginBottom: 2,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
   },
   addressRow: {
@@ -1304,6 +1321,7 @@ const styles = StyleSheet.create({
   addressLabel: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
   },
   defaultBadge: {
@@ -1315,6 +1333,7 @@ const styles = StyleSheet.create({
   defaultBadgeText: {
     fontSize: 10,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.cardBackground,
   },
   addressAction: {
@@ -1326,11 +1345,13 @@ const styles = StyleSheet.create({
   },
   addressValue: {
     fontSize: 13,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     lineHeight: 18,
   },
   addressNotes: {
     fontSize: 12,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     fontStyle: 'italic',
     marginTop: 4,
@@ -1341,11 +1362,13 @@ const styles = StyleSheet.create({
   },
   setDefaultText: {
     fontSize: 11,
+    fontFamily: fontFamily,
     color: Colors.primaryPink,
     fontWeight: '500',
   },
   noAddressText: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     paddingVertical: 8,
   },
@@ -1367,6 +1390,7 @@ const styles = StyleSheet.create({
   linkText: {
     flex: 1,
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
   },
   contactCard: {
@@ -1385,12 +1409,14 @@ const styles = StyleSheet.create({
   contactTitle: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   contactSubtitle: {
     fontSize: 12,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     marginBottom: 16,
     textAlign: 'center',
@@ -1407,6 +1433,7 @@ const styles = StyleSheet.create({
   phoneButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.cardBackground,
   },
   socialCard: {
@@ -1425,11 +1452,13 @@ const styles = StyleSheet.create({
   socialTitle: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
     marginBottom: 8,
   },
   socialSubtitle: {
     fontSize: 12,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     marginBottom: 16,
     textAlign: 'center',
@@ -1449,6 +1478,7 @@ const styles = StyleSheet.create({
   socialIconText: {
     fontSize: 18,
     fontWeight: '700',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
   },
   logoutButton: {
@@ -1467,10 +1497,12 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.primaryPink,
   },
   versionText: {
     fontSize: 12,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     textAlign: 'center',
     marginBottom: 8,

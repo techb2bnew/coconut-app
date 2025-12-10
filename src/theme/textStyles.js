@@ -5,24 +5,28 @@
 
 import { StyleSheet } from 'react-native';
 import Colors from './colors';
+import { fontFamily } from './fonts';
 
 export const TextStyles = StyleSheet.create({
   // Heading Styles
   headingLarge: {
     fontSize: 28,
     fontWeight: '700',
+    fontFamily: fontFamily,
     color: Colors.textPink,
     textAlign: 'center',
   },
   headingMedium: {
     fontSize: 24,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.textPink,
     textAlign: 'center',
   },
   headingSmall: {
     fontSize: 20,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.textPink,
   },
 
@@ -30,16 +34,19 @@ export const TextStyles = StyleSheet.create({
   bodyLarge: {
     fontSize: 18,
     fontWeight: '400',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
   },
   bodyMedium: {
     fontSize: 16,
     fontWeight: '400',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
   },
   bodySmall: {
     fontSize: 14,
     fontWeight: '400',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
   },
 
@@ -47,6 +54,7 @@ export const TextStyles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
     marginBottom: 8,
   },
@@ -55,11 +63,13 @@ export const TextStyles = StyleSheet.create({
   placeholder: {
     fontSize: 14,
     fontWeight: '400',
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
   },
   secondaryText: {
     fontSize: 14,
     fontWeight: '400',
+    fontFamily: fontFamily,
     color: Colors.textLightPink,
   },
 
@@ -67,11 +77,13 @@ export const TextStyles = StyleSheet.create({
   link: {
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: fontFamily,
     color: Colors.textPink,
   },
   linkCenter: {
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: fontFamily,
     color: Colors.textPink,
     textAlign: 'center',
   },
@@ -80,6 +92,7 @@ export const TextStyles = StyleSheet.create({
   tagline: {
     fontSize: 14,
     fontWeight: '400',
+    fontFamily: fontFamily,
     color: Colors.pinkAccent,
     textAlign: 'center',
   },

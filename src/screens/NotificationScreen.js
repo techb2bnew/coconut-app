@@ -4,11 +4,12 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
+import { fontFamily } from '../theme/fonts';
 import BottomTabNavigation from '../components/BottomTabNavigation';
 
 const NotificationScreen = ({ navigation }) => {
@@ -136,6 +137,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
+    fontFamily: fontFamily,
     color: Colors.cardBackground,
     fontWeight: '700',
   },
@@ -148,6 +150,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.primaryPink,
   },
   markAllContainer: {
@@ -161,6 +164,7 @@ const styles = StyleSheet.create({
   },
   markAllText: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
     fontWeight: '500',
   },
@@ -215,17 +219,20 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   notificationDescription: {
     fontSize: 14,
+    fontFamily: fontFamily,
     color: Colors.textPrimary,
     marginBottom: 6,
     lineHeight: 20,
   },
   notificationTime: {
     fontSize: 12,
+    fontFamily: fontFamily,
     color: Colors.textSecondary,
   },
   unreadDot: {

@@ -6,6 +6,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import Colors from '../theme/colors';
+import { fontFamily } from '../theme/fonts';
 
 const Button = ({
   title,
@@ -69,11 +70,13 @@ const styles = StyleSheet.create({
   primaryText: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.cardBackground,
   },
   outlineText: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: fontFamily,
     color: Colors.textPink,
   },
   disabledText: {
