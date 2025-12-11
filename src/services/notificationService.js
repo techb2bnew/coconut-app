@@ -344,24 +344,13 @@ export const subscribeToNotifications = async (customerId, callback) => {
     // Subscribe to the channel
     const subscribeResult = await channel.subscribe((status) => {
       console.log('📡 Subscription status:', status);
-      if (status === 'SUBSCRIBED') {
-        console.log('✅ Successfully subscribed to notifications');
+      if (status === 'SUBSCRIBED') { 
         console.log('📡 Channel name:', channelName);
         console.log('📡 Customer ID:', customerId);
       } else if (status === 'CHANNEL_ERROR') {
-        console.error('❌ Channel subscription error');
-        console.error('⚠️ IMPORTANT: Supabase Realtime is NOT enabled!');
-        console.error('📝 Please enable Realtime via Publications:');
-        console.error('   1. Supabase Dashboard → Database → Publications');
-        console.error('   2. SQL Editor में run करें:');
-        console.error('      ALTER PUBLICATION supabase_realtime ADD TABLE notifications;');
-        console.error('      ALTER PUBLICATION supabase_realtime ADD TABLE notification_recipients;');
-        console.error('   3. App restart करें');
-        console.error('   📄 Detailed guide: ENABLE_REALTIME_PUBLICATIONS.md');
+        console.error('❌ Channel subscription error'); 
       } else if (status === 'TIMED_OUT') {
-        console.error('⏱️ Subscription timed out');
-        console.error('Check network connection and Supabase Realtime settings');
-        console.error('⚠️ Make sure Realtime is enabled in Supabase Dashboard');
+        console.error('⏱️ Subscription timed out'); 
       } else if (status === 'CLOSED') {
         console.log('🔴 Channel closed');
       } else {

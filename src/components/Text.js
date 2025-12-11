@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Text as RNText, TextProps, StyleSheet } from 'react-native';
-import { fontFamily } from '../theme/fonts';
+import { fontFamilyBody } from '../theme/fonts';
 
 const Text = ({ style, ...props }) => {
   return (
@@ -18,7 +18,7 @@ const Text = ({ style, ...props }) => {
 
 const styles = StyleSheet.create({
   defaultText: {
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
   },
 });
 

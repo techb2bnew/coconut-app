@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
-import { fontFamily } from '../theme/fonts';
+import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import BottomTabNavigation from '../components/BottomTabNavigation';
 import AddAddressModal from '../components/AddAddressModal';
 import Input from '../components/Input';
@@ -696,7 +696,7 @@ const ProfileScreen = ({ navigation }) => {
             <View style={styles.headerIconContainer}>
               <Icon name="person" size={18} color={Colors.primaryPink} />
             </View>
-            <Text style={styles.cardTitle}>Account Information</Text>
+            <Text style={styles.sectionTitle}>Account Information</Text>
             {!isEditingAccount && (
               <TouchableOpacity style={styles.editButton} onPress={handleEditAccount}>
                 <Icon name="pencil-outline" size={16} color={Colors.primaryPink} />
@@ -794,7 +794,7 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
             <Icon name="location-outline" size={18} color={Colors.success} />
-            <Text style={styles.cardTitle}>Delivery Addresses</Text>
+            <Text style={styles.sectionTitle}>Delivery Addresses</Text>
             <TouchableOpacity
               style={styles.editButton}
               onPress={() => {
@@ -855,7 +855,7 @@ const ProfileScreen = ({ navigation }) => {
             <View style={[styles.headerIconContainer, { backgroundColor: Colors.lightPink }]}>
               <Icon name="shield" size={18} color={Colors.error} />
             </View>
-            <Text style={styles.cardTitle}>Security & Password</Text>
+            <Text style={styles.sectionTitle}>Security & Password</Text>
             {!isChangingPassword && (
               <TouchableOpacity style={styles.editButton} onPress={handleChangePassword}>
                 <Icon name="pencil-outline" size={16} color={Colors.primaryPink} />
@@ -939,7 +939,7 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
             <Icon name="settings-outline" size={18} color={Colors.pinkAccent} />
-            <Text style={styles.cardTitle}>Quick Links</Text>
+            <Text style={styles.sectionTitle}>Quick Links</Text>
           </View>
           <TouchableOpacity
             style={styles.linkRow}
@@ -979,7 +979,7 @@ const ProfileScreen = ({ navigation }) => {
 
         {/* Contact Section */}
         <View style={styles.contactCard}>
-          <Text style={styles.contactTitle}>NEED TO MODIFY OR CANCEL AN ORDER?</Text>
+          <Text style={styles.sectionTitle}>NEED TO MODIFY OR CANCEL AN ORDER?</Text>
           <Text style={styles.contactSubtitle}>Call us if you want to modify or cancel your order</Text>
           <TouchableOpacity 
             style={styles.phoneButton}
@@ -991,7 +991,7 @@ const ProfileScreen = ({ navigation }) => {
 
         {/* Connect With Us */}
         <View style={styles.socialCard}>
-          <Text style={styles.socialTitle}>Connect With Us</Text>
+          <Text style={styles.sectionTitle}>Connect With Us</Text>
           <Text style={styles.socialSubtitle}>Follow us on social media for updates, tips, and special offers!</Text>
           <View style={styles.socialIcons}>
             <TouchableOpacity style={styles.socialIcon}>
@@ -1088,7 +1088,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 36,
     fontWeight: '700',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.primaryPink,
   },
   editAvatarButton: {
@@ -1107,7 +1107,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 24,
     fontWeight: '700',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
     marginBottom: 8,
   },
@@ -1118,7 +1118,7 @@ const styles = StyleSheet.create({
   },
   companyName: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
     opacity: 0.9,
   },
@@ -1153,13 +1153,13 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 32,
     fontWeight: '700',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyHeading,
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   summaryLabel: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
   },
   recentOrdersCard: {
@@ -1184,12 +1184,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyHeading,
     color: Colors.textPrimary,
   },
   viewAllText: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.primaryPink,
     fontWeight: '500',
   },
@@ -1214,13 +1214,13 @@ const styles = StyleSheet.create({
   orderId: {
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     marginBottom: 2,
   },
   orderTime: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
   },
   statusBadge: {
@@ -1231,12 +1231,12 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '500',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
   },
   noOrdersText: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     textAlign: 'center',
     paddingVertical: 20,
@@ -1263,7 +1263,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
   },
   editButton: {
@@ -1273,7 +1273,7 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.primaryPink,
     fontWeight: '500',
   },
@@ -1288,14 +1288,14 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     marginBottom: 2,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '500',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
   },
   addressRow: {
@@ -1321,7 +1321,7 @@ const styles = StyleSheet.create({
   addressLabel: {
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
   },
   defaultBadge: {
@@ -1333,7 +1333,7 @@ const styles = StyleSheet.create({
   defaultBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
   },
   addressAction: {
@@ -1345,13 +1345,13 @@ const styles = StyleSheet.create({
   },
   addressValue: {
     fontSize: 13,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     lineHeight: 18,
   },
   addressNotes: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     fontStyle: 'italic',
     marginTop: 4,
@@ -1362,13 +1362,13 @@ const styles = StyleSheet.create({
   },
   setDefaultText: {
     fontSize: 11,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.primaryPink,
     fontWeight: '500',
   },
   noAddressText: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     paddingVertical: 8,
   },
@@ -1390,7 +1390,7 @@ const styles = StyleSheet.create({
   linkText: {
     flex: 1,
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
   },
   contactCard: {
@@ -1409,14 +1409,14 @@ const styles = StyleSheet.create({
   contactTitle: {
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   contactSubtitle: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     marginBottom: 16,
     textAlign: 'center',
@@ -1433,7 +1433,7 @@ const styles = StyleSheet.create({
   phoneButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
   },
   socialCard: {
@@ -1452,13 +1452,13 @@ const styles = StyleSheet.create({
   socialTitle: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     marginBottom: 8,
   },
   socialSubtitle: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     marginBottom: 16,
     textAlign: 'center',
@@ -1478,7 +1478,7 @@ const styles = StyleSheet.create({
   socialIconText: {
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
   },
   logoutButton: {
@@ -1497,12 +1497,12 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.primaryPink,
   },
   versionText: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     textAlign: 'center',
     marginBottom: 8,

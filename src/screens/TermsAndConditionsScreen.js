@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
+import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 
 const TermsAndConditionsScreen = ({ navigation }) => {
   return (
@@ -232,6 +233,7 @@ const styles = StyleSheet.create({
     color: Colors.cardBackground,
     fontSize: 16,
     fontWeight: '500',
+    fontFamily: fontFamilyBody,
     marginLeft: 8,
   },
   content: {
@@ -239,12 +241,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '600',
+    fontFamily: fontFamilyHeading,
     color: Colors.textPrimary,
     marginBottom: 8,
   },
   lastUpdated: {
     fontSize: 14,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     marginBottom: 24,
   },
@@ -253,12 +257,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
+    fontFamily: fontFamilyHeading,
     color: Colors.textPrimary,
     marginBottom: 12,
   },
   sectionText: {
     fontSize: 14,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     lineHeight: 22,
     marginBottom: 12,
@@ -269,6 +275,7 @@ const styles = StyleSheet.create({
   },
   bulletPoint: {
     fontSize: 14,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     lineHeight: 22,
     marginBottom: 8,
@@ -279,6 +286,7 @@ const styles = StyleSheet.create({
   },
   contactText: {
     fontSize: 14,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     lineHeight: 22,
     marginBottom: 6,
@@ -295,6 +303,7 @@ const styles = StyleSheet.create({
   },
   brandText: {
     fontSize: 13,
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
     lineHeight: 20,
     textAlign: 'center',

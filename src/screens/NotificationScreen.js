@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
-import { fontFamily } from '../theme/fonts';
+import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import BottomTabNavigation from '../components/BottomTabNavigation';
 import {
   getCustomerId,
@@ -290,9 +290,9 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyHeading,
     color: Colors.cardBackground,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   badge: {
     backgroundColor: Colors.cardBackground,
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.primaryPink,
   },
   markAllContainer: {
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   },
   markAllText: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     fontWeight: '500',
   },
@@ -383,20 +383,20 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyHeading,
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   notificationDescription: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     marginBottom: 6,
     lineHeight: 20,
   },
   notificationTime: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
   },
   unreadDot: {

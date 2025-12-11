@@ -23,6 +23,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
+import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import Dropdown from '../components/Dropdown';
@@ -865,6 +866,7 @@ const CreateAccountScreen = ({ navigation }) => {
                     },
                     textInput: {
                       fontSize: 14,
+                      fontFamily: fontFamilyBody,
                       color: Colors.textPrimary,
                       paddingVertical: 12,
                       paddingHorizontal: 16,
@@ -1064,12 +1066,14 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '600',
+    fontFamily: fontFamilyHeading,
     color: Colors.cardBackground,
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 14,
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
     textAlign: 'center',
   },
@@ -1093,6 +1097,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: fontFamilyHeading,
     color: Colors.textPrimary,
     marginBottom: 16,
   }, 
@@ -1130,6 +1135,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     paddingVertical: 12,
   },
@@ -1140,12 +1146,14 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
+    fontFamily: fontFamilyBody,
     color: Colors.error,
     marginTop: 4,
     marginLeft: 4,
   },
   helperText: {
     fontSize: 12,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     marginTop: 4,
     marginLeft: 4,
@@ -1176,6 +1184,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 13,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     marginBottom: 4,
     lineHeight: 18,
@@ -1187,6 +1196,7 @@ const styles = StyleSheet.create({
   },
   warningText: {
     fontSize: 13,
+    fontFamily: fontFamilyBody,
     color: Colors.error,
     marginLeft: 6,
     fontWeight: '500',
@@ -1208,12 +1218,14 @@ const styles = StyleSheet.create({
   uploadText: {
     fontSize: 16,
     fontWeight: '500',
+    fontFamily: fontFamilyHeading,
     color: Colors.textPrimary,
     marginTop: 12,
     marginBottom: 4,
   },
   fileTypesText: {
     fontSize: 12,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
   },
   logoPreview: {

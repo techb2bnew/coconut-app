@@ -8,6 +8,10 @@
     {
       "path": "src/assest/fonts/garamondPro.ttf",
       "sha1": "281c25c3f5d9ee15cf4e036349813d1a1c97c050"
+    },
+    {
+      "path": "src/assest/fonts/quickSand.ttf",
+      "sha1": "4ee75a4e8cdc8d7cb73c9d37859d5e96da254ecb"
     }
   ]
 }

@@ -23,7 +23,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
-import { fontFamily } from '../theme/fonts';
+import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import Dropdown from '../components/Dropdown';
 import supabase from '../config/supabase';
 
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
   backText: {
     color: Colors.cardBackground,
     fontSize: 16,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     marginLeft: 8,
     fontWeight: '500',
   },
@@ -648,7 +648,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     fontWeight: '500',
     color: Colors.textPrimary,
     marginBottom: 8,
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
   },
   input: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     paddingVertical: 12,
   },
@@ -684,14 +684,14 @@ const styles = StyleSheet.create({
   },
   toggleTitle: {
     fontSize: 16,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     fontWeight: '600',
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   toggleSubtitle: {
     fontSize: 13,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     marginTop: 2,
   },
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
   },
   logoUploadTitle: {
     fontSize: 16,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyHeading,
     fontWeight: '600',
     color: Colors.textPrimary,
     marginBottom: 12,
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: '#1976D2',
     marginBottom: 4,
   },
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
   },
   warningText: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.error,
     marginLeft: 8,
   },
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
   },
   uploadText: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.primaryPink,
     marginTop: 8,
     fontWeight: '500',
@@ -768,20 +768,20 @@ const styles = StyleSheet.create({
   },
   deliveryDateLabel: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     fontWeight: '500',
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   deliveryDateValue: {
     fontSize: 16,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     fontWeight: '600',
     color: Colors.success,
   },
   errorText: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.error,
     marginTop: 4,
   },
@@ -806,7 +806,7 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     fontSize: 16,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     fontWeight: '600',
     color: Colors.cardBackground,
   },
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
   },
   confirmButtonText: {
     fontSize: 16,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     fontWeight: '600',
     color: Colors.primaryPink,
   },

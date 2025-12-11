@@ -186,7 +186,7 @@ const LoginScreen = ({ navigation }) => {
 
             {/* Create Account Section */}
             <View style={styles.createAccountSection}>
-              <Text style={[TextStyles.secondaryText, styles.createAccountPrompt]}>
+              <Text style={[TextStyles.secondaryText, styles.subtitleText, styles.createAccountPrompt]}>
                 Don't have an account?
               </Text>
               <Button
@@ -237,6 +237,7 @@ const styles = StyleSheet.create({
   },
   subtitleText: {
     fontSize: 14,
+    color: '#000000',
   },
   formContainer: {
     backgroundColor: Colors.cardBackground,

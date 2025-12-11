@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
+import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import BottomTabNavigation from '../components/BottomTabNavigation';
 import Logo from '../components/Logo';
 import supabase from '../config/supabase';
@@ -498,12 +499,14 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '600',
+    fontFamily: fontFamilyHeading,
     color: Colors.cardBackground, 
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 14,
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
     opacity: 0.9,
     marginBottom: 20,
@@ -544,12 +547,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
+    fontFamily: fontFamilyHeading,
     color: Colors.textPrimary,
     marginBottom: 2,
   },
   sectionSubtitle: {
     fontSize: 13,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
   },
   videoCard: {
@@ -590,6 +595,7 @@ const styles = StyleSheet.create({
   durationText: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
   },
   videoInfo: {
@@ -599,11 +605,13 @@ const styles = StyleSheet.create({
   videoTitle: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     marginBottom: 6,
   },
   videoDescription: {
     fontSize: 13,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     lineHeight: 18,
     marginBottom: 4,
@@ -613,6 +621,7 @@ const styles = StyleSheet.create({
   },
   videoMetaText: {
     fontSize: 11,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
   },
   documentCard: {
@@ -637,11 +646,13 @@ const styles = StyleSheet.create({
   documentTitle: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   documentDescription: {
     fontSize: 13,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     marginBottom: 8,
     lineHeight: 18,
@@ -653,6 +664,7 @@ const styles = StyleSheet.create({
   },
   documentMetaText: {
     fontSize: 12,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
   },
   emptyState: {
@@ -662,6 +674,7 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 14,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     marginTop: 12,
   },

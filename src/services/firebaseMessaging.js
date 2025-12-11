@@ -53,29 +53,10 @@ export const requestNotificationPermission = async () => {
             console.log('✅ Android POST_NOTIFICATIONS permission granted');
           } else if (granted === PermissionsAndroid.RESULTS.DENIED) {
             console.log('❌ Android POST_NOTIFICATIONS permission denied');
-            Alert.alert(
-              'Permission Required',
-              'Notification permission is required to receive important updates. Please enable it in app settings.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Open Settings', onPress: () => {
-                  console.log('User needs to enable notification permission in settings');
-                }},
-              ]
-            );
+           
           } else {
             console.log('⚠️ Android POST_NOTIFICATIONS permission: Ask Me Later');
-            console.log('⚠️ Permission dialog might not have shown. User may have dismissed it or permission was already requested.');
-            // Show alert to inform user
-            Alert.alert(
-              'Notification Permission',
-              'Please allow notification permission to receive important updates. You can enable it in app settings.',
-              [
-                { text: 'OK', onPress: () => {
-                  console.log('User acknowledged permission request');
-                }},
-              ]
-            );
+           
           }
         } catch (err) {
           console.error('❌ Error requesting POST_NOTIFICATIONS permission:', err);
@@ -84,10 +65,7 @@ export const requestNotificationPermission = async () => {
         }
       } else {
         console.log('📱 POST_NOTIFICATIONS permission not available, continuing with FCM permission only');
-      }
-
-      // Request FCM permission (required for all Android versions)
-      console.log('🔔 Requesting FCM permission...');
+      } 
       const authStatus = await messaging().requestPermission();
       const enabled =
         authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -98,11 +76,7 @@ export const requestNotificationPermission = async () => {
         return true;
       } else {
         console.log('❌ Android notification permission denied');
-        Alert.alert(
-          'Permission Required',
-          'Notification permission is required to receive important updates. Please enable it in app settings.',
-          [{ text: 'OK' }]
-        );
+        
         return false;
       }
     } else {
@@ -116,12 +90,7 @@ export const requestNotificationPermission = async () => {
         console.log('✅ iOS notification permission granted');
         return true;
       } else {
-        console.log('❌ iOS notification permission denied');
-        Alert.alert(
-          'Permission Required',
-          'Notification permission is required to receive important updates. Please enable it in Settings > Notifications.',
-          [{ text: 'OK' }]
-        );
+        console.log('❌ iOS notification permission denied'); 
         return false;
       }
     }
@@ -150,9 +119,7 @@ export const getFCMToken = async () => {
     
     return token;
   } catch (error) {
-    console.error('❌ Error getting FCM token:', error);
-    console.error('Error details:', error.message);
-    console.error('Make sure Firebase is properly configured');
+    console.error('❌ Error getting FCM token:', error); 
     return null;
   }
 };

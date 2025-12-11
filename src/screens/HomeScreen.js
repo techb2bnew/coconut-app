@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
-import { fontFamily } from '../theme/fonts';
+import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import Logo from '../components/Logo';
 import BottomTabNavigation from '../components/BottomTabNavigation';
 import supabase from '../config/supabase';
@@ -414,21 +414,21 @@ const styles = StyleSheet.create({
   },
   brandText: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
     fontWeight: '500',
     marginBottom: 8,
   },
   welcomeText: {
     fontSize: 20,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyHeading,
     color: Colors.cardBackground,
     fontWeight: '600',
     marginBottom: 8,
   },
   taglineText: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
     textAlign: 'center',
     opacity: 0.9,
@@ -465,14 +465,14 @@ const styles = StyleSheet.create({
   },
   summaryNumber: {
     fontSize: 24,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyHeading,
     fontWeight: '700',
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   summaryLabel: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     textAlign: 'center',
   },
@@ -488,13 +488,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyHeading,
     fontWeight: '600',
     color: Colors.textPrimary,
   },
   viewAllText: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.primaryPink,
     fontWeight: '500',
   },
@@ -520,14 +520,14 @@ const styles = StyleSheet.create({
   },
   orderId: {
     fontSize: 16,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     fontWeight: '600',
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   orderCases: {
     fontSize: 14,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
   },
   orderRight: {
@@ -540,13 +540,13 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     fontWeight: '500',
     color: Colors.cardBackground,
   },
   deliveryDate: {
     fontSize: 13,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     marginTop: 4,
   },
@@ -575,20 +575,20 @@ const styles = StyleSheet.create({
   },
   activityTitle: {
     fontSize: 15,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     fontWeight: '600',
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   activityDetails: {
     fontSize: 13,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     marginBottom: 4,
   },
   activityTime: {
     fontSize: 12,
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
   },
   bottomSpacing: {

@@ -10,7 +10,7 @@ import { StatusBar, useColorScheme, Text, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import AppNavigator from './src/navigation/AppNavigator';
-import { fontFamily } from './src/theme/fonts';
+import { fontFamilyBody } from './src/theme/fonts';
 import {
   initializeFCM,
   setupForegroundMessageHandler,
@@ -19,11 +19,11 @@ import {
   getInitialNotification,
 } from './src/services/firebaseMessaging';
 
-// Set default font family for all Text components globally
+// Set default font family for all Text components globally (Quicksand for body text)
 // Create a default style that includes the font family
 const defaultTextStyle = StyleSheet.create({
   default: {
-    fontFamily: fontFamily,
+    fontFamily: fontFamilyBody,
   },
 });
 
