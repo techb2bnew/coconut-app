@@ -19,7 +19,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
-import BottomTabNavigation from '../components/BottomTabNavigation';
 import Logo from '../components/Logo';
 import supabase from '../config/supabase';
 
@@ -163,20 +162,11 @@ const AllAboutCoconutsScreen = ({ navigation }) => {
 
       if (error) {
         console.error('Error fetching documents:', error);
-        Alert.alert('Error', 'Failed to fetch documents. Please try again.');
         setDocuments([]);
       } else {
         console.log(`Fetched ${documentsData?.length || 0} documents`);
         // Log first document to check data structure
-        if (documentsData && documentsData.length > 0) {
-          console.log('=== DOCUMENT DATA DEBUG ===');
-          console.log('First document data:', JSON.stringify(documentsData[0], null, 2));
-          console.log('First document file_url:', documentsData[0].file_url);
-          console.log('First document keys:', Object.keys(documentsData[0]));
-          console.log('=== END DOCUMENT DEBUG ===');
-        } else {
-          console.log('No documents fetched!');
-        }
+        
         setDocuments(documentsData || []);
       }
     } catch (error) {
@@ -462,7 +452,6 @@ const AllAboutCoconutsScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Bottom Navigation Bar */}
-      <BottomTabNavigation navigation={navigation} activeTab="Profile" />
     </SafeAreaView>
   );
 };

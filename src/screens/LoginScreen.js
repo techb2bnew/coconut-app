@@ -88,7 +88,7 @@ const LoginScreen = ({ navigation }) => {
             text: 'OK',
             onPress: () => {
               if (navigation) {
-                navigation.navigate('Home');
+                navigation.navigate('MainTabs');
               }
             },
           },

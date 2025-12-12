@@ -1,6 +1,7 @@
 /**
- * Notification Service
+ * Notification Service - FIXED VERSION
  * Handles fetching and real-time updates for customer notifications
+ * FIX: Only fetch sent notifications (exclude scheduled)
  */
 
 import supabase from '../config/supabase';
@@ -90,7 +91,8 @@ export const getNotificationIcon = (notificationType) => {
 
 /**
  * Fetch notifications for current customer
- * Handles both notification_recipients table and notifications with recipient_ids JSONB
+ * FIX: Only fetch sent notifications (status = 'sent' AND sent_at IS NOT NULL)
+ * This prevents scheduled notifications from showing immediately
  */
 export const fetchNotifications = async (customerId) => {
   if (!customerId) {
@@ -98,116 +100,158 @@ export const fetchNotifications = async (customerId) => {
   }
 
   try {
-    // Method 1: Get notifications from notification_recipients table (if exists)
-    let notificationsFromRecipients = [];
+    // ✅ FIX: Use mobile_app_notifications view (if created) OR filter by status = 'sent'
+    // Option 1: Use view (recommended - after running SQL script)
+    let notificationsFromView = [];
     try {
-      const { data: recipients, error: recipientsError } = await supabase
-        .from('notification_recipients')
-        .select('id, notification_id, is_read, created_at')
-        .eq('customer_id', customerId)
-        .order('created_at', { ascending: false });
+      const { data: viewData, error: viewError } = await supabase
+        .from('mobile_app_notifications')  // ✅ View use karein
+        .select('*')
+        .or(`recipient_type.eq.all_customers,recipient_ids.cs.{${customerId}}`)
+        .order('sent_at', { ascending: false })
+        .limit(50);
 
-      if (!recipientsError && recipients && recipients.length > 0) {
-        const notificationIds = recipients.map((r) => r.notification_id);
+      if (!viewError && viewData) {
+        notificationsFromView = viewData.map((notification) => {
+          const iconData = getNotificationIcon(notification.title);
+          return {
+            id: notification.id,
+            notification_id: notification.notification_id,
+            title: notification.title,
+            message: notification.message || notification.title,
+            timestamp: formatNotificationDate(notification.sent_at || notification.created_at),
+            rawTimestamp: notification.sent_at || notification.created_at,
+            isRead: false, // Will be updated from notification_recipients if exists
+            recipientId: null,
+            iconColor: iconData.color,
+            iconName: iconData.name,
+            type: notification.recipient_type || 'general',
+          };
+        });
+      }
+    } catch (viewErr) {
+      console.log('View might not exist, using direct query with filters');
+    }
 
-        // Fetch notification details
-        const { data: notifications, error: notificationsError } = await supabase
-          .from('notifications')
-          .select('*')
-          .in('notification_id', notificationIds)
+    // Option 2: Direct query with status filter (fallback if view doesn't exist)
+    if (notificationsFromView.length === 0) {
+      // Method 1: Get notifications from notification_recipients table (if exists)
+      let notificationsFromRecipients = [];
+      try {
+        const { data: recipients, error: recipientsError } = await supabase
+          .from('notification_recipients')
+          .select('id, notification_id, is_read, created_at')
+          .eq('customer_id', customerId)
           .order('created_at', { ascending: false });
 
-        if (!notificationsError && notifications) {
-          notificationsFromRecipients = notifications.map((notification) => {
-            const recipient = recipients.find((r) => r.notification_id === notification.notification_id);
-            const iconData = getNotificationIcon(notification.title);
+        if (!recipientsError && recipients && recipients.length > 0) {
+          const notificationIds = recipients.map((r) => r.notification_id);
 
-            return {
-              id: notification.id,
-              notification_id: notification.notification_id,
-              title: notification.title,
-              message: notification.message || notification.title,
-              timestamp: formatNotificationDate(notification.created_at || recipient?.created_at),
-              rawTimestamp: notification.created_at || recipient?.created_at,
-              isRead: recipient?.is_read || false,
-              recipientId: recipient?.id,
-              iconColor: iconData.color,
-              iconName: iconData.name,
-              type: notification.recipient_type || 'general',
-            };
-          });
+          // ✅ FIX: Fetch only sent notifications
+          const { data: notifications, error: notificationsError } = await supabase
+            .from('notifications')
+            .select('*')
+            .in('notification_id', notificationIds)
+            .eq('status', 'sent')  // ✅ CRITICAL: Only sent notifications
+            .not('sent_at', 'is', null)  // ✅ CRITICAL: Must have sent_at
+            .order('sent_at', { ascending: false });
+
+          if (!notificationsError && notifications) {
+            notificationsFromRecipients = notifications.map((notification) => {
+              const recipient = recipients.find((r) => r.notification_id === notification.notification_id);
+              const iconData = getNotificationIcon(notification.title);
+
+              return {
+                id: notification.id,
+                notification_id: notification.notification_id,
+                title: notification.title,
+                message: notification.message || notification.title,
+                timestamp: formatNotificationDate(notification.sent_at || notification.created_at),
+                rawTimestamp: notification.sent_at || notification.created_at,
+                isRead: recipient?.is_read || false,
+                recipientId: recipient?.id,
+                iconColor: iconData.color,
+                iconName: iconData.name,
+                type: notification.recipient_type || 'general',
+              };
+            });
+          }
         }
+      } catch (error) {
+        console.log('notification_recipients table might not exist, trying alternative method');
       }
-    } catch (error) {
-      console.log('notification_recipients table might not exist, trying alternative method');
+
+      // Method 2: Get notifications where recipient_ids contains customer_id or all_customers
+      let notificationsFromIds = [];
+      try {
+        // ✅ FIX: Only fetch sent notifications
+        const { data: allNotifications, error: allError } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('status', 'sent')  // ✅ CRITICAL: Only sent notifications
+          .not('sent_at', 'is', null)  // ✅ CRITICAL: Must have sent_at
+          .order('sent_at', { ascending: false })
+          .limit(100); // Limit to recent notifications
+
+        if (!allError && allNotifications) {
+          notificationsFromIds = allNotifications
+            .filter((notification) => {
+              // Check if notification is for all customers
+              if (notification.recipient_type === 'all_customers') {
+                return true;
+              }
+
+              // Check if customer_id is in recipient_ids JSONB array
+              if (notification.recipient_ids && Array.isArray(notification.recipient_ids)) {
+                return notification.recipient_ids.includes(customerId);
+              }
+
+              return false;
+            })
+            .map((notification) => {
+              const iconData = getNotificationIcon(notification.title);
+              return {
+                id: notification.id,
+                notification_id: notification.notification_id,
+                title: notification.title,
+                message: notification.message || notification.title,
+                timestamp: formatNotificationDate(notification.sent_at || notification.created_at),
+                rawTimestamp: notification.sent_at || notification.created_at,
+                isRead: false, // Default to unread if not in notification_recipients
+                recipientId: null,
+                iconColor: iconData.color,
+                iconName: iconData.name,
+                type: notification.recipient_type || 'general',
+              };
+            });
+        }
+      } catch (error) {
+        console.log('Error fetching notifications by recipient_ids:', error);
+      }
+
+      // Combine both methods, prioritizing notification_recipients
+      const combinedMap = new Map();
+
+      // Add notifications from recipient_ids first
+      notificationsFromIds.forEach((notif) => {
+        combinedMap.set(notif.notification_id, notif);
+      });
+
+      // Override with notifications from notification_recipients (these have read status)
+      notificationsFromRecipients.forEach((notif) => {
+        combinedMap.set(notif.notification_id, notif);
+      });
+
+      // Convert map to array and sort by timestamp
+      notificationsFromView = Array.from(combinedMap.values()).sort((a, b) => {
+        const dateA = new Date(a.rawTimestamp || 0);
+        const dateB = new Date(b.rawTimestamp || 0);
+        return dateB - dateA; // Descending order
+      });
     }
 
-    // Method 2: Get notifications where recipient_ids contains customer_id or all_customers
-    let notificationsFromIds = [];
-    try {
-      const { data: allNotifications, error: allError } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100); // Limit to recent notifications
+    return notificationsFromView;
 
-      if (!allError && allNotifications) {
-        notificationsFromIds = allNotifications
-          .filter((notification) => {
-            // Check if notification is for all customers
-            if (notification.recipient_type === 'all_customers') {
-              return true;
-            }
-
-            // Check if customer_id is in recipient_ids JSONB array
-            if (notification.recipient_ids && Array.isArray(notification.recipient_ids)) {
-              return notification.recipient_ids.includes(customerId);
-            }
-
-            return false;
-          })
-          .map((notification) => {
-            const iconData = getNotificationIcon(notification.title);
-            return {
-              id: notification.id,
-              notification_id: notification.notification_id,
-              title: notification.title,
-              message: notification.message || notification.title,
-              timestamp: formatNotificationDate(notification.created_at),
-              rawTimestamp: notification.created_at,
-              isRead: false, // Default to unread if not in notification_recipients
-              recipientId: null,
-              iconColor: iconData.color,
-              iconName: iconData.name,
-              type: notification.recipient_type || 'general',
-            };
-          });
-      }
-    } catch (error) {
-      console.log('Error fetching notifications by recipient_ids:', error);
-    }
-
-    // Combine both methods, prioritizing notification_recipients
-    const combinedMap = new Map();
-
-    // Add notifications from recipient_ids first
-    notificationsFromIds.forEach((notif) => {
-      combinedMap.set(notif.notification_id, notif);
-    });
-
-    // Override with notifications from notification_recipients (these have read status)
-    notificationsFromRecipients.forEach((notif) => {
-      combinedMap.set(notif.notification_id, notif);
-    });
-
-    // Convert map to array and sort by timestamp
-    const finalNotifications = Array.from(combinedMap.values()).sort((a, b) => {
-      const dateA = new Date(a.rawTimestamp || 0);
-      const dateB = new Date(b.rawTimestamp || 0);
-      return dateB - dateA; // Descending order
-    });
-
-    return finalNotifications;
   } catch (error) {
     console.error('Error in fetchNotifications:', error);
     return [];
@@ -265,7 +309,7 @@ export const markAllNotificationsAsRead = async (customerId) => {
 
 /**
  * Set up real-time subscription for notifications
- * Subscribes to both notification_recipients and notifications tables
+ * FIX: Only subscribe to sent notifications (status = 'sent')
  */
 export const subscribeToNotifications = async (customerId, callback) => {
   if (!customerId) {
@@ -286,7 +330,6 @@ export const subscribeToNotifications = async (customerId, callback) => {
     const channel = supabase.channel(channelName);
 
     // Subscribe to notification_recipients table changes
-    // Convert customerId to string for filter
     const customerIdStr = String(customerId);
     channel.on(
       'postgres_changes',
@@ -304,16 +347,18 @@ export const subscribeToNotifications = async (customerId, callback) => {
       }
     );
 
-    // Subscribe to notifications table for new notifications
+    // ✅ FIX: Subscribe to notifications table for new SENT notifications only
     channel.on(
       'postgres_changes',
       {
         event: 'INSERT',
         schema: 'public',
         table: 'notifications',
+        // ✅ CRITICAL: Filter for sent notifications only
+        filter: 'status=eq.sent',
       },
       (payload) => {
-        console.log('🔔 New notification created:', payload);
+        console.log('🔔 New sent notification created:', payload);
         // Check if this notification is for this customer
         const notification = payload.new;
         const customerIdStr = String(customerId);
@@ -327,11 +372,6 @@ export const subscribeToNotifications = async (customerId, callback) => {
 
         if (isForThisCustomer) {
           console.log('🔔 Notification is for this customer, triggering callback');
-          console.log('Notification details:', {
-            recipient_type: notification.recipient_type,
-            recipient_ids: notification.recipient_ids,
-            customerId: customerId,
-          });
           if (callback) {
             callback(payload);
           }
@@ -362,6 +402,7 @@ export const subscribeToNotifications = async (customerId, callback) => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     return channel;
+
   } catch (error) {
     console.error('Error setting up notification subscription:', error);
     return null;

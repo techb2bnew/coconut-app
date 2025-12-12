@@ -209,7 +209,7 @@ const OrdersListScreen = ({ navigation }) => {
         <TouchableOpacity
           style={styles.createButton}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('CreateOrder')}>
+          onPress={() => navigation.navigate('NewStack', { screen: 'CreateOrder' })}>
           <Icon name="add" size={24} color={Colors.cardBackground} />
           <Text style={styles.createButtonText}>Create New Order</Text>
         </TouchableOpacity>

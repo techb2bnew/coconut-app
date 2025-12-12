@@ -10,7 +10,6 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
-import BottomTabNavigation from '../components/BottomTabNavigation';
 import {
   getCustomerId,
   fetchNotifications,
@@ -180,30 +179,8 @@ const NotificationScreen = ({ navigation }) => {
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount} new</Text>
             </View>
-          )}
-          {/* Debug button - Remove in production */}
-          {__DEV__ && (
-            <TouchableOpacity
-              onPress={async () => {
-                console.log('🧪 Debug Info:');
-                console.log('Customer ID:', customerId);
-                console.log('Notifications count:', notifications.length);
-                console.log('Subscription:', subscription ? 'Active' : 'None');
-                if (subscription) {
-                  console.log('Subscription topic:', subscription.topic);
-                  console.log('Subscription state:', subscription.state);
-                }
-                // Check active channels
-                const channels = supabase.getChannels();
-                console.log('Active Supabase channels:', channels.length);
-                channels.forEach((ch) => {
-                  console.log('Channel:', ch.topic, 'State:', ch.state);
-                });
-              }}
-              style={styles.debugButton}>
-              <Text style={styles.debugButtonText}>🔍</Text>
-            </TouchableOpacity>
-          )}
+          )} 
+         
         </View>
       </View>
 
@@ -268,7 +245,6 @@ const NotificationScreen = ({ navigation }) => {
       )}
 
       {/* Bottom Navigation Bar */}
-      <BottomTabNavigation navigation={navigation} activeTab="Notifications" />
     </SafeAreaView>
   );
 };

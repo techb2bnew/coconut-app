@@ -20,7 +20,6 @@ import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import Logo from '../components/Logo';
-import BottomTabNavigation from '../components/BottomTabNavigation';
 import supabase from '../config/supabase';
 
 const HomeScreen = ({ navigation }) => {
@@ -379,8 +378,6 @@ const HomeScreen = ({ navigation }) => {
       </ScrollView>
       )}
 
-      {/* Bottom Navigation Bar */}
-      <BottomTabNavigation navigation={navigation} activeTab="Orders" />
     </SafeAreaView>
   );
 };

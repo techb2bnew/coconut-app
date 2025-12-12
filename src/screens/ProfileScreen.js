@@ -21,7 +21,6 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
-import BottomTabNavigation from '../components/BottomTabNavigation';
 import AddAddressModal from '../components/AddAddressModal';
 import Input from '../components/Input';
 import Button from '../components/Button';
@@ -666,7 +665,7 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.sectionHeader}>
             <Icon name="cube-outline" size={18} color={Colors.primaryPink} />
             <Text style={styles.sectionTitle}>Recent Orders</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('OrdersList')}>
+            <TouchableOpacity onPress={() => navigation.navigate('HomeStack', { screen: 'OrdersList' })}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -1033,7 +1032,6 @@ const ProfileScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Bottom Navigation Bar */}
-      <BottomTabNavigation navigation={navigation} activeTab="Profile" />
 
       {/* Add Address Modal */}
       <AddAddressModal

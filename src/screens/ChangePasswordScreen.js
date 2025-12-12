@@ -99,17 +99,13 @@ const ChangePasswordScreen = ({ navigation }) => {
 
       if (updateError) {
         console.error('Error updating password:', updateError);
-        Alert.alert('Error', updateError.message || 'Failed to update password.');
+        
         setLoading(false);
         return;
       }
 
-      Alert.alert('Success', 'Password updated successfully!', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+    
+      
     } catch (error) {
       console.error('Unexpected error:', error);
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
