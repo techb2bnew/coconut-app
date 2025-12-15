@@ -15,6 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import Logo from '../components/Logo';
@@ -76,23 +77,26 @@ const LoginScreen = ({ navigation }) => {
       } else if (data) {
         // Login successful
         console.log('Login successful:', data);
-        
+
         // Save FCM token after login
         const { saveFCMTokenAfterLogin } = require('../services/firebaseMessaging');
         saveFCMTokenAfterLogin().catch(err => {
           console.error('Error saving FCM token after login:', err);
         });
-        
-        Alert.alert('Success', 'Logged in successfully!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              if (navigation) {
-                navigation.navigate('MainTabs');
-              }
-            },
-          },
-        ]);
+
+        // Show lovely success toast instead of alert
+        Toast.show({
+          type: 'success',
+          text1: 'Welcome back 👋',
+          text2: 'Logged in successfully!',
+          position: 'top',
+          visibilityTime: 2500,
+        });
+
+        // Navigate to main tabs
+        if (navigation) {
+          navigation.navigate('MainTabs');
+        }
       }
     } catch (error) {
       console.error('Unexpected error during login:', error);

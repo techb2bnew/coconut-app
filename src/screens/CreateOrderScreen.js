@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
+import Toast from 'react-native-toast-message';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
@@ -159,6 +160,11 @@ const CreateOrderScreen = ({ navigation }) => {
     };
 
     calculateDeliveryDate();
+    
+    // Auto-select first product type option
+    if (productTypeOptions.length > 0 && !productType) {
+      setProductType(productTypeOptions[0].value);
+    }
     
     // Fetch customer ID and delivery address
     const loadCustomerData = async () => {
@@ -378,16 +384,31 @@ const CreateOrderScreen = ({ navigation }) => {
         return;
       }
 
-      Alert.alert('Success', 'Order created successfully!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            if (navigation) {
-              navigation.navigate('OrdersList');
-            }
-          },
-        },
-      ]);
+      // Show lovely success toast instead of alert
+      Toast.show({
+        type: 'success',
+        text1: 'Order Created! 🎉',
+        text2: 'Your order has been created successfully!',
+        position: 'top',
+        visibilityTime: 2500,
+      });
+
+      // Reset form except product type
+      setQuantity('');
+      setOpenerKit(false);
+      setSpecialEvent(false);
+      setPoNumber('');
+      setOrderNotes('');
+      setLogoFile(null);
+      setLogoPreview(null);
+      setErrors({});
+
+      // Small delay to ensure database commit, then navigate
+      setTimeout(() => {
+        if (navigation) {
+          navigation.navigate('HomeStack', { screen: 'OrdersList' });
+        }
+      }, 500);
     } catch (error) {
       console.error('Error in handleCreateOrder:', error);
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
@@ -567,13 +588,13 @@ const CreateOrderScreen = ({ navigation }) => {
           </View>
 
           {/* Estimated Delivery Date */}
-          <View style={styles.deliveryDateCard}>
+          {/* <View style={styles.deliveryDateCard}>
             <Icon name="calendar-outline" size={24} color={Colors.success} />
             <View style={styles.deliveryDateContent}>
               <Text style={styles.deliveryDateLabel}>Estimated Delivery Date</Text>
               <Text style={styles.deliveryDateValue}>{estimatedDeliveryDate}</Text>
             </View>
-          </View>
+          </View> */}
         </ScrollView>
 
         {/* Footer Buttons */}

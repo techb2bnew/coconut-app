@@ -15,6 +15,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
@@ -87,6 +88,7 @@ const OrdersListScreen = ({ navigation }) => {
     }
 
     try {
+      console.log('📥 Fetching orders for customer:', customerId);
       const { data: ordersData, error } = await supabase
         .from('orders')
         .select('*')
@@ -94,10 +96,12 @@ const OrdersListScreen = ({ navigation }) => {
         .order('order_date', { ascending: false });
 
       if (error) {
-        console.error('Error fetching orders:', error);
+        console.error('❌ Error fetching orders:', error);
         setLoading(false);
         return;
       }
+
+      console.log('✅ Fetched orders count:', ordersData?.length || 0);
 
       const processedOrders = (ordersData || []).map((order) => {
         const status = (order.status || 'Pending').trim();
@@ -118,28 +122,43 @@ const OrdersListScreen = ({ navigation }) => {
       setOrders(processedOrders);
       setFilteredOrders(processedOrders);
     } catch (error) {
-      console.error('Error in fetchOrders:', error);
+      console.error('❌ Error in fetchOrders:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  // Load data on mount
+  // Load customer and initial data on mount
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       const id = await fetchCustomerId();
       if (id) {
+        console.log('👤 Loaded customer ID on mount:', id);
         setCustomerId(id);
         await fetchOrders(id);
       } else {
+        console.log('⚠️ No customer ID found on mount');
         setLoading(false);
       }
     };
 
     loadData();
   }, []);
+
+  // Re-fetch orders whenever screen comes into focus (after create, back navigation, etc.)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!customerId) {
+        return;
+      }
+
+      console.log('🔄 Screen focused, refreshing orders for customer:', customerId);
+      setRefreshing(true);
+      fetchOrders(customerId);
+    }, [customerId])
+  );
 
   // Search filter
   useEffect(() => {
