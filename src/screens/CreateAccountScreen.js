@@ -712,7 +712,7 @@ const CreateAccountScreen = ({ navigation }) => {
                     autoCapitalize="none"
                     errorMessage={errors.email}
                     required
-                    icon={<Text style={styles.envelopeIcon}>📧</Text>}
+                    icon={<Icon name="mail-outline" size={20} color={Colors.textSecondary} />}
                     iconPosition="right"
                     style={styles.inputRow}
                   />
@@ -756,7 +756,7 @@ const CreateAccountScreen = ({ navigation }) => {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     errorMessage={errors.alternateEmail1}
-                    icon={<Text style={styles.envelopeIcon}>📧</Text>}
+                    icon={<Icon name="mail-outline" size={20} color={Colors.textSecondary} />}
                     iconPosition="right"
                     style={styles.inputRow}
                   />
@@ -775,7 +775,7 @@ const CreateAccountScreen = ({ navigation }) => {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     errorMessage={errors.alternateEmail2}
-                    icon={<Text style={styles.envelopeIcon}>📧</Text>}
+                    icon={<Icon name="mail-outline" size={20} color={Colors.textSecondary} />}
                     iconPosition="right"
                     style={styles.inputRow}
                   />
@@ -1060,7 +1060,7 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     backgroundColor: Colors.primaryPink,
-    paddingVertical: 24,
+    paddingVertical: 20,
     paddingHorizontal: 20,
     alignItems: 'center', 
   },
@@ -1102,8 +1102,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   }, 
   halfWidth: {
-    flex: 1,
-    marginRight: 12,
+    flex: 1, 
     marginBottom: 12,
 
   },
@@ -1157,9 +1156,6 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 4,
     marginLeft: 4,
-  },
-  envelopeIcon: {
-    fontSize: 18,
   },
   inputRow: {
     marginBottom: 0,

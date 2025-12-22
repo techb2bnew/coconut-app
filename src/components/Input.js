@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import { fontFamilyBody } from '../theme/fonts';
@@ -74,7 +75,11 @@ const Input = ({
           <TouchableOpacity
             onPress={togglePasswordVisibility}
             style={styles.iconRight}>
-            <Text style={styles.eyeIcon}>{isPasswordVisible ? '👁️' : '👁️‍🗨️'}</Text>
+            <Icon 
+              name={isPasswordVisible ? 'eye-outline' : 'eye-off-outline'} 
+              size={20} 
+              color={Colors.textSecondary} 
+            />
           </TouchableOpacity>
         )}
         {displayIcon && iconPosition === 'right' && (
@@ -135,9 +140,6 @@ const styles = StyleSheet.create({
   },
   iconRight: {
     marginLeft: 12,
-  },
-  eyeIcon: {
-    fontSize: 20,
   },
 });
 

@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import Logo from '../components/Logo';
@@ -156,7 +157,7 @@ const LoginScreen = ({ navigation }) => {
                 autoCapitalize="none"
                 errorMessage={errors.email}
                 icon={
-                  <Text style={styles.envelopeIcon}>📧</Text>
+                  <Icon name="mail-outline" size={20} color={Colors.textSecondary} />
                 }
                 iconPosition="right"
               />
@@ -256,9 +257,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-  },
-  envelopeIcon: {
-    fontSize: 18,
   },
   loginButton: {
     marginTop: 8,

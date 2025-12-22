@@ -75,6 +75,8 @@ const HomeScreen = ({ navigation }) => {
     if (statusLower.includes('processing')) return '#FFE082'; // Yellow for processing
     if (statusLower.includes('delivered')) return '#4CAF50'; // Green for delivered
     if (statusLower.includes('delivery')) return '#81D4FA'; // Blue for out for delivery
+    if (statusLower.includes('in transit')) return '#81D4FA'; // Blue for in transit
+    if (statusLower.includes('driver assigned')) return '#FFE082'; // Yellow for driver assigned
     if (statusLower.includes('progress')) return '#FFE082'; // Yellow for in progress
     if (statusLower.includes('pending')) return '#FFCC80'; // Orange for pending
     return '#9E9E9E'; // Default gray
@@ -150,6 +152,7 @@ const HomeScreen = ({ navigation }) => {
           orderDateRaw: order.order_date,
           deliveryDateRaw: order.delivery_date,
           poNumber: order.po_number,
+          deliveryStatus: order.delivery_status || order.deliveryStatus || null,
         };
       });
 
@@ -170,8 +173,13 @@ const HomeScreen = ({ navigation }) => {
 
       const pendingCount = processedOrders.filter(
         (order) => {
-          const statusLower = (order.status || '').toLowerCase();
-          return statusLower.includes('processing');
+          // Use deliveryStatus if available, otherwise fallback to status
+          const deliveryStatusValue = order.deliveryStatus || order.status || '';
+          const statusLower = deliveryStatusValue.trim().toLowerCase();
+          
+          // Count orders that are NOT completed or delivered
+          const isCompleted = statusLower.includes('completed') || statusLower.includes('delivered');
+          return !isCompleted;
         }
       ).length;
 
@@ -340,8 +348,8 @@ const HomeScreen = ({ navigation }) => {
                   )}
                 </View>
                 <View style={styles.orderRight}>
-                  <View style={[styles.statusBadge, { backgroundColor: order.statusColor }]}>
-                    <Text style={styles.statusText}>{order.status}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: order.deliveryStatus ? getStatusColor(order.deliveryStatus) : order.statusColor }]}>
+                    <Text style={styles.statusText}>{order.deliveryStatus || order.status}</Text>
                   </View>
                 </View>
               </View>
@@ -540,12 +548,29 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     fontWeight: '500',
     color: Colors.cardBackground,
+    textTransform: 'capitalize',
+  },
+  orderFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
   },
   deliveryDate: {
     fontSize: 13,
     fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
-    marginTop: 4,
+  },
+  deliveryStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  deliveryStatusText: {
+    fontSize: 11,
+    fontFamily: fontFamilyBody,
+    fontWeight: '500',
+    color: Colors.cardBackground,
   },
   activityItem: {
     flexDirection: 'row',

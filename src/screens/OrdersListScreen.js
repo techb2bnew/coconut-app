@@ -44,14 +44,17 @@ const OrdersListScreen = ({ navigation }) => {
     if (!status) return '#9E9E9E';
     const statusLower = status.trim().toLowerCase();
     
-    if (statusLower === 'completed') return '#4CAF50'; // Green
-    if (statusLower === 'processing') return '#FFE082'; // Yellow
-    if (statusLower.includes('completed')) return '#4CAF50';
-    if (statusLower.includes('processing')) return '#FFE082';
-    if (statusLower.includes('delivered')) return '#4CAF50';
-    if (statusLower.includes('delivery')) return '#81D4FA'; // Light blue
-    if (statusLower.includes('pending')) return '#FFCC80'; // Orange
-    return '#9E9E9E';
+    if (statusLower === 'completed') return '#4CAF50'; // Green for Completed
+    if (statusLower === 'processing') return '#FFE082'; // Yellow/Orange for Processing
+    if (statusLower.includes('completed')) return '#4CAF50'; // Green for completed
+    if (statusLower.includes('processing')) return '#FFE082'; // Yellow for processing
+    if (statusLower.includes('delivered')) return '#4CAF50'; // Green for delivered
+    if (statusLower.includes('delivery')) return '#81D4FA'; // Blue for out for delivery
+    if (statusLower.includes('in transit')) return '#81D4FA'; // Blue for in transit
+    if (statusLower.includes('driver assigned')) return '#FFE082'; // Yellow for driver assigned
+    if (statusLower.includes('progress')) return '#FFE082'; // Yellow for in progress
+    if (statusLower.includes('pending')) return '#FFCC80'; // Orange for pending
+    return '#9E9E9E'; // Default gray
   };
 
   // Fetch customer ID
@@ -105,6 +108,11 @@ const OrdersListScreen = ({ navigation }) => {
 
       const processedOrders = (ordersData || []).map((order) => {
         const status = (order.status || 'Pending').trim();
+        // Use deliveryStatus if available, otherwise fallback to status
+        const deliveryStatusValue = order.delivery_status || order.deliveryStatus || status;
+        const displayStatus = deliveryStatusValue.trim();
+        const statusColor = getStatusColor(displayStatus);
+        
         return {
           id: order.id,
           orderName: order.order_name || `ORD-${order.id}`,
@@ -112,10 +120,11 @@ const OrdersListScreen = ({ navigation }) => {
           deliveryDate: formatDate(order.delivery_date),
           orderDate: formatDate(order.order_date),
           status: status,
-          statusColor: getStatusColor(status),
+          statusColor: statusColor,
           poNumber: order.po_number || '',
           orderDateRaw: order.order_date,
           deliveryDateRaw: order.delivery_date,
+          deliveryStatus: deliveryStatusValue,
         };
       });
 
@@ -263,7 +272,7 @@ const OrdersListScreen = ({ navigation }) => {
                     <Text style={styles.orderDate}>{order.orderDate}</Text>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: order.statusColor }]}>
-                    <Text style={styles.statusText}>{order.status}</Text>
+                    <Text style={styles.statusText}>{order.deliveryStatus || order.status}</Text>
                   </View>
                 </View>
 
@@ -445,6 +454,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     fontWeight: '500',
     color: Colors.cardBackground,
+    textTransform: 'capitalize',
   },
   orderDetails: {
     marginBottom: 16,
@@ -464,6 +474,18 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     fontWeight: '500',
+  },
+  deliveryStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-end',
+  },
+  deliveryStatusText: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    fontWeight: '500',
+    color: Colors.cardBackground,
   },
   viewDetailsButton: {
     backgroundColor: Colors.primaryPink,

@@ -5,6 +5,7 @@ import ChangePasswordScreen from "../../screens/ChangePasswordScreen";
 import AllAboutCoconutsScreen from "../../screens/AllAboutCoconutsScreen";
 import PrivacyPolicyScreen from "../../screens/PrivacyPolicyScreen";
 import TermsAndConditionsScreen from "../../screens/TermsAndConditionsScreen";
+import DocumentCenterScreen from "../../screens/DocumentCenterScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -17,6 +18,7 @@ export default function ProfileStack() {
       <Stack.Screen name="AllAboutCoconuts" component={AllAboutCoconutsScreen} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
       <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
+      <Stack.Screen name="DocumentCenter" component={DocumentCenterScreen} />
     </Stack.Navigator>
   );
 }

@@ -12,12 +12,12 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
   Linking,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
+import Toast from 'react-native-toast-message';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
@@ -55,6 +55,24 @@ const ProfileScreen = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordErrors, setPasswordErrors] = useState({});
   const [savingPassword, setSavingPassword] = useState(false);
+
+  // Helper function to get status color
+  const getStatusColor = (status) => {
+    if (!status) return '#9E9E9E';
+    const statusLower = status.trim().toLowerCase();
+    
+    if (statusLower === 'completed') return '#4CAF50'; // Green for Completed
+    if (statusLower === 'processing') return '#FFE082'; // Yellow/Orange for Processing
+    if (statusLower.includes('completed')) return '#4CAF50'; // Green for completed
+    if (statusLower.includes('processing')) return '#FFE082'; // Yellow for processing
+    if (statusLower.includes('delivered')) return '#4CAF50'; // Green for delivered
+    if (statusLower.includes('delivery')) return '#81D4FA'; // Blue for out for delivery
+    if (statusLower.includes('in transit')) return '#81D4FA'; // Blue for in transit
+    if (statusLower.includes('driver assigned')) return '#FFE082'; // Yellow for driver assigned
+    if (statusLower.includes('progress')) return '#FFE082'; // Yellow for in progress
+    if (statusLower.includes('pending')) return '#FFCC80'; // Orange for pending
+    return '#9E9E9E'; // Default gray
+  };
 
   // Fetch customer data
   useEffect(() => {
@@ -229,7 +247,13 @@ const ProfileScreen = ({ navigation }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !user.email) {
-        Alert.alert('Error', 'User not logged in.');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'User not logged in.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
         return;
       }
 
@@ -271,11 +295,23 @@ const ProfileScreen = ({ navigation }) => {
 
       if (error) {
         console.error('Error updating address:', error);
-        Alert.alert('Error', 'Failed to save address. Please try again.');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to save address. Please try again.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
         return;
       }
 
-      Alert.alert('Success', 'Address added successfully!');
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Address added successfully!',
+        position: 'top',
+        visibilityTime: 2500,
+      });
       // Refresh customer data
       const { data: customer } = await supabase
         .from('customers')
@@ -287,7 +323,13 @@ const ProfileScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('Error saving address:', error);
-      Alert.alert('Error', 'An unexpected error occurred.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'An unexpected error occurred.',
+        position: 'top',
+        visibilityTime: 2500,
+      });
     }
   };
 
@@ -295,7 +337,13 @@ const ProfileScreen = ({ navigation }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !user.email) {
-        Alert.alert('Error', 'User not logged in.');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'User not logged in.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
         return;
       }
 
@@ -319,10 +367,23 @@ const ProfileScreen = ({ navigation }) => {
 
       if (error) {
         console.error('Error updating default address:', error);
-        Alert.alert('Error', 'Failed to set default address.');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to set default address.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
         return;
       }
 
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Default address updated successfully!',
+        position: 'top',
+        visibilityTime: 2500,
+      });
       // Refresh customer data
       const { data: customer } = await supabase
         .from('customers')
@@ -334,90 +395,108 @@ const ProfileScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('Error setting default address:', error);
-      Alert.alert('Error', 'An unexpected error occurred.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'An unexpected error occurred.',
+        position: 'top',
+        visibilityTime: 2500,
+      });
     }
   };
 
   const handleDeleteAddress = async (addressId) => {
-    Alert.alert(
-      'Delete Address',
-      'Are you sure you want to delete this address?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { data: { user } } = await supabase.auth.getUser();
-              if (!user || !user.email) {
-                Alert.alert('Error', 'User not logged in.');
-                return;
-              }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !user.email) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'User not logged in.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
+        return;
+      }
 
-              const addresses = parseAddresses();
-              console.log('All addresses before delete:', JSON.stringify(addresses, null, 2));
-              console.log('Deleting address with ID:', addressId);
-              
-              // Filter out the address with matching ID (strict comparison)
-              const filteredAddresses = addresses.filter(addr => {
-                const addrId = addr.id?.toString();
-                const targetId = addressId?.toString();
-                const shouldKeep = addrId !== targetId;
-                console.log(`Comparing: ${addrId} !== ${targetId} = ${shouldKeep}`);
-                return shouldKeep;
-              });
-              
-              console.log('Filtered addresses after delete:', JSON.stringify(filteredAddresses, null, 2));
-              
-              // Ensure all remaining addresses have IDs (as strings)
-              const addressesWithIds = filteredAddresses.map(addr => ({
-                ...addr,
-                id: addr.id?.toString() || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              }));
-              
-              // If deleted address was selected, select first one
-              const deletedAddress = addresses.find(a => {
-                const addrId = a.id?.toString();
-                const targetId = addressId?.toString();
-                return addrId === targetId;
-              });
-              
-              const deletedWasSelected = deletedAddress?.isSelected;
-              if (deletedWasSelected && addressesWithIds.length > 0) {
-                addressesWithIds[0].isSelected = true;
-              }
+      const addresses = parseAddresses();
+      console.log('All addresses before delete:', JSON.stringify(addresses, null, 2));
+      console.log('Deleting address with ID:', addressId);
+      
+      // Filter out the address with matching ID (strict comparison)
+      const filteredAddresses = addresses.filter(addr => {
+        const addrId = addr.id?.toString();
+        const targetId = addressId?.toString();
+        const shouldKeep = addrId !== targetId;
+        console.log(`Comparing: ${addrId} !== ${targetId} = ${shouldKeep}`);
+        return shouldKeep;
+      });
+      
+      console.log('Filtered addresses after delete:', JSON.stringify(filteredAddresses, null, 2));
+      
+      // Ensure all remaining addresses have IDs (as strings)
+      const addressesWithIds = filteredAddresses.map(addr => ({
+        ...addr,
+        id: addr.id?.toString() || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      }));
+      
+      // If deleted address was selected, select first one
+      const deletedAddress = addresses.find(a => {
+        const addrId = a.id?.toString();
+        const targetId = addressId?.toString();
+        return addrId === targetId;
+      });
+      
+      const deletedWasSelected = deletedAddress?.isSelected;
+      if (deletedWasSelected && addressesWithIds.length > 0) {
+        addressesWithIds[0].isSelected = true;
+      }
 
-              const { error } = await supabase
-                .from('customers')
-                .update({
-                  delivery_address: addressesWithIds.length > 0 ? addressesWithIds : null,
-                })
-                .eq('email', user.email);
+      const { error } = await supabase
+        .from('customers')
+        .update({
+          delivery_address: addressesWithIds.length > 0 ? addressesWithIds : null,
+        })
+        .eq('email', user.email);
 
-              if (error) {
-                console.error('Error deleting address:', error);
-                Alert.alert('Error', 'Failed to delete address.');
-                return;
-              }
+      if (error) {
+        console.error('Error deleting address:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to delete address.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
+        return;
+      }
 
-              // Refresh customer data
-              const { data: customer } = await supabase
-                .from('customers')
-                .select('*')
-                .eq('email', user.email)
-                .single();
-              if (customer) {
-                setCustomerData(customer);
-              }
-            } catch (error) {
-              console.error('Error deleting address:', error);
-              Alert.alert('Error', 'An unexpected error occurred.');
-            }
-          },
-        },
-      ]
-    );
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Address deleted successfully!',
+        position: 'top',
+        visibilityTime: 2500,
+      });
+      // Refresh customer data
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('email', user.email)
+        .single();
+      if (customer) {
+        setCustomerData(customer);
+      }
+    } catch (error) {
+      console.error('Error deleting address:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'An unexpected error occurred.',
+        position: 'top',
+        visibilityTime: 2500,
+      });
+    }
   };
 
   // Account Editing Functions
@@ -456,7 +535,13 @@ const ProfileScreen = ({ navigation }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !user.email) {
-        Alert.alert('Error', 'User not logged in.');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'User not logged in.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
         setSavingAccount(false);
         return;
       }
@@ -471,7 +556,13 @@ const ProfileScreen = ({ navigation }) => {
         .eq('email', user.email);
 
       if (error) {
-        Alert.alert('Error', error.message || 'Failed to update account.');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: error.message || 'Failed to update account.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
         setSavingAccount(false);
         return;
       }
@@ -486,9 +577,21 @@ const ProfileScreen = ({ navigation }) => {
       if (customer) setCustomerData(customer);
 
       setIsEditingAccount(false);
-      Alert.alert('Success', 'Account information updated successfully!');
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Account information updated successfully!',
+        position: 'top',
+        visibilityTime: 2500,
+      });
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'An unexpected error occurred.',
+        position: 'top',
+        visibilityTime: 2500,
+      });
     } finally {
       setSavingAccount(false);
     }
@@ -523,7 +626,13 @@ const ProfileScreen = ({ navigation }) => {
     } catch (error) {
       console.error('Error opening phone dialer:', error);
       // Only show error if it actually fails
-      Alert.alert('Error', 'Unable to open phone dialer. Please try again.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Unable to open phone dialer. Please try again.',
+        position: 'top',
+        visibilityTime: 2500,
+      });
     }
   };
 
@@ -544,7 +653,13 @@ const ProfileScreen = ({ navigation }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !user.email) {
-        Alert.alert('Error', 'User not logged in.');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'User not logged in.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
         setSavingPassword(false);
         return;
       }
@@ -556,7 +671,13 @@ const ProfileScreen = ({ navigation }) => {
       });
 
       if (signInError) {
-        Alert.alert('Error', 'Current password is incorrect.');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Current password is incorrect.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
         setSavingPassword(false);
         return;
       }
@@ -567,7 +688,13 @@ const ProfileScreen = ({ navigation }) => {
       });
 
       if (updateError) {
-        Alert.alert('Error', updateError.message || 'Failed to update password.');
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: updateError.message || 'Failed to update password.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
         setSavingPassword(false);
         return;
       }
@@ -578,28 +705,31 @@ const ProfileScreen = ({ navigation }) => {
       setNewPassword('');
       setConfirmPassword('');
 
-      // Show success message
-      Alert.alert(
-        'Password Changed',
-        'You have changed your password. Please login again.',
-        [
-          {
-            text: 'OK',
-            onPress: async () => {
-              // Logout user
-              await supabase.auth.signOut();
-              // Navigate to Login screen
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              });
-            },
-          },
-        ],
-        { cancelable: false }
-      );
+      // Show success toast and logout after delay
+      Toast.show({
+        type: 'success',
+        text1: 'Password Changed',
+        text2: 'You have changed your password. Please login again.',
+        position: 'top',
+        visibilityTime: 3000,
+        onHide: async () => {
+          // Logout user
+          await supabase.auth.signOut();
+          // Navigate to Login screen
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        },
+      });
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'An unexpected error occurred.',
+        position: 'top',
+        visibilityTime: 2500,
+      });
     } finally {
       setSavingPassword(false);
     }
@@ -670,20 +800,24 @@ const ProfileScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           {recentOrders.length > 0 ? (
-            recentOrders.map((order) => (
-              <View key={order.id} style={styles.orderRow}>
-                <View style={[styles.orderIcon, { backgroundColor: '#E8F5E9' }]}>
-                  <Icon name="checkmark-circle" size={20} color={Colors.success} />
+            recentOrders.map((order) => {
+              const deliveryStatus = order.delivery_status || order.deliveryStatus || order.status || 'Pending';
+              const statusColor = getStatusColor(deliveryStatus);
+              return (
+                <View key={order.id} style={styles.orderRow}>
+                  <View style={[styles.orderIcon, { backgroundColor: '#E8F5E9' }]}>
+                    <Icon name="checkmark-circle" size={20} color={Colors.success} />
+                  </View>
+                  <View style={styles.orderInfo}>
+                    <Text style={styles.orderId}>{order.order_name || `ORD-${order.id}`}</Text>
+                    <Text style={styles.orderTime}>{formatDate(order.order_date)}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
+                    <Text style={styles.statusText}>{deliveryStatus}</Text>
+                  </View>
                 </View>
-                <View style={styles.orderInfo}>
-                  <Text style={styles.orderId}>{order.order_name || `ORD-${order.id}`}</Text>
-                  <Text style={styles.orderTime}>{formatDate(order.order_date)}</Text>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: Colors.success }]}>
-                  <Text style={styles.statusText}>{order.status || 'Delivered'}</Text>
-                </View>
-              </View>
-            ))
+              );
+            })
           ) : (
             <Text style={styles.noOrdersText}>No recent orders</Text>
           )}
@@ -949,7 +1083,9 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.linkText}>All About Coconuts</Text>
             <Icon name="chevron-forward" size={20} color={Colors.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.linkRow}>
+          <TouchableOpacity 
+            style={styles.linkRow}
+            onPress={() => navigation.navigate('DocumentCenter')}>
             <View style={[styles.linkIcon, { backgroundColor: '#E0E0E0' }]}>
               <Icon name="document-text-outline" size={20} color={Colors.textPrimary} />
             </View>

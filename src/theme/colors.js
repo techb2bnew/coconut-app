@@ -17,7 +17,7 @@ export const Colors = {
   
   // Text Colors
   textPrimary: '#000000', // Black for main text
-  textSecondary: '#9E9E9E', // Gray for placeholder text
+  textSecondary: '#000000', // Gray for placeholder text
   textPink: '#E91E63', // Pink for links and accents
   textLightPink: '#F48FB1', // Light pink for secondary text
   

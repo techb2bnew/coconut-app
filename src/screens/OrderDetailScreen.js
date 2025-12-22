@@ -18,7 +18,7 @@ import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 
 const OrderDetailScreen = ({ navigation, route }) => {
   const { order } = route.params || {};
-
+  console.log('order', order);
   // Helper function to format date
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -48,33 +48,40 @@ const OrderDetailScreen = ({ navigation, route }) => {
     if (!status) return '#9E9E9E';
     const statusLower = status.trim().toLowerCase();
     
-    if (statusLower === 'completed') return '#4CAF50';
-    if (statusLower === 'processing') return '#FFE082';
-    if (statusLower.includes('completed')) return '#4CAF50';
-    if (statusLower.includes('processing')) return '#FFE082';
-    if (statusLower.includes('delivered')) return '#4CAF50';
-    if (statusLower.includes('delivery')) return '#81D4FA';
-    if (statusLower.includes('pending')) return '#FFCC80';
-    return '#9E9E9E';
+    if (statusLower === 'completed') return '#4CAF50'; // Green for Completed
+    if (statusLower === 'processing') return '#FFE082'; // Yellow/Orange for Processing
+    if (statusLower.includes('completed')) return '#4CAF50'; // Green for completed
+    if (statusLower.includes('processing')) return '#FFE082'; // Yellow for processing
+    if (statusLower.includes('delivered')) return '#4CAF50'; // Green for delivered
+    if (statusLower.includes('delivery')) return '#81D4FA'; // Blue for out for delivery
+    if (statusLower.includes('in transit')) return '#81D4FA'; // Blue for in transit
+    if (statusLower.includes('driver assigned')) return '#FFE082'; // Yellow for driver assigned
+    if (statusLower.includes('progress')) return '#FFE082'; // Yellow for in progress
+    if (statusLower.includes('pending')) return '#FFCC80'; // Orange for pending
+    return '#9E9E9E'; // Default gray
   };
 
-  // Generate timeline based on order status and dates
+  // Generate timeline based on deliveryStatus and dates
   const generateTimeline = () => {
     if (!order) return [];
 
     const timeline = [];
-    const statusLower = (order.status || '').trim().toLowerCase();
+    // Use deliveryStatus if available, otherwise fallback to status
+    const deliveryStatusValue = order.deliveryStatus || order.status || '';
+    const statusLower = deliveryStatusValue.trim().toLowerCase();
     const orderDate = order.orderDateRaw || order.order_date;
     const deliveryDate = order.deliveryDateRaw || order.delivery_date;
 
-    // Determine current status stage
+    // Determine current status stage based on deliveryStatus
     let currentStage = 'new';
     if (statusLower.includes('completed') || statusLower.includes('delivered')) {
       currentStage = 'delivered';
-    } else if (statusLower.includes('delivery')) {
+    } else if (statusLower.includes('delivery') || statusLower.includes('out for delivery')) {
       currentStage = 'out_for_delivery';
-    } else if (statusLower.includes('processing')) {
+    } else if (statusLower.includes('processing') || statusLower.includes('in progress')) {
       currentStage = 'in_progress';
+    } else if (statusLower.includes('pending') || statusLower.includes('received')) {
+      currentStage = 'pending';
     } else if (orderDate) {
       currentStage = 'pending';
     }
@@ -261,8 +268,8 @@ const OrderDetailScreen = ({ navigation, route }) => {
         <View style={styles.detailCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Order Details</Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-              <Text style={styles.statusText}>{order.status || 'Pending'}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: order.deliveryStatus ? getStatusColor(order.deliveryStatus) : statusColor }]}>
+              <Text style={styles.statusText}>{order.deliveryStatus || order.status || 'Pending'}</Text>
             </View>
           </View>
 
@@ -403,6 +410,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyHeading,
     fontWeight: '600',
     color: Colors.textPrimary,
+    marginBottom: 12,
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -414,6 +422,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     fontWeight: '500',
     color: Colors.cardBackground,
+    textTransform: 'capitalize',
   },
   placedOnText: {
     fontSize: 14,
@@ -441,6 +450,19 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     fontWeight: '500',
     color: Colors.textPrimary,
+  },
+  deliveryStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  deliveryStatusText: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    fontWeight: '500',
+    color: Colors.cardBackground,
   },
   timelineCard: {
     backgroundColor: Colors.cardBackground,

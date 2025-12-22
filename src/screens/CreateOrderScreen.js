@@ -369,6 +369,7 @@ const CreateOrderScreen = ({ navigation }) => {
         order_date: new Date().toISOString(),
         delivery_date: deliveryDate.toISOString(),
         status: 'Processing',
+        delivery_status: 'Pending', // Set initial delivery status
       };
 
       const { data: order, error: orderError } = await supabase
@@ -424,18 +425,14 @@ const CreateOrderScreen = ({ navigation }) => {
   };
 
   const handleCancel = () => {
-    Alert.alert(
-      'Cancel Order',
-      'Are you sure you want to cancel? All changes will be lost.',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes',
-          style: 'destructive',
-          onPress: handleBack,
-        },
-      ]
-    );
+    Toast.show({
+      type: 'info',
+      text1: 'Order Cancelled',
+      text2: 'All changes have been discarded',
+      position: 'top',
+      visibilityTime: 2000,
+    });
+    handleBack();
   };
 
   return (
