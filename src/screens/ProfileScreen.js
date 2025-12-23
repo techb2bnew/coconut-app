@@ -71,7 +71,7 @@ const ProfileScreen = ({ navigation }) => {
     if (statusLower.includes('driver assigned')) return '#FFE082'; // Yellow for driver assigned
     if (statusLower.includes('progress')) return '#FFE082'; // Yellow for in progress
     if (statusLower.includes('pending')) return '#FFCC80'; // Orange for pending
-    return '#9E9E9E'; // Default gray
+    return '#f2f2f2'; // Default gray
   };
 
   // Fetch customer data

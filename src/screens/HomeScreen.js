@@ -25,7 +25,7 @@ import supabase from '../config/supabase';
 const HomeScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [customerId, setCustomerId] = useState(null);
+  const [customerId, setCustomerId] = useState(null); 
   const [stats, setStats] = useState({
     activeOrders: 0,
     pending: 0,
@@ -79,7 +79,7 @@ const HomeScreen = ({ navigation }) => {
     if (statusLower.includes('driver assigned')) return '#FFE082'; // Yellow for driver assigned
     if (statusLower.includes('progress')) return '#FFE082'; // Yellow for in progress
     if (statusLower.includes('pending')) return '#FFCC80'; // Orange for pending
-    return '#9E9E9E'; // Default gray
+    return '#f2f2f2'; // Default gray
   };
 
   // Fetch customer ID from logged in user email
@@ -109,7 +109,21 @@ const HomeScreen = ({ navigation }) => {
       return null;
     }
   };
-
+ 
+  const getSelectedDeliveryAddressFromOrder = (order) => {
+    if (!order?.customer_details) return null;
+  
+    try {
+      const customer = JSON.parse(order.customer_details);
+      if (!customer?.delivery_address?.length) return null;
+  
+      return customer.delivery_address.find(addr => addr.isSelected);
+    } catch (e) {
+      console.error('Invalid customer_details JSON', e);
+      return null;
+    }
+  };
+  
   // Fetch orders for customer
   const fetchOrders = async (customerId) => {
     if (!customerId) {
@@ -125,22 +139,25 @@ const HomeScreen = ({ navigation }) => {
         .eq('customer_id', customerId)
         .order('order_date', { ascending: false })
         .limit(20); // Get recent 20 orders
-
+        
       if (error) {
         console.error('Error fetching orders:', error);
         setLoading(false);
         return;
       }
-
+     
       // Process orders data
       const processedOrders = (orders || []).map((order) => {
+        console.log('order', order);
         // Use status from database directly (trim to remove any extra spaces)
         const status = (order.status || 'Pending').trim();
         const statusColor = getStatusColor(status);
-        
-        // Debug log to verify status and color mapping
-        console.log(`Order ${order.id}: status="${status}", color="${statusColor}"`);
+        const selectedAddress = getSelectedDeliveryAddressFromOrder(order);
 
+      const delivery_address = selectedAddress
+        ? `${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state} - ${selectedAddress.zipCode}`
+        : order.delivery_address || 'No delivery address selected';
+          console.log('delivery_address', delivery_address);
         return {
           id: order.id,
           orderName: order.order_name || `ORD-${order.id}`,
@@ -153,6 +170,15 @@ const HomeScreen = ({ navigation }) => {
           deliveryDateRaw: order.delivery_date,
           poNumber: order.po_number,
           deliveryStatus: order.delivery_status || order.deliveryStatus || null,
+          driverId: order.driver_id || order.driverId || null,
+          delivery_address,
+          driverName: order.driver_name || order.driverName || null,
+          driverPhone: order.driver_phone || order.driverPhone || null,
+          driverEmail: order.driver_email || order.driverEmail || null,
+          driverAddress: order.driver_address || order.driverAddress || null,
+          driverCity: order.driver_city || order.driverCity || null,
+          driverState: order.driver_state || order.driverState || null,
+          driverZip: order.driver_zip || order.driverZip || null,
         };
       });
 

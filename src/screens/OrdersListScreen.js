@@ -54,7 +54,7 @@ const OrdersListScreen = ({ navigation }) => {
     if (statusLower.includes('driver assigned')) return '#FFE082'; // Yellow for driver assigned
     if (statusLower.includes('progress')) return '#FFE082'; // Yellow for in progress
     if (statusLower.includes('pending')) return '#FFCC80'; // Orange for pending
-    return '#9E9E9E'; // Default gray
+    return '#f2f2f2'; // Default gray
   };
 
   // Fetch customer ID
@@ -82,7 +82,19 @@ const OrdersListScreen = ({ navigation }) => {
       return null;
     }
   };
-
+  const getSelectedDeliveryAddressFromOrder = (order) => {
+    if (!order?.customer_details) return null;
+  
+    try {
+      const customer = JSON.parse(order.customer_details);
+      if (!customer?.delivery_address?.length) return null;
+  
+      return customer.delivery_address.find(addr => addr.isSelected);
+    } catch (e) {
+      console.error('Invalid customer_details JSON', e);
+      return null;
+    }
+  };
   // Fetch orders
   const fetchOrders = async (customerId) => {
     if (!customerId) {
@@ -104,7 +116,7 @@ const OrdersListScreen = ({ navigation }) => {
         return;
       }
 
-      console.log('✅ Fetched orders count:', ordersData?.length || 0);
+      console.log('✅ Fetched orders count:', ordersData || 0);
 
       const processedOrders = (ordersData || []).map((order) => {
         const status = (order.status || 'Pending').trim();
@@ -112,7 +124,12 @@ const OrdersListScreen = ({ navigation }) => {
         const deliveryStatusValue = order.delivery_status || order.deliveryStatus || status;
         const displayStatus = deliveryStatusValue.trim();
         const statusColor = getStatusColor(displayStatus);
-        
+        const selectedAddress = getSelectedDeliveryAddressFromOrder(order);
+
+        const delivery_address = selectedAddress
+        ? `${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state} - ${selectedAddress.zipCode}`
+        : order.delivery_address || 'No delivery address selected';
+          console.log('delivery_address', delivery_address);
         return {
           id: order.id,
           orderName: order.order_name || `ORD-${order.id}`,
@@ -125,6 +142,15 @@ const OrdersListScreen = ({ navigation }) => {
           orderDateRaw: order.order_date,
           deliveryDateRaw: order.delivery_date,
           deliveryStatus: deliveryStatusValue,
+          delivery_address,
+          driverId: order.driver_id || order.driverId || null,
+          driverName: order.driver_name || order.driverName || null,
+          driverPhone: order.driver_phone || order.driverPhone || null,
+          driverEmail: order.driver_email || order.driverEmail || null,
+          driverddress: order.driver_address || order.driverAddress || null,
+          driverCity: order.driver_city || order.driverCity || null,
+          driverState: order.driver_state || order.driverState || null,
+          driverZip: order.driver_zip || order.driverZip || null,
         };
       });
 
@@ -350,8 +376,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.cardBackground,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,

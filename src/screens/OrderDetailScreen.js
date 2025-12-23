@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
+import DriverLocationMap from '../components/DriverLocationMap';
 
 const OrderDetailScreen = ({ navigation, route }) => {
   const { order } = route.params || {};
@@ -58,7 +59,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
     if (statusLower.includes('driver assigned')) return '#FFE082'; // Yellow for driver assigned
     if (statusLower.includes('progress')) return '#FFE082'; // Yellow for in progress
     if (statusLower.includes('pending')) return '#FFCC80'; // Orange for pending
-    return '#9E9E9E'; // Default gray
+    return '#f2f2f2'; // Default gray
   };
 
   // Generate timeline based on deliveryStatus and dates
@@ -263,42 +264,19 @@ const OrderDetailScreen = ({ navigation, route }) => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        
-        {/* Order Details Card */}
-        <View style={styles.detailCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Order Details</Text>
-            <View style={[styles.statusBadge, { backgroundColor: order.deliveryStatus ? getStatusColor(order.deliveryStatus) : statusColor }]}>
-              <Text style={styles.statusText}>{order.deliveryStatus || order.status || 'Pending'}</Text>
-            </View>
-          </View>
+            {/* Driver Location Map - Only show when driver is assigned */}
+            {order && (order.deliveryStatus?.toLowerCase().includes('driver assigned') || 
+                   order.deliveryStatus?.toLowerCase().includes('in transit') ||
+                   order.deliveryStatus?.toLowerCase().includes('out for delivery')) && (
+          <DriverLocationMap
+            orderId={order.id || order.order_id}
+            deliveryAddress={order.delivery_address || order.deliveryAddress}
+            driverId={order.driver_id || order.driverId}
+          />
+        )}
 
-          <Text style={styles.placedOnText}>
-            Placed on {formatDate(order.orderDateRaw || order.order_date)}
-          </Text>
-
-          <View style={styles.detailsGrid}>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Product Type</Text>
-              <Text style={styles.detailValue}>Case</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Quantity</Text>
-              <Text style={styles.detailValue}>
-                {order.cases > 0 ? order.cases : 'N/A'}
-              </Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Est. Delivery</Text>
-              <Text style={styles.detailValue}>
-                {order.deliveryDate || 'N/A'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Order Timeline Card */}
-        <View style={styles.timelineCard}>
+          {/* Order Timeline Card */}
+          <View style={styles.timelineCard}>
           <Text style={styles.cardTitle}>Order Timeline</Text>
           
           {timeline.map((item, index) => (
@@ -345,6 +323,42 @@ const OrderDetailScreen = ({ navigation, route }) => {
             </View>
           ))}
         </View>
+        {/* Order Details Card */}
+        <View style={styles.detailCard}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Order Details</Text>
+            <View style={[styles.statusBadge, { backgroundColor: order.deliveryStatus ? getStatusColor(order.deliveryStatus) : statusColor }]}>
+              <Text style={styles.statusText}>{order.deliveryStatus || order.status || 'Pending'}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.placedOnText}>
+            Placed on {formatDate(order.orderDateRaw || order.order_date)}
+          </Text>
+
+          <View style={styles.detailsGrid}>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Product Type</Text>
+              <Text style={styles.detailValue}>Case</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Quantity</Text>
+              <Text style={styles.detailValue}>
+                {order.cases > 0 ? order.cases : 'N/A'}
+              </Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Est. Delivery</Text>
+              <Text style={styles.detailValue}>
+                {order.deliveryDate || 'N/A'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+      
+
+    
       </ScrollView>
     </SafeAreaView>
   );
@@ -392,7 +406,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginTop: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
