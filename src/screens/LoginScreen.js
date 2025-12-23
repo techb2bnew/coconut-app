@@ -15,6 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Toast from 'react-native-toast-message';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
@@ -121,6 +122,12 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={[Colors.lightPink, '#FFF5F8', '#FFFFFF']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}>
@@ -211,7 +218,6 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.primaryCardBackground,
   },
   keyboardView: {
     flex: 1,
@@ -221,7 +227,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardContainer: {
-    backgroundColor: Colors.primaryCardBackground,
+    backgroundColor: 'transparent',
     paddingVertical: 32,
     paddingHorizontal: 24,
   },

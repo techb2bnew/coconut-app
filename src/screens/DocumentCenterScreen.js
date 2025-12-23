@@ -18,6 +18,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import RNFS from 'react-native-fs';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Toast from 'react-native-toast-message';
@@ -29,6 +30,7 @@ import supabase from '../config/supabase';
 const DocumentCenterScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState({});
+  const [downloading, setDownloading] = useState({});
   const [customerData, setCustomerData] = useState(null);
   
   // Document states
@@ -379,30 +381,138 @@ const DocumentCenterScreen = ({ navigation }) => {
     }
   };
 
-  // Handle download
-  const handleDownload = async (url) => {
+  // Request storage permissions for Android
+  const requestStoragePermission = async () => {
+    if (Platform.OS !== 'android') {
+      return true;
+    }
+
     try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
+      const androidVersion = Platform.Version;
+      
+      if (androidVersion >= 33) {
+        // Android 13+ - request WRITE_EXTERNAL_STORAGE is not needed, but we can request MANAGE_EXTERNAL_STORAGE if needed
+        // For downloads, we can use Downloads directory which doesn't require permission
+        return true;
       } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Cannot open this file.',
-          position: 'top',
-          visibilityTime: 2500,
-        });
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          {
+            title: 'Storage Permission',
+            message: 'App needs access to storage to download files',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
       }
-    } catch (error) {
-      console.error('Error opening file:', error);
+    } catch (err) {
+      console.warn('Permission error:', err);
+      return false;
+    }
+  };
+
+  // Handle download - saves file to device
+  const handleDownload = async (url, fileName = null) => {
+    if (!url) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to open file.',
+        text2: 'File URL is missing.',
         position: 'top',
         visibilityTime: 2500,
       });
+      return;
+    }
+
+    const downloadKey = fileName || url;
+    setDownloading({ ...downloading, [downloadKey]: true });
+
+    try {
+      console.log('Attempting to download file from URL:', url);
+      
+      // Clean and validate URL
+      let fileUrl = url.trim();
+      
+      // Extract filename from URL or use provided name
+      let finalFileName = fileName;
+      if (!finalFileName) {
+        const urlParts = fileUrl.split('/');
+        finalFileName = urlParts[urlParts.length - 1].split('?')[0]; // Remove query params
+        if (!finalFileName || finalFileName === '') {
+          finalFileName = `document_${Date.now()}.pdf`;
+        }
+      }
+
+      // Request storage permission for Android
+      if (Platform.OS === 'android') {
+        const hasPermission = await requestStoragePermission();
+        if (!hasPermission && Platform.Version < 33) {
+          Toast.show({
+            type: 'error',
+            text1: 'Permission Denied',
+            text2: 'Storage permission is required to download files.',
+            position: 'top',
+            visibilityTime: 2500,
+          });
+          setDownloading({ ...downloading, [downloadKey]: false });
+          return;
+        }
+      }
+
+      // Determine download path
+      const downloadPath = Platform.select({
+        ios: `${RNFS.DocumentDirectoryPath}/${finalFileName}`,
+        android: `${RNFS.DownloadDirectoryPath}/${finalFileName}`,
+      });
+
+      console.log('Downloading to:', downloadPath);
+
+      // Download file
+      const downloadResult = await RNFS.downloadFile({
+        fromUrl: fileUrl,
+        toFile: downloadPath,
+        progress: (res) => {
+          const progress = (res.bytesWritten / res.contentLength) * 100;
+          console.log(`Download progress: ${progress.toFixed(2)}%`);
+        },
+      }).promise;
+
+      if (downloadResult.statusCode === 200) {
+        console.log('File downloaded successfully to:', downloadPath);
+        
+        Toast.show({
+          type: 'success',
+          text1: 'Download Complete! ✅',
+          text2: `File saved: ${finalFileName}`,
+          position: 'top',
+          visibilityTime: 3000,
+        });
+
+        // On Android, try to open Downloads folder
+        if (Platform.OS === 'android') {
+          try {
+            // Open the file with default app
+            await Linking.openURL(`file://${downloadPath}`);
+          } catch (openError) {
+            console.log('Could not open file directly, but download was successful');
+          }
+        }
+      } else {
+        throw new Error(`Download failed with status code: ${downloadResult.statusCode}`);
+      }
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Download Failed',
+        text2: error.message || 'Failed to download file. Please try again.',
+        position: 'top',
+        visibilityTime: 2500,
+      });
+    } finally {
+      setDownloading({ ...downloading, [downloadKey]: false });
     }
   };
 
@@ -589,9 +699,19 @@ const DocumentCenterScreen = ({ navigation }) => {
               <View style={styles.documentActions}>
                 <TouchableOpacity
                   style={styles.downloadButton}
-                  onPress={() => handleDownload(companyLogo.url)}>
-                  <Icon name="arrow-down" size={16} color={Colors.textPrimary} />
-                  <Text style={styles.downloadText}>Download</Text>
+                  onPress={() => handleDownload(companyLogo.url, 'Company_Logo.png')}
+                  disabled={downloading[companyLogo.url] || downloading['Company_Logo.png']}>
+                  {downloading[companyLogo.url] || downloading['Company_Logo.png'] ? (
+                    <>
+                      <ActivityIndicator size="small" color={Colors.textPrimary} />
+                      <Text style={styles.downloadText}>Downloading...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="arrow-down" size={16} color={Colors.textPrimary} />
+                      <Text style={styles.downloadText}>Download</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.deleteButton}
@@ -627,9 +747,19 @@ const DocumentCenterScreen = ({ navigation }) => {
               <View style={styles.documentActions}>
                 <TouchableOpacity
                   style={styles.downloadButton}
-                  onPress={() => handleDownload(resaleCertificate.url)}>
-                  <Icon name="arrow-down" size={16} color={Colors.textPrimary} />
-                  <Text style={styles.downloadText}>Download</Text>
+                  onPress={() => handleDownload(resaleCertificate.url, 'Resale_Certificate_2025.pdf')}
+                  disabled={downloading[resaleCertificate.url] || downloading['Resale_Certificate_2025.pdf']}>
+                  {downloading[resaleCertificate.url] || downloading['Resale_Certificate_2025.pdf'] ? (
+                    <>
+                      <ActivityIndicator size="small" color={Colors.textPrimary} />
+                      <Text style={styles.downloadText}>Downloading...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="arrow-down" size={16} color={Colors.textPrimary} />
+                      <Text style={styles.downloadText}>Download</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.deleteButton}
@@ -665,9 +795,19 @@ const DocumentCenterScreen = ({ navigation }) => {
               <View style={styles.documentActions}>
                 <TouchableOpacity
                   style={styles.downloadButton}
-                  onPress={() => handleDownload(doc.url)}>
-                  <Icon name="arrow-down" size={16} color={Colors.textPrimary} />
-                  <Text style={styles.downloadText}>Download</Text>
+                  onPress={() => handleDownload(doc.url, doc.name)}
+                  disabled={downloading[doc.url] || downloading[doc.name]}>
+                  {downloading[doc.url] || downloading[doc.name] ? (
+                    <>
+                      <ActivityIndicator size="small" color={Colors.textPrimary} />
+                      <Text style={styles.downloadText}>Downloading...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="arrow-down" size={16} color={Colors.textPrimary} />
+                      <Text style={styles.downloadText}>Download</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.deleteButton}

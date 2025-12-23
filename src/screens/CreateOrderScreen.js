@@ -301,7 +301,11 @@ const CreateOrderScreen = ({ navigation }) => {
           const fileExt = filenameSafe.split('.').pop() || 'jpg';
           const contentType = logoFile.type || `image/${fileExt === 'png' ? 'png' : 'jpeg'}`;
 
+          console.log('Starting logo upload...', { filenameSafe, path, bucketName, contentType });
+          console.log('logoFile:', { hasBase64: !!logoFile.base64, hasUri: !!logoFile.uri, type: logoFile.type });
+
           if (logoFile.base64) {
+            console.log('Uploading from base64...');
             const base64Data = logoFile.base64;
             const binaryString = atob(base64Data);
             const bytes = new Uint8Array(binaryString.length);
@@ -318,36 +322,76 @@ const CreateOrderScreen = ({ navigation }) => {
                 cacheControl: '3600',
               });
 
-            if (!uploadError && uploadData) {
+            console.log('Upload result (base64):', { uploadData, uploadError });
+
+            if (uploadError) {
+              console.error('Upload error:', uploadError);
+              Alert.alert('Upload Error', `Failed to upload logo: ${uploadError.message}`);
+              setLoading(false);
+              return;
+            }
+
+            if (uploadData) {
               const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(uploadData.path);
               logoUrl = urlData.publicUrl;
+              console.log('Logo URL generated:', logoUrl);
             }
           } else if (logoFile.uri) {
+            console.log('Uploading from URI...');
             try {
               const response = await fetch(logoFile.uri);
-              if (response.ok) {
-                const blob = await response.blob();
-                const arrayBuffer = await blob.arrayBuffer();
+              if (!response.ok) {
+                throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+              }
+              const blob = await response.blob();
+              const arrayBuffer = await blob.arrayBuffer();
 
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                  .from(bucketName)
-                  .upload(path, arrayBuffer, {
-                    upsert: true,
-                    contentType: contentType,
-                    cacheControl: '3600',
-                  });
+              const { data: uploadData, error: uploadError } = await supabase.storage
+                .from(bucketName)
+                .upload(path, arrayBuffer, {
+                  upsert: true,
+                  contentType: contentType,
+                  cacheControl: '3600',
+                });
 
-                if (!uploadError && uploadData) {
-                  const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(uploadData.path);
-                  logoUrl = urlData.publicUrl;
-                }
+              console.log('Upload result (URI):', { uploadData, uploadError });
+
+              if (uploadError) {
+                console.error('Upload error:', uploadError);
+                Alert.alert('Upload Error', `Failed to upload logo: ${uploadError.message}`);
+                setLoading(false);
+                return;
+              }
+
+              if (uploadData) {
+                const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(uploadData.path);
+                logoUrl = urlData.publicUrl;
+                console.log('Logo URL generated:', logoUrl);
               }
             } catch (uriError) {
               console.error('Error reading file from URI:', uriError);
+              Alert.alert('Upload Error', `Failed to read logo file: ${uriError.message}`);
+              setLoading(false);
+              return;
             }
+          } else {
+            console.error('No base64 or URI found in logoFile');
+            Alert.alert('Upload Error', 'Logo file data is missing. Please select the logo again.');
+            setLoading(false);
+            return;
+          }
+
+          if (!logoUrl) {
+            console.error('Logo URL is null after upload attempt');
+            Alert.alert('Upload Error', 'Failed to generate logo URL. Please try again.');
+            setLoading(false);
+            return;
           }
         } catch (err) {
           console.error('Logo upload error:', err);
+          Alert.alert('Upload Error', `Failed to upload logo: ${err.message || 'Unknown error'}`);
+          setLoading(false);
+          return;
         }
       }
 
@@ -364,14 +408,15 @@ const CreateOrderScreen = ({ navigation }) => {
         po_number: poNumber.trim() || null,
         delivery_address: customerDeliveryAddress || null,
         special_instructions: orderNotes.trim() || null,
-        special_event_logo: (specialEvent && logoUrl) ? logoUrl : null,
+        special_event_logo: logoUrl || null,
         special_event_amount: specialEvent ? 150 : null,
         order_date: new Date().toISOString(),
         delivery_date: deliveryDate.toISOString(),
         status: 'Processing',
-        delivery_status: 'Pending', // Set initial delivery status
+        deliveryStatus: 'processing', // Set initial delivery status
       };
-
+      console.log('orderData', orderData);
+      console.log('special_event_logo value:', orderData.special_event_logo);
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([orderData])

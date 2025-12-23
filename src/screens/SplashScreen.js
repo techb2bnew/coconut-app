@@ -12,6 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Logo from '../components/Logo';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
@@ -153,8 +154,14 @@ const SplashScreen = ({ navigation }) => {
           {
             opacity: fadeAnim,
           },
-        ]}
-      />
+        ]}>
+        <LinearGradient
+          colors={[Colors.pinkAccent, Colors.lightPink, Colors.primaryCardBackground]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+      </Animated.View>
       
       <Animated.View
         style={[
@@ -247,11 +254,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.backgroundGray,
   },
   background: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.backgroundGray,
   },
   card: {
     width: width * 0.85,
@@ -261,8 +266,7 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     paddingHorizontal: 30,
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    justifyContent: 'center', 
     shadowOffset: {
       width: 0,
       height: 8,

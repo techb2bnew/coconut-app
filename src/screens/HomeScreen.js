@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fontFamilyBody,
     fontWeight: '500',
-    color: Colors.cardBackground,
+    color: '#000000',
     textTransform: 'capitalize',
   },
   orderFooter: {
