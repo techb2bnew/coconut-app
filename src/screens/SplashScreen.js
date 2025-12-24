@@ -12,7 +12,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import Logo from '../components/Logo';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
@@ -153,15 +152,10 @@ const SplashScreen = ({ navigation }) => {
           styles.background,
           {
             opacity: fadeAnim,
+            backgroundColor: Colors.darkPink,
           },
-        ]}>
-        <LinearGradient
-          colors={[Colors.pinkAccent, Colors.lightPink, Colors.primaryCardBackground]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-      </Animated.View>
+        ]}
+      />
       
       <Animated.View
         style={[
@@ -197,17 +191,7 @@ const SplashScreen = ({ navigation }) => {
           Brand in a Nut
         </Animated.Text>
 
-        {/* Subtitle */}
-        <Animated.Text
-          style={[
-            styles.subtitle,
-            {
-              opacity: subtitleOpacity,
-            },
-          ]}
-        >
-          Brand in a Nut.
-        </Animated.Text>
+     
 
         {/* Navigation Dots */}
         <Animated.View
@@ -260,20 +244,12 @@ const styles = StyleSheet.create({
   },
   card: {
     width: width * 0.85,
-    maxWidth: 350,
-    backgroundColor: Colors.primaryPink,
+    maxWidth: 350, 
     borderRadius: 24,
     paddingVertical: 40,
     paddingHorizontal: 30,
     alignItems: 'center',
-    justifyContent: 'center', 
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
+    justifyContent: 'center',   
   },
   logoContainer: {
     marginBottom: 24,

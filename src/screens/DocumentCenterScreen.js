@@ -1047,8 +1047,8 @@ const styles = StyleSheet.create({
   fileTypeText: {
     fontSize: 11,
     fontFamily: fontFamilyBody,
-    fontWeight: '600',
-    color: Colors.cardBackground,
+    fontWeight: '900',
+    color: '#ffffff',
   },
   documentActions: {
     flexDirection: 'row',

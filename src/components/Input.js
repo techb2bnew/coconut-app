@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
     paddingHorizontal: 16,
-    minHeight: 50,
+    minHeight: 45,
   },
   inputContainerFocused: {
     borderColor: Colors.primaryPink,
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   iconLeft: {
     marginRight: 12,
