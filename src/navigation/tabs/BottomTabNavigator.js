@@ -48,7 +48,7 @@ export default function BottomTabNavigator() {
             tabBarIcon: ({ color, size }) => (
               <Icon name="home" size={size || 24} color={color} />
             ),
-            tabBarStyle: routeName === 'OrderDetail' ? { display: 'none' } : defaultTabBarStyle,
+            tabBarStyle: (routeName === 'OrderDetail' || routeName === 'OrdersList') ? { display: 'none' } : defaultTabBarStyle,
           };
         }}
       />

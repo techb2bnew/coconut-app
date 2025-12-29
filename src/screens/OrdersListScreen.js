@@ -145,12 +145,18 @@ const OrdersListScreen = ({ navigation }) => {
           delivery_address,
           driverId: order.driver_id || order.driverId || null,
           driverName: order.driver_name || order.driverName || null,
-          driverPhone: order.driver_phone || order.driverPhone || null,
+          driverPhone: order.driver_phone || order.driver_number || null,
           driverEmail: order.driver_email || order.driverEmail || null,
           driverddress: order.driver_address || order.driverAddress || null,
           driverCity: order.driver_city || order.driverCity || null,
           driverState: order.driver_state || order.driverState || null,
           driverZip: order.driver_zip || order.driverZip || null,
+          // Additional fields for reorder
+          order_notes: order.order_notes || order.notes || '',
+          special_event: order.special_event || false,
+          opener_kit: order.opener_kit || false,
+          special_event_logo: order.special_event_logo || null,
+          customer_details: order.customer_details || null,
         };
       });
 
@@ -234,6 +240,33 @@ const OrdersListScreen = ({ navigation }) => {
     }
   };
 
+  // Check if order is completed
+  const isOrderCompleted = (order) => {
+    const status = (order.deliveryStatus || order.status || '').toLowerCase();
+    return status.includes('completed') || status.includes('delivered');
+  };
+
+  // Handle reorder - use existing order data and navigate to CreateOrder
+  const handleReorder = (order) => {
+    if (!order) return;
+
+    // Navigate to CreateOrder with pre-filled data from the order
+    navigation.navigate('NewStack', {
+      screen: 'CreateOrder',
+      params: {
+        reorderData: {
+          quantity: order.cases || '',
+          poNumber: order.poNumber || '',
+          orderNotes: order.order_notes || '',
+          specialEvent: order.special_event || false,
+          openerKit: order.opener_kit || false,
+          specialEventLogo: order.special_event_logo || null,
+          deliveryAddress: order.customer_details || null,
+        },
+      },
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -292,48 +325,65 @@ const OrdersListScreen = ({ navigation }) => {
           ) : (
             filteredOrders.map((order) => (
               <View key={order.id} style={styles.orderCard}>
+                {/* Header with Order ID and Status */}
                 <View style={styles.orderCardHeader}>
                   <View style={styles.orderHeaderLeft}>
                     <Text style={styles.orderId}>{order.orderName}</Text>
-                    <Text style={styles.orderDate}>{order.orderDate}</Text>
+                    {order.poNumber ? (
+                      <View style={styles.poNumberContainer}>
+                        <Text style={styles.poNumberLabel}>PO Number - </Text>
+                        <Text style={styles.poNumber}>{order.poNumber}</Text>
+                      </View>
+                    ) : null}
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: order.statusColor }]}>
                     <Text style={styles.statusText}>{order.deliveryStatus || order.status}</Text>
                   </View>
                 </View>
 
-                <View style={styles.orderDetails}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Product Type</Text>
-                    <Text style={styles.detailValue}>Case</Text>
+                {/* Delivery Date with Icon */}
+                {order.deliveryDate && (
+                  <View style={styles.deliveryDateRow}>
+                    <Icon name="calendar-outline" size={18} color={Colors.primaryPink} />
+                    <Text style={styles.deliveryDateText}>{order.deliveryDate}</Text>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Quantity</Text>
-                    <Text style={styles.detailValue}>
+                )}
+
+                {/* Product Type and Quantity Together */}
+                <View style={styles.productInfoRow}>
+                  <View style={styles.productInfoItem}>
+                    <Text style={styles.productInfoLabel}>Product Type</Text>
+                    <Text style={styles.productInfoValue}>Case</Text>
+                  </View>
+                  <View style={styles.productInfoDivider} />
+                  <View style={styles.productInfoItem}>
+                    <Text style={styles.productInfoLabel}>Quantity</Text>
+                    <Text style={styles.productInfoValue}>
                       {order.cases > 0 ? `${order.cases}` : 'N/A'}
-                    </Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Delivery Date</Text>
-                    <Text style={styles.detailValue}>
-                      {order.deliveryDate || 'N/A'}
-                    </Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>PO Number</Text>
-                    <Text style={styles.detailValue}>
-                      {order.poNumber || 'N/A'}
                     </Text>
                   </View>
                 </View>
 
-                <TouchableOpacity
-                  style={styles.viewDetailsButton}
-                  onPress={() => handleViewDetails(order)}
-                  activeOpacity={0.8}>
-                  <Icon name="eye-outline" size={20} color={Colors.cardBackground} />
-                  <Text style={styles.viewDetailsText}>View Details</Text>
-                </TouchableOpacity>
+                {/* Action Buttons */}
+                <View style={styles.actionButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.viewDetailsButton}
+                    onPress={() => handleViewDetails(order)}
+                    activeOpacity={0.8}>
+                    <Icon name="eye-outline" size={20} color={Colors.cardBackground} />
+                    <Text style={styles.viewDetailsText}>View Details</Text>
+                  </TouchableOpacity>
+                  
+                  {isOrderCompleted(order) && (
+                    <TouchableOpacity
+                      style={styles.reorderButton}
+                      onPress={() => handleReorder(order)}
+                      activeOpacity={0.8}>
+                      <Icon name="refresh" size={20} color={Colors.cardBackground} />
+                      <Text style={styles.reorderText}>Reorder</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             ))
           )}
@@ -367,7 +417,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   searchContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingTop: 16,
     paddingBottom: 12,
   },
@@ -440,66 +490,107 @@ const styles = StyleSheet.create({
   },
   orderCard: {
     backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 12,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 6,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   orderCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   orderHeaderLeft: {
     flex: 1,
   },
   orderId: {
-    fontSize: 18,
+    fontSize: 14,
     fontFamily: fontFamilyHeading,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginBottom: 4,
+    fontWeight: '700',
+    color: Colors.textPrimary, 
   },
-  orderDate: {
+  poNumberContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  poNumberLabel: {
     fontSize: 14,
     fontFamily: fontFamilyBody,
+    fontWeight: '600', 
+    marginRight: 4,
+  },
+  poNumber: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    fontWeight: '600',
     color: Colors.textSecondary,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 80,
+    alignItems: 'center',
   },
   statusText: {
     fontSize: 12,
     fontFamily: fontFamilyBody,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#000000',
     textTransform: 'capitalize',
   },
-  orderDetails: {
-    marginBottom: 16,
-  },
-  detailRow: {
+  deliveryDateRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 7,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 10,
   },
-  detailLabel: {
+  deliveryDateText: {
     fontSize: 14,
     fontFamily: fontFamilyBody,
-    color: Colors.textSecondary,
-  },
-  detailValue: {
-    fontSize: 14,
-    fontFamily: fontFamilyBody,
-    color: Colors.textPrimary,
     fontWeight: '500',
+    color: Colors.textPrimary,
+    marginLeft: 5,
+  },
+  productInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 10,
+  },
+  productInfoItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  productInfoDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 12,
+  },
+  productInfoLabel: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary, 
+  },
+  productInfoValue: {
+    fontSize: 16,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '600',
+    color: Colors.textPrimary,
   },
   deliveryStatusBadge: {
     paddingHorizontal: 10,
@@ -513,16 +604,36 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.cardBackground,
   },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12, 
+  },
   viewDetailsButton: {
+    flex: 1,
     backgroundColor: Colors.primaryPink,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
     borderRadius: 8,
-    marginTop: 8,
   },
   viewDetailsText: {
+    fontFamily: fontFamilyBody,
+    color: Colors.cardBackground,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  reorderButton: {
+    flex: 1,
+    backgroundColor: '#424242',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  reorderText: {
     fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
     fontSize: 14,

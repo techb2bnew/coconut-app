@@ -2,7 +2,11 @@
  * @format
  */
 
-// IMPORTANT: Import URL polyfill FIRST before any other imports
+// IMPORTANT: Import Reanimated FIRST before any other imports
+// This is required for react-native-reanimated to work properly
+import 'react-native-reanimated';
+
+// IMPORTANT: Import URL polyfill before any other imports
 // This is required for Supabase to work properly with React Native
 import 'react-native-url-polyfill/auto';
 

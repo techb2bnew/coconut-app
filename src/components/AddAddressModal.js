@@ -21,6 +21,7 @@ import TextStyles from '../theme/textStyles';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { validateRequired } from '../utils/validation';
+import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 
 const AddAddressModal = ({ visible, onClose, onSave }) => {
   const [addressLabel, setAddressLabel] = useState('');
@@ -295,13 +296,14 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: Colors.success,
+    fontWeight: '600', 
+    fontFamily: fontFamilyHeading,
     marginBottom: 4,
   },
   modalSubtitle: {
     fontSize: 14,
     color: Colors.textSecondary,
+    fontFamily: fontFamilyBody,
   },
   closeButton: {
     padding: 4,

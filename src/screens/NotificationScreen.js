@@ -205,16 +205,7 @@ const NotificationScreen = ({ navigation }) => {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Notifications</Text>
-          {unreadCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unreadCount} new</Text>
-            </View>
-          )} 
-         
-        </View>
-      </View>
-
-      {/* Mark All as Read Button */}
+                {/* Mark All as Read Button */}
       {unreadCount > 0 && (
         <View style={styles.markAllContainer}>
           <TouchableOpacity style={styles.markAllButton} onPress={handleMarkAllAsRead}>
@@ -222,6 +213,17 @@ const NotificationScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       )}
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unreadCount} new</Text>
+            </View>
+          )} 
+         
+        </View>
+    
+      </View>
+
+    
 
       {/* Notifications List */}
       {loading && notifications.length === 0 ? (
@@ -262,7 +264,7 @@ const NotificationScreen = ({ navigation }) => {
                   <Icon name={notification.iconName} size={24} color={notification.iconColor} />
                 </View>
                 <View style={styles.notificationContent}>
-                  <Text style={styles.notificationTitle}>{notification.title}</Text>
+                  <Text style={[styles.notificationTitle, { textTransform: 'capitalize' }]}>{notification.title}</Text>
                   <Text style={styles.notificationDescription}>{notification.message}</Text>
                   <Text style={styles.notificationTime}>{notification.timestamp}</Text>
                 </View>
@@ -313,21 +315,28 @@ const styles = StyleSheet.create({
     color: Colors.primaryPink,
   },
   markAllContainer: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    backgroundColor: Colors.cardBackground,
+    alignItems: 'center', 
   },
   markAllButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 5, 
+    borderWidth: 2, 
+    borderColor: '#ffffff',
+    borderStyle: 'solid',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderRadius: 15,
   },
   markAllText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: fontFamilyBody,
-    color: Colors.textSecondary,
+    color:'#ffffff',
     fontWeight: '500',
   },
   scrollView: {
+    backgroundColor: Colors.lightPink,
     flex: 1,
   },
   scrollContent: {

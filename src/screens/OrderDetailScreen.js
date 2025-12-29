@@ -3,18 +3,19 @@
  * Simple design: Map at top (fixed), Order details and timeline in scrollable card below
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Dimensions,
   Linking,
-  Image,
+  Animated,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
@@ -22,16 +23,30 @@ import DriverLocationMap from '../components/DriverLocationMap';
 import supabase from '../config/supabase';
 
 const { width, height } = Dimensions.get('window');
-const MAP_HEIGHT = height * 0.41; // Fixed map height (half screen)
+const HEADER_HEIGHT = 60;
+const MIN_MAP_HEIGHT = height * 0.25; // Minimum map height
+const MAX_MAP_HEIGHT = height * 0.85; // Maximum map height (85%)
 
 const OrderDetailScreen = ({ navigation, route }) => {
   const { order } = route.params || {};
   console.log('order', order);
   
+  // Bottom sheet ref
+  const bottomSheetRef = useRef(null);
+  
+  // Snap points for bottom sheet
+  const snapPoints = useMemo(() => ['26%', '85%'], []);
+  
   // State
   const [restaurantName, setRestaurantName] = useState('Restaurant Name');
   const [companyLogo, setCompanyLogo] = useState(null);
   const [orderLogo, setOrderLogo] = useState(null);
+  
+  // Handle sheet position changes - Map is now fixed, no height changes
+  const handleSheetChange = useCallback((index) => {
+    // Map height is fixed at 85%, no changes needed
+    // This callback is kept for potential future use
+  }, []);
 
   // Fetch restaurant name and logo from customer data
   useEffect(() => {
@@ -332,6 +347,19 @@ const OrderDetailScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleEmailDriver = () => {
+    const email = order?.driver_email || order?.driverEmail;
+    if (email) {
+      Linking.openURL(`mailto:${email}`);
+    }
+  };
+
+  // Get driver first letter for avatar
+  const getDriverFirstLetter = () => {
+    const driverName = getDriverName();
+    return driverName.charAt(0).toUpperCase();
+  };
+
   const handleBack = () => {
     if (navigation) {
       navigation.goBack();
@@ -357,8 +385,29 @@ const OrderDetailScreen = ({ navigation, route }) => {
     );
   }
 
+  // Check if order is completed
+  const isCompleted = order && (
+    (order.deliveryStatus && (
+      order.deliveryStatus.toLowerCase().includes('completed') ||
+      order.deliveryStatus.toLowerCase().includes('delivered')
+    )) ||
+    (order.status && (
+      order.status.toLowerCase().includes('completed') ||
+      order.status.toLowerCase().includes('delivered')
+    ))
+  );
+  
+  // Debug log
+  if (order) {
+    console.log('Order Status Check:', {
+      deliveryStatus: order.deliveryStatus,
+      status: order.status,
+      isCompleted: isCompleted,
+    });
+  }
+
   // Check if driver is assigned
-  const hasDriver = order && (
+  const hasDriver = order && !isCompleted && (
     order.deliveryStatus?.toLowerCase().includes('driver assigned') || 
     order.deliveryStatus?.toLowerCase().includes('in transit') ||
     order.deliveryStatus?.toLowerCase().includes('out for delivery')
@@ -366,6 +415,233 @@ const OrderDetailScreen = ({ navigation, route }) => {
 
   // Get logo to display (order logo first, then company logo)
   const displayLogo = orderLogo || companyLogo;
+
+  // Confetti animation values
+  const confettiAnimations = useRef(
+    Array.from({ length: 50 }, () => ({
+      translateY: new Animated.Value(-100),
+      translateX: new Animated.Value(0),
+      rotate: new Animated.Value(0),
+      opacity: new Animated.Value(1),
+    }))
+  ).current;
+
+  // Start celebration animation when order is completed
+  useEffect(() => {
+    if (isCompleted) {
+      // Animate confetti
+      confettiAnimations.forEach((anim, index) => {
+        const delay = index * 20;
+        const randomX = (Math.random() - 0.5) * width * 2;
+        const randomRotate = Math.random() * 720;
+        
+        Animated.parallel([
+          Animated.timing(anim.translateY, {
+            toValue: height + 100,
+            duration: 3000 + Math.random() * 2000,
+            delay: delay,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim.translateX, {
+            toValue: randomX,
+            duration: 3000 + Math.random() * 2000,
+            delay: delay,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim.rotate, {
+            toValue: randomRotate,
+            duration: 3000 + Math.random() * 2000,
+            delay: delay,
+            useNativeDriver: true,
+          }),
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(anim.opacity, {
+              toValue: 1,
+              duration: 500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim.opacity, {
+              toValue: 0,
+              duration: 500,
+              delay: 2000,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]).start();
+      });
+    }
+  }, [isCompleted]);
+
+  // If order is completed, show celebration screen
+  if (isCompleted) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <View style={styles.backIconContainer}>
+              <Icon name="arrow-back" size={20} color={Colors.cardBackground} />
+            </View>
+            <Text style={styles.backText}>Track Order</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Confetti Animation */}
+        <View style={styles.confettiContainer} pointerEvents="none">
+          {confettiAnimations.map((anim, index) => {
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE'];
+            const color = colors[index % colors.length];
+            const size = 8 + Math.random() * 12;
+            const startX = (index % 10) * (width / 10) + Math.random() * 20;
+            
+            return (
+              <Animated.View
+                key={index}
+                style={[
+                  styles.confetti,
+                  {
+                    backgroundColor: color,
+                    width: size,
+                    height: size,
+                    left: startX,
+                    transform: [
+                      { translateY: anim.translateY },
+                      { translateX: anim.translateX },
+                      { rotate: anim.rotate.interpolate({
+                          inputRange: [0, 360],
+                          outputRange: ['0deg', '360deg'],
+                        })},
+                    ],
+                    opacity: anim.opacity,
+                  },
+                ]}
+              />
+            );
+          })}
+        </View>
+
+        {/* Celebration Content */}
+        <View style={styles.celebrationContainer}>
+          <Animated.View style={styles.celebrationContent}>
+            <View style={styles.celebrationIconContainer}>
+              <Icon name="checkmark-circle" size={100} color="#4CAF50" />
+            </View>
+            <Text style={styles.celebrationTitle}>🎉 Congratulations! 🎉</Text>
+            <Text style={styles.celebrationMessage}>
+              Your order has been completed!
+            </Text>
+            <Text style={styles.celebrationSubMessage}>
+              Thank you for choosing us!
+            </Text>
+          </Animated.View>
+
+          {/* Order Details Card */}
+          <View style={styles.completedOrderCard}>
+            <ScrollView
+              contentContainerStyle={styles.bottomSheetContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Order Info */}
+              <View style={styles.restaurantSection}> 
+                <View style={styles.restaurantInfo}>
+                  <Text style={styles.restaurantName}>{getOrderId()}</Text>
+                  <Text style={styles.orderDate}>{formatDateOnly(order.deliveryDateRaw || order.delivery_date || order.orderDateRaw || order.order_date)}</Text>
+                  <Text style={styles.orderItems}>{order.cases || 0} Cases</Text>
+                </View>
+                {/* Order Status Badge */}
+                <View style={styles.statusSection}>
+                  <View style={[styles.statusBadge, { backgroundColor: '#4CAF50' }]}>
+                    <Text style={styles.statusText}>Completed</Text>
+                  </View>
+                </View> 
+              </View>
+
+              {/* Timeline */}
+              <View style={styles.timelineSection}>
+                {timeline.map((item, index) => (
+                  <View key={item.id} style={styles.timelineItem}>
+                    <View style={styles.timelineLeft}>
+                      <View
+                        style={[
+                          styles.timelineIcon,
+                          {
+                            backgroundColor: item.iconBgColor || '#E0E0E0',
+                          },
+                        ]}>
+                        <Icon
+                          name={item.icon}
+                          size={18}
+                          color={item.iconColor || '#9E9E9E'}
+                        />
+                      </View>
+                      {index < timeline.length - 1 && (
+                        <View
+                          style={[
+                            styles.timelineLine,
+                            {
+                              backgroundColor: timeline[index + 1]?.isCompleted || timeline[index + 1]?.isCurrent ? '#4CAF50' : '#E0E0E0',
+                            },
+                          ]}
+                        />
+                      )}
+                    </View>
+                    <View style={styles.timelineContent}>
+                      <Text
+                        style={[
+                          styles.timelineTitle,
+                          {
+                            color: item.titleColor || Colors.textSecondary,
+                          },
+                        ]}>
+                        {item.title}
+                      </Text>
+                      {item.time && (
+                        <Text style={styles.timelineTime}>{item.time}</Text>
+                      )}
+                      {item.description && (
+                        <Text style={styles.timelineDescription}>{item.description}</Text>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+
+        {/* Sticky Driver Footer for Completed Orders */}
+        {hasDriver && (order?.driver_name || order?.driverName) && (
+          <View style={styles.driverFooter}>
+            <View style={styles.driverInfo}>
+              <View style={styles.driverAvatar}>
+                <Text style={styles.driverAvatarText}>{getDriverFirstLetter()}</Text>
+              </View>
+              <Text style={styles.driverName}>{getDriverName()}</Text>
+            </View>
+            <View style={styles.driverActions}>
+              {(order?.driver_phone || order?.driverPhone) && (
+                <TouchableOpacity
+                  style={styles.driverActionButton}
+                  onPress={handleCallDriver}
+                  activeOpacity={0.7}>
+                  <Icon name="call" size={22} color={Colors.primaryPink} />
+                </TouchableOpacity>
+              )}
+              {(order?.driver_email || order?.driverEmail) && (
+                <TouchableOpacity
+                  style={styles.driverActionButton}
+                  onPress={handleEmailDriver}
+                  activeOpacity={0.7}>
+                  <Icon name="mail" size={22} color={Colors.primaryPink} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -379,14 +655,14 @@ const OrderDetailScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Map Section - Fixed at top */}
-      <View style={[styles.mapContainer, { height: MAP_HEIGHT }]}>
+      {/* Map Section - Fixed height (85%) */}
+      <View style={[styles.mapContainer, { height: MAX_MAP_HEIGHT }]}>
         {hasDriver ? (
           <DriverLocationMap
             orderId={order.id || order.order_id}
             deliveryAddress={order.delivery_address || order.deliveryAddress}
             driverId={order.driver_id || order.driverId}
-            containerStyle={{ height: '100%', borderRadius: 0 }}
+            containerStyle={{ width: '100%', height: '100%', borderRadius: 0 }}
           />
         ) : (
           <View style={styles.mapPlaceholder}>
@@ -395,14 +671,20 @@ const OrderDetailScreen = ({ navigation, route }) => {
         )}
       </View>
 
-      {/* Order Details Card - Scrollable */}
-      <View style={styles.bottomCard}>
-        {/* Scrollable Content */}
-        <ScrollView
-          style={styles.cardScrollView}
-          contentContainerStyle={styles.cardScrollContent}
+      {/* Bottom Sheet */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={0}
+        snapPoints={snapPoints}
+        onChange={handleSheetChange}
+        enablePanDownToClose={false}
+        backgroundStyle={styles.bottomSheetBackground}
+        handleIndicatorStyle={styles.handleIndicator}
+        animateOnMount={true}
+      >
+        <BottomSheetScrollView
+          contentContainerStyle={styles.bottomSheetContent}
           showsVerticalScrollIndicator={false}
-          bounces={false}
         >
           {/* Order Info */}
           <View style={styles.restaurantSection}> 
@@ -411,68 +693,98 @@ const OrderDetailScreen = ({ navigation, route }) => {
               <Text style={styles.orderDate}>{formatDateOnly(order.deliveryDateRaw || order.delivery_date || order.orderDateRaw || order.order_date)}</Text>
               <Text style={styles.orderItems}>{order.cases || 0} Cases</Text>
             </View>
-              {/* Order Status Badge */}
-          <View style={styles.statusSection}>
-            <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-              <Text style={styles.statusText}>{order.deliveryStatus || order.status || 'Pending'}</Text>
-            </View>
-          </View> 
+            {/* Order Status Badge */}
+            <View style={styles.statusSection}>
+              <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
+                <Text style={styles.statusText}>{order.deliveryStatus || order.status || 'Pending'}</Text>
+              </View>
+            </View> 
           </View>
-
-        
 
           {/* Timeline */}
           <View style={styles.timelineSection}>
-              {timeline.map((item, index) => (
-                <View key={item.id} style={styles.timelineItem}>
-                  <View style={styles.timelineLeft}>
+            {timeline.map((item, index) => (
+              <View key={item.id} style={styles.timelineItem}>
+                <View style={styles.timelineLeft}>
+                  <View
+                    style={[
+                      styles.timelineIcon,
+                      {
+                        backgroundColor: item.iconBgColor || '#E0E0E0',
+                      },
+                    ]}>
+                    <Icon
+                      name={item.icon}
+                      size={18}
+                      color={item.iconColor || '#9E9E9E'}
+                    />
+                  </View>
+                  {index < timeline.length - 1 && (
                     <View
                       style={[
-                        styles.timelineIcon,
+                        styles.timelineLine,
                         {
-                          backgroundColor: item.iconBgColor || '#E0E0E0',
+                          backgroundColor: timeline[index + 1]?.isCompleted || timeline[index + 1]?.isCurrent ? '#4CAF50' : '#E0E0E0',
                         },
-                      ]}>
-                      <Icon
-                        name={item.icon}
-                        size={18}
-                        color={item.iconColor || '#9E9E9E'}
-                      />
-                    </View>
-                    {index < timeline.length - 1 && (
-                      <View
-                        style={[
-                          styles.timelineLine,
-                          {
-                            backgroundColor: timeline[index + 1]?.isCompleted || timeline[index + 1]?.isCurrent ? '#4CAF50' : '#E0E0E0',
-                          },
-                        ]}
-                      />
-                    )}
-                  </View>
-                  <View style={styles.timelineContent}>
-                    <Text
-                      style={[
-                        styles.timelineTitle,
-                        {
-                          color: item.titleColor || Colors.textSecondary,
-                        },
-                      ]}>
-                      {item.title}
-                    </Text>
-                    {item.time && (
-                      <Text style={styles.timelineTime}>{item.time}</Text>
-                    )}
-                    {item.description && (
-                      <Text style={styles.timelineDescription}>{item.description}</Text>
-                    )}
-                  </View>
+                      ]}
+                    />
+                  )}
                 </View>
-              ))}
+                <View style={styles.timelineContent}>
+                  <Text
+                    style={[
+                      styles.timelineTitle,
+                      {
+                        color: item.titleColor || Colors.textSecondary,
+                      },
+                    ]}>
+                    {item.title}
+                  </Text>
+                  {item.time && (
+                    <Text style={styles.timelineTime}>{item.time}</Text>
+                  )}
+                  {item.description && (
+                    <Text style={styles.timelineDescription}>{item.description}</Text>
+                  )}
+                </View>
+              </View>
+            ))}
           </View>
- 
-        </ScrollView>
-      </View>
+        </BottomSheetScrollView>
+      </BottomSheet>
+
+      {/* Sticky Driver Footer */}
+      {hasDriver && (order?.driver_name || order?.driverName) && (
+        <View style={styles.driverFooter}>
+          <View style={styles.driverInfo}>
+            <View style={styles.driverAvatar}>
+              <Text style={styles.driverAvatarText}>{getDriverFirstLetter()}</Text>
+            </View>
+            <View style={styles.driverDetails}>
+              <Text style={styles.driverLabel}>Driver</Text> 
+              <Text style={styles.driverName}>{getDriverName()}</Text>
+            </View>
+          </View>
+          <View style={styles.driverActions}>
+            {(order?.driver_phone || order?.driverPhone) && (
+              <TouchableOpacity
+                style={styles.driverActionButton}
+                onPress={handleCallDriver}
+                activeOpacity={0.7}>
+                <Icon name="call" size={22} color={Colors.primaryPink} />
+              </TouchableOpacity>
+            )}
+            {(order?.driver_email || order?.driverEmail) && (
+              <TouchableOpacity
+                style={styles.driverActionButton}
+                onPress={handleEmailDriver}
+                activeOpacity={0.7}>
+                <Icon name="mail" size={22} color={Colors.primaryPink} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -524,21 +836,18 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
   },
-  bottomCard: {
-    flex: 1,
+  bottomSheetBackground: {
     backgroundColor: Colors.cardBackground,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10, 
   },
-  cardScrollView: {
-    flex: 1,
+  handleIndicator: {
+    backgroundColor: Colors.textSecondary,
+    opacity: 0.3,
+    width: 40,
+    height: 4,
   },
-  cardScrollContent: {
+  bottomSheetContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 20,
@@ -734,6 +1043,131 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
+  },
+  confettiContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  confetti: {
+    position: 'absolute',
+    borderRadius: 4,
+  },
+  celebrationContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.backgroundGray,
+  },
+  celebrationContent: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingTop: 40,
+  },
+  celebrationIconContainer: {
+    marginBottom: 24,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 60,
+    padding: 20,
+  },
+  celebrationTitle: {
+    fontSize: 26,
+    fontFamily: fontFamilyHeading,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  celebrationMessage: {
+    fontSize: 20,
+    fontFamily: fontFamilyBody,
+    fontWeight: '600',
+    color: '#4CAF50',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  celebrationSubMessage: {
+    fontSize: 16,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  completedOrderCard: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: Colors.cardBackground,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  driverFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.cardBackground,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  driverInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  driverAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primaryPink,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  driverAvatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: fontFamilyBody,
+    color: Colors.cardBackground,
+  },
+  driverName: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: fontFamilyBody,
+    color: Colors.textPrimary,
+    flex: 1,
+  },
+  driverActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  driverActionButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

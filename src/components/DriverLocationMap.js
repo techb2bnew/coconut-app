@@ -437,9 +437,9 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containe
   });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       {/* Map - Native (Fast Zoom) */}
-      <View style={[styles.mapContainer, containerStyle]}>
+      <View style={styles.mapContainer}>
         {defaultRegion && (
           <MapView
             ref={mapRef}
@@ -546,15 +546,15 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containe
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    marginBottom: 16,
+    height: '100%',
+    flex: 1,
   },
   mapContainer: {
     width: '100%',
-    height: 400,
+    height: '100%',
     backgroundColor: Colors.backgroundGray,
     borderRadius: 12,
     overflow: 'hidden',
-    flex: 1,
   },
   map: {
     width: '100%',

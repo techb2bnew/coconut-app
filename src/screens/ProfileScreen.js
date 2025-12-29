@@ -136,8 +136,23 @@ const ProfileScreen = ({ navigation }) => {
     fetchCustomerData();
   }, []);
 
-  // Get initials for avatar
+  // Get initials for avatar (first and last letter of name)
   const getInitials = () => {
+    if (!customerData) return 'JD';
+    const firstName = customerData.first_name || '';
+    const lastName = customerData.last_name || '';
+    const firstLetter = firstName.charAt(0).toUpperCase() || '';
+    const lastLetter = lastName.charAt(0).toUpperCase() || '';
+    return (firstLetter + lastLetter) || 'JD';
+  };
+
+  // Get company logo URL
+  const getCompanyLogo = () => {
+    return customerData?.companyLogo || customerData?.company_logo || null;
+  };
+
+  // Get initials for avatar (old function - keeping for reference)
+  const getInitialsOld = () => {
     if (!customerData) return 'JD';
     const first = customerData.first_name?.[0] || '';
     const last = customerData.last_name?.[0] || '';
@@ -755,11 +770,16 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials()}</Text>
+              {getCompanyLogo() ? (
+                <Image 
+                  source={{ uri: getCompanyLogo() }} 
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text style={styles.avatarText}>{getInitials()}</Text>
+              )}
             </View>
-            <TouchableOpacity style={styles.editAvatarButton}>
-              <Icon name="camera" size={16} color={Colors.primaryPink} />
-            </TouchableOpacity>
           </View>
           <Text style={styles.userName}>
             {customerData ? `${customerData.first_name || ''} ${customerData.last_name || ''}`.trim() : 'John Doe'}
@@ -1218,25 +1238,17 @@ const styles = StyleSheet.create({
     borderColor: Colors.cardBackground,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     fontSize: 36,
     fontWeight: '700',
     fontFamily: fontFamilyBody,
     color: Colors.primaryPink,
-  },
-  editAvatarButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.cardBackground,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.primaryPink,
   },
   userName: {
     fontSize: 24,

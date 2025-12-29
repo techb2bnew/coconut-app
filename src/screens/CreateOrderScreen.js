@@ -28,8 +28,10 @@ import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import Dropdown from '../components/Dropdown';
 import supabase from '../config/supabase';
 
-const CreateOrderScreen = ({ navigation }) => {
-  const [productType, setProductType] = useState('');
+const CreateOrderScreen = ({ navigation, route }) => {
+  const reorderData = route?.params?.reorderData || null;
+  
+  const [productType, setProductType] = useState('case');
   const [quantity, setQuantity] = useState('');
   const [openerKit, setOpenerKit] = useState(false);
   const [specialEvent, setSpecialEvent] = useState(false);
@@ -175,6 +177,53 @@ const CreateOrderScreen = ({ navigation }) => {
     loadCustomerData();
   }, []);
 
+  // Handle reorder data - pre-fill form when reordering
+  useEffect(() => {
+    if (reorderData) {
+      console.log('🔄 Pre-filling form with reorder data:', reorderData);
+      
+      // Pre-fill form fields
+      if (reorderData.quantity) {
+        setQuantity(String(reorderData.quantity));
+      }
+      if (reorderData.poNumber) {
+        setPoNumber(reorderData.poNumber);
+      }
+      if (reorderData.orderNotes) {
+        setOrderNotes(reorderData.orderNotes);
+      }
+      if (reorderData.openerKit !== undefined) {
+        setOpenerKit(reorderData.openerKit);
+      }
+      
+      // Handle Special Event toggle - set this first
+      if (reorderData.specialEvent !== undefined) {
+        setSpecialEvent(reorderData.specialEvent);
+      }
+      
+      // Handle logo if available - set after specialEvent is set
+      if (reorderData.specialEventLogo) {
+        setLogoPreview(reorderData.specialEventLogo);
+        // Create a dummy file object to satisfy validation
+        // This allows the form to pass validation when reordering with existing logo
+        setLogoFile({
+          uri: reorderData.specialEventLogo,
+          type: 'image/jpeg',
+          fileName: 'reorder-logo.jpg',
+          isReorderLogo: true, // Flag to identify reorder logo
+        });
+      }
+      
+      // Handle delivery address
+      if (reorderData.deliveryAddress) {
+        const selectedAddress = getSelectedAddressFromArray(reorderData.deliveryAddress);
+        if (selectedAddress) {
+          setCustomerDeliveryAddress(selectedAddress);
+        }
+      }
+    }
+  }, [reorderData]);
+
   // Request image picker permissions
   const requestImagePickerPermissions = async () => {
     if (Platform.OS !== 'android') {
@@ -261,7 +310,8 @@ const CreateOrderScreen = ({ navigation }) => {
       newErrors.quantity = 'Quantity must be a valid positive number';
     }
 
-    if (specialEvent && !logoFile) {
+    // Check for logo - either logoFile (new upload) or logoPreview (from reorder)
+    if (specialEvent && !logoFile && !logoPreview) {
       newErrors.logo = 'Logo is required for Special Event';
     }
 
@@ -290,10 +340,19 @@ const CreateOrderScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-      // Step 1: Upload logo if Special Event is enabled
+      // Step 1: Handle logo if Special Event is enabled
       let logoUrl = null;
-      if (specialEvent && logoFile) {
-        try {
+      
+      // If special event is enabled and we have a logo
+      if (specialEvent) {
+        // Check if it's a reorder logo (existing URL) or new upload
+        if (logoFile?.isReorderLogo && logoPreview) {
+          // Use existing logo URL from reorder
+          logoUrl = logoPreview;
+          console.log('Using existing logo URL from reorder:', logoUrl);
+        } else if (logoFile && !logoFile.isReorderLogo) {
+          // New logo upload required
+          try {
           const timestamp = Date.now();
           const filenameSafe = logoFile.fileName || `logo-${timestamp}.jpg`;
           const path = `order-logos/${timestamp}-${filenameSafe}`;
@@ -392,6 +451,12 @@ const CreateOrderScreen = ({ navigation }) => {
           Alert.alert('Upload Error', `Failed to upload logo: ${err.message || 'Unknown error'}`);
           setLoading(false);
           return;
+          }
+        } else if (specialEvent && !logoFile && !logoPreview) {
+          // Special event enabled but no logo provided
+          Alert.alert('Logo Required', 'Please upload a logo for Special Event or disable Special Event.');
+          setLoading(false);
+          return;
         }
       }
 
@@ -470,6 +535,17 @@ const CreateOrderScreen = ({ navigation }) => {
   };
 
   const handleCancel = () => {
+    // Reset all form fields
+    setQuantity('');
+    setOpenerKit(false);
+    setSpecialEvent(false);
+    setPoNumber('');
+    setOrderNotes('');
+    setLogoFile(null);
+    setLogoPreview(null);
+    setErrors({});
+    setProductType('case');
+    
     Toast.show({
       type: 'info',
       text1: 'Order Cancelled',
@@ -477,6 +553,7 @@ const CreateOrderScreen = ({ navigation }) => {
       position: 'top',
       visibilityTime: 2000,
     });
+    
     handleBack();
   };
 

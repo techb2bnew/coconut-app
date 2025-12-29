@@ -173,7 +173,7 @@ const HomeScreen = ({ navigation }) => {
           driverId: order.driver_id || order.driverId || null,
           delivery_address,
           driverName: order.driver_name || order.driverName || null,
-          driverPhone: order.driver_phone || order.driverPhone || null,
+          driverPhone: order.driver_phone || order.driver_number || null,
           driverEmail: order.driver_email || order.driverEmail || null,
           driverAddress: order.driver_address || order.driverAddress || null,
           driverCity: order.driver_city || order.driverCity || null,
