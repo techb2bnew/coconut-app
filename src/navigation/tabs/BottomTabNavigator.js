@@ -9,6 +9,21 @@ import ProfileStack from "../stacks/ProfileStack";
 
 const Tab = createBottomTabNavigator();
 
+// Default tab bar style
+const defaultTabBarStyle = {
+  backgroundColor: Colors.cardBackground,
+  borderTopLeftRadius: 20,
+  borderTopRightRadius: 20,
+  paddingTop: 8,
+  paddingBottom: 8,
+  height: 80,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: -2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 4,
+  elevation: 8,
+};
+
 export default function BottomTabNavigator() {
   return (
     <Tab.Navigator
@@ -16,19 +31,7 @@ export default function BottomTabNavigator() {
         headerShown: false,
         tabBarActiveTintColor: Colors.primaryPink,
         tabBarInactiveTintColor: Colors.textPrimary,
-        tabBarStyle: {
-          backgroundColor: Colors.cardBackground,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          paddingTop: 8,
-          paddingBottom: 8,
-          height: 80,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 8,
-        },
+        tabBarStyle: defaultTabBarStyle,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
@@ -38,11 +41,15 @@ export default function BottomTabNavigator() {
       <Tab.Screen
         name="HomeStack"
         component={HomeStack}
-        options={{
-          tabBarLabel: 'Orders',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="home" size={size || 24} color={color} />
-          ),
+        options={({ route }) => {
+          const routeName = getFocusedRouteNameFromRoute(route) ?? 'Home';
+          return {
+            tabBarLabel: 'Orders',
+            tabBarIcon: ({ color, size }) => (
+              <Icon name="home" size={size || 24} color={color} />
+            ),
+            tabBarStyle: routeName === 'OrderDetail' ? { display: 'none' } : defaultTabBarStyle,
+          };
         }}
       />
       <Tab.Screen
@@ -55,7 +62,7 @@ export default function BottomTabNavigator() {
             tabBarIcon: ({ color, size }) => (
               <Icon name="add-circle" size={size || 24} color={color} />
             ),
-            tabBarStyle: routeName === 'CreateOrder' ? { display: 'none' } : undefined,
+            tabBarStyle: routeName === 'CreateOrder' ? { display: 'none' } : defaultTabBarStyle,
           };
         }}
       />

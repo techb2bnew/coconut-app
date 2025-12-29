@@ -5,7 +5,7 @@
 
 export const Colors = {
   // Primary Pink Colors
-  primaryPink: '#E91E63', // Main button color (fuchsia/dark pink)
+  primaryPink: '#c5247f', // Main button color (fuchsia/dark pink)
   lightPink: '#FCE4EC', // Light pink background for card
   pinkAccent: '#F06292', // Accent pink for links and highlights
   darkPink: '#C2185B', // Darker pink for hover/pressed states

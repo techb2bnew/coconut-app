@@ -4,10 +4,13 @@
  */
 
 import messaging from '@react-native-firebase/messaging';
-import { Platform, PermissionsAndroid, Alert } from 'react-native';
+import { Platform, PermissionsAndroid, Alert, DeviceEventEmitter } from 'react-native';
 import Toast from 'react-native-toast-message';
 import supabase from '../config/supabase';
 import { getCustomerId } from './notificationService';
+
+// Event name for notification refresh
+export const NOTIFICATION_RECEIVED_EVENT = 'notificationReceived';
 
 /**
  * Request notification permissions for Android and iOS
@@ -232,7 +235,13 @@ export const setupForegroundMessageHandler = () => {
     const data = remoteMessage.data;
     if (data) {
       console.log('📨 Message data:', data);
-      // You can handle custom data here
+      
+      // If it's an admin notification, trigger refresh event
+      if (data.type === 'admin_notification') {
+        console.log('🔄 Admin notification received, triggering refresh event...');
+        // Emit event to refresh notifications
+        DeviceEventEmitter.emit(NOTIFICATION_RECEIVED_EVENT, data);
+      }
     }
   });
 };

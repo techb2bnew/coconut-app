@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, DeviceEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
@@ -18,6 +19,7 @@ import {
   subscribeToNotifications,
   unsubscribeFromNotifications,
 } from '../services/notificationService';
+import { NOTIFICATION_RECEIVED_EVENT } from '../services/firebaseMessaging';
 import supabase from '../config/supabase';
 
 const NotificationScreen = ({ navigation }) => {
@@ -64,6 +66,34 @@ const NotificationScreen = ({ navigation }) => {
 
     initializeNotifications();
   }, [loadNotifications]);
+
+  // Refresh notifications when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (customerId) {
+        console.log('🔄 Screen focused, refreshing notifications...');
+        loadNotifications(customerId, false);
+      }
+    }, [customerId, loadNotifications])
+  );
+
+  // Listen for Firebase notification events to refresh
+  useEffect(() => {
+    if (!customerId) return;
+
+    const handleNotificationReceived = () => {
+      console.log('🔄 Firebase notification received, refreshing notifications...');
+      loadNotifications(customerId, false);
+    };
+
+    // Listen for notification events
+    const subscription = DeviceEventEmitter.addListener(NOTIFICATION_RECEIVED_EVENT, handleNotificationReceived);
+
+    // Cleanup listener
+    return () => {
+      subscription.remove();
+    };
+  }, [customerId, loadNotifications]);
 
   // Set up real-time subscription
   useEffect(() => {
@@ -146,14 +176,14 @@ const NotificationScreen = ({ navigation }) => {
 
   // Handle mark single notification as read
   const handleNotificationPress = async (notification) => {
-    if (notification.isRead || !notification.recipientId) return;
+    if (notification.isRead || !notification.id) return;
 
-    const success = await markNotificationAsRead(notification.recipientId);
+    const success = await markNotificationAsRead(notification.id);
     if (success) {
       // Update local state
       setNotifications((prev) =>
         prev.map((n) =>
-          n.recipientId === notification.recipientId ? { ...n, isRead: true } : n
+          n.id === notification.id ? { ...n, isRead: true } : n
         )
       );
     }
@@ -336,9 +366,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.08,  
     position: 'relative',
   },
   notificationCardUnread: {
@@ -358,16 +386,14 @@ const styles = StyleSheet.create({
   },
   notificationTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     fontFamily: fontFamilyHeading,
-    color: Colors.textPrimary,
-    marginBottom: 4,
+    color: Colors.textPrimary, 
   },
   notificationDescription: {
     fontSize: 14,
     fontFamily: fontFamilyBody,
-    color: Colors.textPrimary,
-    marginBottom: 6,
+    color: Colors.textPrimary, 
     lineHeight: 20,
   },
   notificationTime: {

@@ -775,14 +775,14 @@ const ProfileScreen = ({ navigation }) => {
         {/* Summary Cards */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryCard}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#E1BEE7' }]}>
+            <View style={[styles.summaryIcon, { backgroundColor: '#c52480' }]}>
               <Icon name="cube-outline" size={20} color={Colors.cardBackground} />
             </View>
             <Text style={styles.summaryValue}>{stats.totalOrders}</Text>
             <Text style={styles.summaryLabel}>Total Orders</Text>
           </View>
           <View style={styles.summaryCard}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#E1BEE7' }]}>
+            <View style={[styles.summaryIcon, { backgroundColor: '#9500ff' }]}>
               <Icon name="trending-up-outline" size={20} color={Colors.cardBackground} />
             </View>
             <Text style={styles.summaryValue}>{stats.activeOrders}</Text>

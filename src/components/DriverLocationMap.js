@@ -25,7 +25,7 @@ const GOOGLE_MAPS_API_KEY = 'AIzaSyBXNyT9zcGdvhAUCUEYTm6e_qPw26AOPgI';
 
 const { width, height } = Dimensions.get('window');
 
-const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
+const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containerStyle }) => {
   const [driverLocation, setDriverLocation] = useState(null);
   const [deliveryLocation, setDeliveryLocation] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,16 +46,25 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
 
   // Fetch initial driver location and geocode delivery address
   useEffect(() => {
+    console.log('🔧 [DriverLocationMap] useEffect triggered');
+    console.log('🔧 [DriverLocationMap] orderId:', orderId);
+    console.log('🔧 [DriverLocationMap] driverId:', driverId);
+    console.log('🔧 [DriverLocationMap] deliveryAddress:', deliveryAddress);
+    console.log('🔧 [DriverLocationMap] isDriverAssigned:', isDriverAssigned());
+    
     if (!orderId || !isDriverAssigned()) {
+      console.log('⚠️ [DriverLocationMap] Skipping - missing orderId or driverId');
       setLoading(false);
       return;
     }
 
+    console.log('✅ [DriverLocationMap] Initializing driver location tracking...');
     fetchDriverLocation();
     geocodeDeliveryAddress();
     setupRealtimeSubscription();
 
     return () => {
+      console.log('🧹 [DriverLocationMap] Cleaning up...');
       // Cleanup subscription on unmount
       if (subscriptionRef.current) {
         subscriptionRef.current.unsubscribe();
@@ -63,10 +72,26 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
     };
   }, [orderId, driverId, deliveryAddress]);
 
-  // Update region when locations change and calculate route
+  // Log when driverLocation state actually changes
+  useEffect(() => {
+    console.log('🔄 [DriverLocationMap] driverLocation state changed:');
+    console.log('🔄 [DriverLocationMap] New location:', driverLocation);
+    if (driverLocation) {
+      console.log('🔄 [DriverLocationMap] Lat:', driverLocation.latitude);
+      console.log('🔄 [DriverLocationMap] Lng:', driverLocation.longitude);
+      console.log('🔄 [DriverLocationMap] Updated at:', driverLocation.updatedAt);
+    }
+  }, [driverLocation]);
+
+  // Update region when locations change and calculate route (only on initial load)
   useEffect(() => {
     try {
-      if (driverLocation && deliveryLocation) {
+      console.log('🗺️ [DriverLocationMap] Region useEffect triggered');
+      console.log('🗺️ [DriverLocationMap] driverLocation:', driverLocation);
+      console.log('🗺️ [DriverLocationMap] deliveryLocation:', deliveryLocation);
+      
+      // Only set initial region once, don't auto-zoom on location updates
+      if (driverLocation && deliveryLocation && !region) {
         const centerLat = (driverLocation.latitude + deliveryLocation.latitude) / 2;
         const centerLng = (driverLocation.longitude + deliveryLocation.longitude) / 2;
         
@@ -74,30 +99,40 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
         const latDelta = Math.abs(driverLocation.latitude - deliveryLocation.latitude) * 1.5;
         const lngDelta = Math.abs(driverLocation.longitude - deliveryLocation.longitude) * 1.5;
         
-        setRegion({
+        const newRegion = {
           latitude: centerLat,
           longitude: centerLng,
           latitudeDelta: Math.max(latDelta, 0.01),
           longitudeDelta: Math.max(lngDelta, 0.01),
-        });
+        };
+        
+        console.log('🗺️ [DriverLocationMap] Setting initial region (both locations):', newRegion);
+        setRegion(newRegion);
         
         // Route will be calculated automatically by MapViewDirections
-      } else if (driverLocation) {
-        setRegion({
+      } else if (driverLocation && !region) {
+        const newRegion = {
           latitude: driverLocation.latitude,
           longitude: driverLocation.longitude,
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
-        });
+        };
+        
+        console.log('🗺️ [DriverLocationMap] Setting initial region (driver only):', newRegion);
+        setRegion(newRegion);
       }
     } catch (err) {
-      console.error('Error setting region:', err);
+      console.error('❌ [DriverLocationMap] Error setting region:', err);
     }
   }, [driverLocation, deliveryLocation]);
 
   // Fetch driver location from database
   const fetchDriverLocation = async () => {
     try {
+      console.log('📍 [DriverLocationMap] Fetching driver location...');
+      console.log('📍 [DriverLocationMap] driverId:', driverId);
+      console.log('📍 [DriverLocationMap] orderId:', orderId);
+      
       setLoading(true);
       
       const { data, error } = await supabase
@@ -108,8 +143,14 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
         .limit(1)
         .single();
 
+      console.log('📍 [DriverLocationMap] Supabase query result:');
+      console.log('📍 [DriverLocationMap] Data:', data);
+      console.log('📍 [DriverLocationMap] Error:', error);
+
       if (error) {
-        console.error('Error fetching driver location:', error);
+        console.error('❌ [DriverLocationMap] Error fetching driver location:', error);
+        console.error('❌ [DriverLocationMap] Error code:', error.code);
+        console.error('❌ [DriverLocationMap] Error message:', error.message);
         setError('Unable to fetch driver location');
         setLoading(false);
         return;
@@ -121,6 +162,11 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
           longitude: parseFloat(data.longitude),
           updatedAt: data.updated_at,
         };
+        console.log('✅ [DriverLocationMap] Driver location fetched:');
+        console.log('✅ [DriverLocationMap] Latitude:', location.latitude);
+        console.log('✅ [DriverLocationMap] Longitude:', location.longitude);
+        console.log('✅ [DriverLocationMap] Updated at:', location.updatedAt);
+        
         setDriverLocation(location);
         
         // Calculate ETA if delivery location is available
@@ -128,19 +174,30 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
           calculateETA(location.latitude, location.longitude, deliveryLocation.latitude, deliveryLocation.longitude);
         }
       } else {
+        console.warn('⚠️ [DriverLocationMap] Driver location data missing:');
+        console.warn('⚠️ [DriverLocationMap] Latitude:', data?.latitude);
+        console.warn('⚠️ [DriverLocationMap] Longitude:', data?.longitude);
         setError('Driver location not available');
       }
     } catch (err) {
-      console.error('Error in fetchDriverLocation:', err);
+      console.error('❌ [DriverLocationMap] Exception in fetchDriverLocation:', err);
+      console.error('❌ [DriverLocationMap] Error stack:', err.stack);
       setError('Failed to load driver location');
     } finally {
       setLoading(false);
+      console.log('📍 [DriverLocationMap] fetchDriverLocation completed');
     }
   };
 
   // Fetch driver location using polling (more efficient than real-time)
   const startLocationPolling = () => {
-    if (!orderId || !isDriverAssigned()) return;
+    if (!orderId || !isDriverAssigned()) {
+      console.log('⚠️ [DriverLocationMap] Polling not started - missing orderId or driverId');
+      return;
+    }
+
+    console.log('🔄 [DriverLocationMap] Starting location polling...');
+    console.log('🔄 [DriverLocationMap] Polling interval: 3 seconds');
 
     // Poll every 3 seconds instead of real-time (reduces overhead)
     const pollInterval = setInterval(async () => {
@@ -152,6 +209,9 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
       lastUpdateTimeRef.current = now;
 
       try {
+        console.log('🔄 [DriverLocationMap] Polling driver location...');
+        console.log('🔄 [DriverLocationMap] driverId:', driverId);
+        
         const { data, error } = await supabase
           .from('driver_locations')
           .select('latitude, longitude, updated_at')
@@ -160,7 +220,12 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
           .limit(1)
           .single();
 
-        if (error) return;
+        if (error) {
+          console.error('❌ [DriverLocationMap] Polling error:', error);
+          return;
+        }
+        
+        console.log('🔄 [DriverLocationMap] Polling data received:', data);
         
         const location = data?.latitude && data?.longitude ? {
           latitude: parseFloat(data.latitude),
@@ -168,41 +233,74 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
           updatedAt: data.updated_at,
         } : null;
 
-        if (!location) return;
+        if (!location) {
+          console.warn('⚠️ [DriverLocationMap] No location data in polling response');
+          return;
+        }
 
-        // Only update if location actually changed
+        console.log('🔄 [DriverLocationMap] Parsed location:', location);
+        console.log('🔄 [DriverLocationMap] Current driverLocation state:', driverLocation);
+
+        // Check if location or timestamp changed
+        let shouldUpdate = true;
         if (driverLocation) {
           const latDiff = Math.abs(driverLocation.latitude - location.latitude);
           const lngDiff = Math.abs(driverLocation.longitude - location.longitude);
-          // Only update if moved more than 0.0001 degrees (~11 meters)
-          if (latDiff < 0.0001 && lngDiff < 0.0001) {
-            return;
+          const timeDiff = driverLocation.updatedAt !== location.updatedAt;
+          
+          console.log('🔄 [DriverLocationMap] Location diff - Lat:', latDiff, 'Lng:', lngDiff);
+          console.log('🔄 [DriverLocationMap] Timestamp changed:', timeDiff);
+          console.log('🔄 [DriverLocationMap] Old timestamp:', driverLocation.updatedAt);
+          console.log('🔄 [DriverLocationMap] New timestamp:', location.updatedAt);
+          
+          // Update if location changed significantly OR timestamp changed (newer data)
+          // Reduced threshold to 0.00001 degrees (~1 meter) for more sensitive updates
+          if (latDiff < 0.00001 && lngDiff < 0.00001 && !timeDiff) {
+            console.log('🔄 [DriverLocationMap] Location unchanged, skipping update');
+            shouldUpdate = false;
           }
         }
 
-        setDriverLocation(location);
+        if (shouldUpdate) {
+          console.log('✅ [DriverLocationMap] Updating driver location:', location);
+          console.log('✅ [DriverLocationMap] Previous location:', driverLocation);
+          setDriverLocation(location);
+          
+          // Don't auto-zoom map - let user control zoom manually
+        }
         
         // Throttled ETA calculation
         if (deliveryLocation) {
           calculateETA(location.latitude, location.longitude, deliveryLocation.latitude, deliveryLocation.longitude);
         }
       } catch (err) {
-        console.error('Error polling driver location:', err);
+        console.error('❌ [DriverLocationMap] Exception in polling:', err);
+        console.error('❌ [DriverLocationMap] Error stack:', err.stack);
       }
     }, 3000); // Poll every 3 seconds
 
-    subscriptionRef.current = { unsubscribe: () => clearInterval(pollInterval) };
+    subscriptionRef.current = { unsubscribe: () => {
+      console.log('🛑 [DriverLocationMap] Stopping location polling');
+      clearInterval(pollInterval);
+    }};
+    
+    console.log('✅ [DriverLocationMap] Location polling started');
   };
 
   // Setup Supabase Realtime subscription for live updates
   const setupRealtimeSubscription = () => {
-    if (!orderId || !isDriverAssigned()) return;
+    if (!orderId || !isDriverAssigned()) {
+      console.log('⚠️ [DriverLocationMap] Cannot setup subscription - missing orderId or driverId');
+      return;
+    }
 
     try {
+      console.log('🔧 [DriverLocationMap] Setting up realtime subscription...');
       // Use polling instead of real-time for better performance
       startLocationPolling();
     } catch (err) {
-      console.error('Error setting up realtime subscription:', err);
+      console.error('❌ [DriverLocationMap] Error setting up realtime subscription:', err);
+      console.error('❌ [DriverLocationMap] Error stack:', err.stack);
     }
   };
 
@@ -341,14 +439,14 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
   return (
     <View style={styles.container}>
       {/* Map - Native (Fast Zoom) */}
-      <View style={styles.mapContainer}>
+      <View style={[styles.mapContainer, containerStyle]}>
         {defaultRegion && (
           <MapView
             ref={mapRef}
             provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
             style={styles.map}
             initialRegion={defaultRegion}
-            region={defaultRegion}
+            region={region || defaultRegion}
             showsUserLocation={false}
             showsMyLocationButton={false}
             zoomEnabled={true}
@@ -358,23 +456,30 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
             rotateEnabled={false}
             loadingEnabled={true}
             onMapReady={() => {
-              console.log('Map is ready');
+              console.log('🗺️ [DriverLocationMap] Map is ready');
               setMapReady(true);
             }}
             onError={(error) => {
-              console.error('Map error:', error);
+              console.error('❌ [DriverLocationMap] Map error:', error);
               setError('Map loading error. Please check API key.');
             }}
           >
           {/* Driver Marker */}
           {driverLocation && (
             <Marker
+              key={`driver-${driverLocation.latitude}-${driverLocation.longitude}-${driverLocation.updatedAt}`}
               coordinate={{
                 latitude: driverLocation.latitude,
                 longitude: driverLocation.longitude,
               }}
               title="Driver Location"
               description={eta ? `Arrives in ${eta}` : 'Driver'}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+              onPress={() => {
+                console.log('📍 [DriverLocationMap] Driver marker pressed');
+                console.log('📍 [DriverLocationMap] Location:', driverLocation);
+              }}
             >
               <View style={styles.driverMarker}>
                 <View style={styles.driverMarkerInner} />
@@ -416,13 +521,7 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
               optimizeWaypoints={true}
               onReady={(result) => {
                 console.log('✅ Route ready:', result);
-                // Optionally fit map to route
-                if (mapRef.current && result.coordinates) {
-                  mapRef.current.fitToCoordinates(result.coordinates, {
-                    edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-                    animated: true,
-                  });
-                }
+                // Don't auto-fit map to route - let user control zoom
               }}
               onError={(errorMessage) => {
                 console.error('Directions error:', errorMessage);
@@ -437,7 +536,7 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null }) => {
           style={styles.currentLocationButton}
           onPress={handleCurrentLocation}
         >
-          <Text style={styles.currentLocationText}>Current location</Text>
+          <Icon name="location" size={16} color="#FFFFFF" style={styles.currentLocationIcon} /> 
         </TouchableOpacity>
       </View>
     </View>
@@ -455,6 +554,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.backgroundGray,
     borderRadius: 12,
     overflow: 'hidden',
+    flex: 1,
   },
   map: {
     width: '100%',
@@ -508,7 +608,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
+ 
   currentLocationText: {
     color: '#FFFFFF',
     fontSize: 14,

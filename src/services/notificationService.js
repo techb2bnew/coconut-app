@@ -114,19 +114,19 @@ export const fetchNotifications = async (customerId) => {
       if (!viewError && viewData) {
         notificationsFromView = viewData.map((notification) => {
           const iconData = getNotificationIcon(notification.title);
-          return {
-            id: notification.id,
-            notification_id: notification.notification_id,
-            title: notification.title,
-            message: notification.message || notification.title,
-            timestamp: formatNotificationDate(notification.sent_at || notification.created_at),
-            rawTimestamp: notification.sent_at || notification.created_at,
-            isRead: false, // Will be updated from notification_recipients if exists
-            recipientId: null,
-            iconColor: iconData.color,
-            iconName: iconData.name,
-            type: notification.recipient_type || 'general',
-          };
+              return {
+                id: notification.id,
+                notification_id: notification.notification_id,
+                title: notification.title,
+                message: notification.message || notification.title,
+                timestamp: formatNotificationDate(notification.sent_at || notification.created_at),
+                rawTimestamp: notification.sent_at || notification.created_at,
+                isRead: notification.read || false, // Use read field from notifications table
+                recipientId: notification.id, // Use notification id for marking as read
+                iconColor: iconData.color,
+                iconName: iconData.name,
+                type: notification.recipient_type || 'general',
+              };
         });
       }
     } catch (viewErr) {
@@ -168,8 +168,8 @@ export const fetchNotifications = async (customerId) => {
                 message: notification.message || notification.title,
                 timestamp: formatNotificationDate(notification.sent_at || notification.created_at),
                 rawTimestamp: notification.sent_at || notification.created_at,
-                isRead: recipient?.is_read || false,
-                recipientId: recipient?.id,
+                isRead: notification.read || recipient?.is_read || false, // Prioritize read from notifications table
+                recipientId: notification.id, // Use notification id for marking as read
                 iconColor: iconData.color,
                 iconName: iconData.name,
                 type: notification.recipient_type || 'general',
@@ -217,8 +217,8 @@ export const fetchNotifications = async (customerId) => {
                 message: notification.message || notification.title,
                 timestamp: formatNotificationDate(notification.sent_at || notification.created_at),
                 rawTimestamp: notification.sent_at || notification.created_at,
-                isRead: false, // Default to unread if not in notification_recipients
-                recipientId: null,
+                isRead: notification.read || false, // Use read field from notifications table
+                recipientId: notification.id, // Use notification id for marking as read
                 iconColor: iconData.color,
                 iconName: iconData.name,
                 type: notification.recipient_type || 'general',
@@ -261,14 +261,15 @@ export const fetchNotifications = async (customerId) => {
 /**
  * Mark notification as read
  */
-export const markNotificationAsRead = async (recipientId) => {
-  if (!recipientId) return false;
+export const markNotificationAsRead = async (notificationId) => {
+  if (!notificationId) return false;
 
   try {
+    // Update read field in notifications table
     const { error } = await supabase
-      .from('notification_recipients')
-      .update({ is_read: true })
-      .eq('id', recipientId);
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', notificationId);
 
     if (error) {
       console.error('Error marking notification as read:', error);
@@ -289,11 +290,54 @@ export const markAllNotificationsAsRead = async (customerId) => {
   if (!customerId) return false;
 
   try {
+    // Get all notifications for this customer that are unread
+    // Fetch all sent notifications and filter in JavaScript (more reliable for JSONB queries)
+    const { data: allNotifications, error: fetchError } = await supabase
+      .from('notifications')
+      .select('id, recipient_type, recipient_ids')
+      .eq('status', 'sent')
+      .not('sent_at', 'is', null)
+      .or('read.is.null,read.eq.false');
+
+    if (fetchError) {
+      console.error('Error fetching notifications to mark as read:', fetchError);
+      return false;
+    }
+
+    if (!allNotifications || allNotifications.length === 0) {
+      return true; // No unread notifications
+    }
+
+    // Filter notifications that are for this customer
+    const customerIdStr = String(customerId);
+    const customerIdNum = Number(customerId);
+    const notifications = allNotifications.filter((notification) => {
+      // Check if notification is for all customers
+      if (notification.recipient_type === 'all_customers') {
+        return true;
+      }
+
+      // Check if customer_id is in recipient_ids JSONB array
+      if (notification.recipient_ids && Array.isArray(notification.recipient_ids)) {
+        return notification.recipient_ids.includes(customerId) ||
+               notification.recipient_ids.includes(customerIdStr) ||
+               notification.recipient_ids.includes(customerIdNum);
+      }
+
+      return false;
+    });
+
+    if (!notifications || notifications.length === 0) {
+      return true; // No unread notifications
+    }
+
+    const notificationIds = notifications.map(n => n.id);
+
+    // Update all notifications to read = true
     const { error } = await supabase
-      .from('notification_recipients')
-      .update({ is_read: true })
-      .eq('customer_id', customerId)
-      .eq('is_read', false);
+      .from('notifications')
+      .update({ read: true })
+      .in('id', notificationIds);
 
     if (error) {
       console.error('Error marking all notifications as read:', error);
@@ -347,36 +391,77 @@ export const subscribeToNotifications = async (customerId, callback) => {
       }
     );
 
-    // ✅ FIX: Subscribe to notifications table for new SENT notifications only
+    // ✅ Subscribe to notifications table for INSERT events (new notifications)
     channel.on(
       'postgres_changes',
       {
         event: 'INSERT',
         schema: 'public',
         table: 'notifications',
-        // ✅ CRITICAL: Filter for sent notifications only
-        filter: 'status=eq.sent',
       },
       (payload) => {
-        console.log('🔔 New sent notification created:', payload);
-        // Check if this notification is for this customer
+        console.log('🔔 New notification created:', payload);
+        // Check if this notification is for this customer and is sent
         const notification = payload.new;
         const customerIdStr = String(customerId);
+        const customerIdNum = Number(customerId);
+        
+        // Only process if status is 'sent' and sent_at is not null
+        const isSent = notification.status === 'sent' && notification.sent_at;
+        
         const isForThisCustomer =
           notification.recipient_type === 'all_customers' ||
           (notification.recipient_ids &&
             Array.isArray(notification.recipient_ids) &&
             (notification.recipient_ids.includes(customerId) ||
               notification.recipient_ids.includes(customerIdStr) ||
-              notification.recipient_ids.includes(Number(customerId))));
+              notification.recipient_ids.includes(customerIdNum)));
 
-        if (isForThisCustomer) {
-          console.log('🔔 Notification is for this customer, triggering callback');
+        if (isSent && isForThisCustomer) {
+          console.log('🔔 New sent notification is for this customer, triggering callback');
           if (callback) {
             callback(payload);
           }
         } else {
-          console.log('🔕 Notification not for this customer, ignoring');
+          console.log('🔕 Notification not for this customer or not sent yet, ignoring');
+        }
+      }
+    );
+
+    // ✅ Subscribe to notifications table for UPDATE events (when status changes to 'sent')
+    channel.on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'notifications',
+      },
+      (payload) => {
+        console.log('🔔 Notification updated:', payload);
+        // Check if status changed to 'sent' and if this notification is for this customer
+        const notification = payload.new;
+        const oldNotification = payload.old;
+        const customerIdStr = String(customerId);
+        const customerIdNum = Number(customerId);
+        
+        // Check if status changed to 'sent' or sent_at was just set
+        const becameSent = 
+          (notification.status === 'sent' && oldNotification?.status !== 'sent') ||
+          (notification.sent_at && !oldNotification?.sent_at);
+        
+        const isForThisCustomer =
+          notification.recipient_type === 'all_customers' ||
+          (notification.recipient_ids &&
+            Array.isArray(notification.recipient_ids) &&
+            (notification.recipient_ids.includes(customerId) ||
+              notification.recipient_ids.includes(customerIdStr) ||
+              notification.recipient_ids.includes(customerIdNum)));
+
+        if (becameSent && isForThisCustomer) {
+          console.log('🔔 Notification status changed to sent for this customer, triggering callback');
+          if (callback) {
+            callback(payload);
+          }
         }
       }
     );

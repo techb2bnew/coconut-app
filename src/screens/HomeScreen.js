@@ -325,8 +325,8 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.summaryContainer}>
           {/* Active Orders Card */}
           <View style={styles.summaryCard}>
-            <View style={[styles.iconContainer, { backgroundColor: '#E1BEE7' }]}>
-              <Icon name="cube-outline" size={24} color="#9C27B0" />
+            <View style={[styles.iconContainer, { backgroundColor: '#c52480' }]}>
+              <Icon name="cube-outline" size={24} color="#ffffff" />
             </View>
             <Text style={styles.summaryNumber}>{stats.activeOrders}</Text>
             <Text style={styles.summaryLabel}>Active Orders</Text>
@@ -334,8 +334,8 @@ const HomeScreen = ({ navigation }) => {
 
           {/* Pending Card */}
           <View style={styles.summaryCard}>
-            <View style={[styles.iconContainer, { backgroundColor: '#FFE0B2' }]}>
-              <Icon name="time-outline" size={24} color="#FF9800" />
+            <View style={[styles.iconContainer, { backgroundColor: '#fd5b00' }]}>
+              <Icon name="time-outline" size={24} color="#ffffff" />
             </View>
             <Text style={styles.summaryNumber}>{stats.pending}</Text>
             <Text style={styles.summaryLabel}>Pending</Text>
@@ -343,8 +343,8 @@ const HomeScreen = ({ navigation }) => {
 
           {/* This Month Card */}
           <View style={styles.summaryCard}>
-            <View style={[styles.iconContainer, { backgroundColor: '#E1BEE7' }]}>
-              <Icon name="trending-up-outline" size={24} color="#9C27B0" />
+            <View style={[styles.iconContainer, { backgroundColor: '#a230ff' }]}>
+              <Icon name="trending-up-outline" size={24} color="#ffffff" />
             </View>
             <Text style={styles.summaryNumber}>{stats.thisMonth}</Text>
             <Text style={styles.summaryLabel}>This Month</Text>
