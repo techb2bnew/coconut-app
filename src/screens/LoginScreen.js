@@ -123,7 +123,7 @@ const LoginScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={[Colors.lightPink, '#FFF5F8', '#FFFFFF']}
+        colors={['#eff6ff', '#FFFFFF']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -140,7 +140,7 @@ const LoginScreen = ({ navigation }) => {
             {/* Logo Section */}
             <View style={styles.logoSection}>
               <Logo size={100} />
-               
+                <Text  style={[TextStyles.link, styles.logoText]}>Brand in a Nut</Text>
             </View>
 
             {/* Welcome Section */}
@@ -245,6 +245,7 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     marginBottom: 8,
+    color: '#000000',
   },
   subtitleText: {
     fontSize: 14,

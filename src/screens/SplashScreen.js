@@ -12,6 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Logo from '../components/Logo';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
@@ -152,10 +153,15 @@ const SplashScreen = ({ navigation }) => {
           styles.background,
           {
             opacity: fadeAnim,
-            backgroundColor: Colors.darkPink,
           },
-        ]}
-      />
+        ]}>
+        <LinearGradient
+          colors={[Colors.gradientStart, Colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+      </Animated.View>
       
       <Animated.View
         style={[

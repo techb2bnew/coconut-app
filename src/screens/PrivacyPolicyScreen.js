@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
@@ -25,15 +26,19 @@ const PrivacyPolicyScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}>
         {/* Main Card Container */}
         <View style={styles.cardContainer}>
-          {/* Pink Header */}
-          <View style={styles.header}>
+          {/* Header */}
+          <LinearGradient
+            colors={[Colors.gradientStart, Colors.gradientEnd]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.header}>
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => navigation.goBack()}>
               <Icon name="arrow-back" size={20} color={Colors.cardBackground} />
               <Text style={styles.backText}>Back</Text>
             </TouchableOpacity>
-          </View>
+          </LinearGradient>
 
           {/* Content */}
           <View style={styles.content}>
@@ -172,7 +177,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   header: {
-    backgroundColor: Colors.primaryPink,
     paddingVertical: 16,
     paddingHorizontal: 20,
     flexDirection: 'row',

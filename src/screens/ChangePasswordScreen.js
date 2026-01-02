@@ -15,6 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
@@ -116,10 +117,14 @@ const ChangePasswordScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.header}>
+      <LinearGradient
+        colors={[Colors.gradientStart, Colors.gradientEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}>
         <BackArrowIcon onPress={() => navigation.goBack()} color={Colors.cardBackground} />
         <Text style={styles.headerTitle}>Change Password</Text>
-      </View>
+      </LinearGradient>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -214,7 +219,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primaryPink,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomLeftRadius: 20,

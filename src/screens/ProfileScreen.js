@@ -16,6 +16,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Toast from 'react-native-toast-message';
 import Colors from '../theme/colors';
@@ -767,7 +768,11 @@ const ProfileScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
-        <View style={styles.profileHeader}>
+        <LinearGradient
+          colors={[Colors.gradientStart, Colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               {getCompanyLogo() ? (
@@ -790,12 +795,12 @@ const ProfileScreen = ({ navigation }) => {
               {customerData?.company_name || 'Beach Resort & Spa'}
             </Text>
           </View>
-        </View>
+        </LinearGradient>
 
         {/* Summary Cards */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryCard}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#c52480' }]}>
+            <View style={[styles.summaryIcon, { backgroundColor: Colors.primaryPink }]}>
               <Icon name="cube-outline" size={20} color={Colors.cardBackground} />
             </View>
             <Text style={styles.summaryValue}>{stats.totalOrders}</Text>
@@ -1219,7 +1224,6 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   profileHeader: {
-    backgroundColor: Colors.primaryPink,
     paddingTop: 40,
     paddingBottom: 60,
     paddingHorizontal: 20,

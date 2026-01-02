@@ -69,12 +69,12 @@ export const formatNotificationDate = (dateString) => {
  */
 export const getNotificationIcon = (notificationType) => {
   const icons = {
-    delivery: { name: 'car-outline', color: '#E91E63' },
+    delivery: { name: 'car-outline', color: '#4fa3e3' },
     progress: { name: 'cube-outline', color: '#BA68C8' },
     confirmed: { name: 'checkmark-circle', color: '#81C784' },
     payment: { name: 'card-outline', color: '#FFB74D' },
     general: { name: 'notifications-outline', color: '#64B5F6' },
-    order: { name: 'cube-outline', color: '#E91E63' },
+    order: { name: 'cube-outline', color: '#4fa3e3' },
     default: { name: 'notifications-outline', color: '#9E9E9E' },
   };
 

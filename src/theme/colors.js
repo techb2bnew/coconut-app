@@ -4,22 +4,28 @@
  */
 
 export const Colors = {
-  // Primary Pink Colors
-  primaryPink: '#c5247f', // Main button color (fuchsia/dark pink)
-  lightPink: '#FCE4EC', // Light pink background for card
-  pinkAccent: '#F06292', // Accent pink for links and highlights
-  darkPink: '#C2185B', // Darker pink for hover/pressed states
+  // Primary Blue Colors (replacing pink)
+  primaryPink: '#4fa3e3', // Main button color (blue - gradient start)
+  primaryBlue: '#4fa3e3', // Main blue color (gradient start)
+  primaryBlueDark: '#3b8bcc', // Darker blue (gradient end)
+  lightPink: '#E3F2FD', // Light blue background for card (replacing light pink)
+  pinkAccent: '#5BA3E8', // Accent blue for links and highlights
+  darkPink: '#3b8bcc', // Darker blue for hover/pressed states (gradient end)
+  
+  // Gradient Colors
+  gradientStart: '#4fa3e3', // Gradient start color
+  gradientEnd: '#3b8bcc', // Gradient end color
   
   // Background Colors
   backgroundGray: '#F5F5F5', // Light gray background
   cardBackground: '#FFFFFF', // White background for input fields
-  primaryCardBackground: '#FCE4EC', // Light pink card background
+  primaryCardBackground: '#E3F2FD', // Light blue card background (replacing light pink)
   
   // Text Colors
   textPrimary: '#000000', // Black for main text
   textSecondary: '#000000', // Gray for placeholder text
-  textPink: '#E91E63', // Pink for links and accents
-  textLightPink: '#F48FB1', // Light pink for secondary text
+  textPink: '#4fa3e3', // Blue for links and accents (replacing pink)
+  textLightPink: '#6BA9E3', // Light blue for secondary text
   
   // Icon Colors
   iconGreen: '#4CAF50', // Green for envelope icon
@@ -27,7 +33,7 @@ export const Colors = {
   
   // Border Colors
   borderLight: '#E0E0E0', // Light border
-  borderPink: '#F48FB1', // Pink border for outlined buttons
+  borderPink: '#6BA9E3', // Blue border for outlined buttons (replacing pink)
   
   // Status Colors
   success: '#4CAF50',

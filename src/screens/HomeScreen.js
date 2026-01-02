@@ -15,6 +15,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
@@ -311,7 +312,11 @@ const HomeScreen = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryPink} />
         }>
         {/* Header Section */}
-        <View style={styles.header}>
+        <LinearGradient
+          colors={[Colors.gradientStart, Colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.header}>
           <View style={styles.logoHeader}>
             <Logo size={150} />
           </View> 
@@ -319,13 +324,13 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.taglineText}>
             Manage your orders and track deliveries
           </Text>
-        </View>
+        </LinearGradient>
 
         {/* Summary Cards - Overlapping pink background */}
         <View style={styles.summaryContainer}>
           {/* Active Orders Card */}
           <View style={styles.summaryCard}>
-            <View style={[styles.iconContainer, { backgroundColor: '#c52480' }]}>
+            <View style={[styles.iconContainer, { backgroundColor: Colors.primaryPink }]}>
               <Icon name="cube-outline" size={24} color="#ffffff" />
             </View>
             <Text style={styles.summaryNumber}>{stats.activeOrders}</Text>
@@ -434,7 +439,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.backgroundGray,
   },
   header: {
-    backgroundColor: Colors.primaryPink,
     paddingTop: 20,
     paddingBottom: 60, // Extra padding for overlapping cards
     paddingHorizontal: 20,

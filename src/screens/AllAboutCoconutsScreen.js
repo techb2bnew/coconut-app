@@ -16,6 +16,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
@@ -305,7 +306,11 @@ const AllAboutCoconutsScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         {/* Header Section */}
-        <View style={styles.header}>
+        <LinearGradient
+          colors={[Colors.gradientStart, Colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}>
@@ -316,7 +321,7 @@ const AllAboutCoconutsScreen = ({ navigation }) => {
           <View style={styles.logoContainer}>
             <Logo size={80} showTagline={false} />
           </View>
-        </View>
+        </LinearGradient>
 
         {/* Content Section */}
         <View style={styles.contentContainer}>
@@ -473,7 +478,6 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   header: {
-    backgroundColor: Colors.primaryPink,
     paddingTop: 20,
     paddingBottom: 40,
     paddingHorizontal: 20,

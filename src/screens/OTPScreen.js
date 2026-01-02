@@ -16,6 +16,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
@@ -241,12 +242,16 @@ const OTPScreen = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}>
         {/* Back Button Header */}
-        <View style={styles.header}>
+        <LinearGradient
+          colors={[Colors.gradientStart, Colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <BackArrowIcon size={24} style={styles.backIconStyle} />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -324,7 +329,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    backgroundColor: Colors.primaryPink,
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
