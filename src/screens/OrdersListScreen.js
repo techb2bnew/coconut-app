@@ -611,7 +611,7 @@ const OrdersListScreen = ({ navigation }) => {
                     <TouchableOpacity
                       onPress={() => handleRemoveDate(date)}
                       style={styles.removeDateButton}
-                      activeOpacity={0.7}>
+                      activeOpacity={0.7}> 
                       <Icon name="close" size={14} color={Colors.textSecondary} />
                     </TouchableOpacity>
                   </View>
