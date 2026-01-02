@@ -27,8 +27,7 @@ const NotificationScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [customerId, setCustomerId] = useState(null);
-  const [subscription, setSubscription] = useState(null);
-
+  const [subscription, setSubscription] = useState(null); 
   // Fetch notifications
   const loadNotifications = useCallback(async (customerId, showLoading = true) => {
     if (!customerId) return;
@@ -191,6 +190,21 @@ const NotificationScreen = ({ navigation }) => {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+  // Helper function to format date only (no time)
+  const formatDateOnly = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString; // Return original if invalid date
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}/${day}/${year}`;
+    } catch (error) {
+      return dateString; // Return original if error
+    }
+  };
+
   // Debug: Log subscription status
   useEffect(() => {
     if (subscription) {
@@ -266,7 +280,7 @@ const NotificationScreen = ({ navigation }) => {
                 <View style={styles.notificationContent}>
                   <Text style={[styles.notificationTitle, { textTransform: 'capitalize' }]}>{notification.title}</Text>
                   <Text style={styles.notificationDescription}>{notification.message}</Text>
-                  <Text style={styles.notificationTime}>{notification.timestamp}</Text>
+                  <Text style={styles.notificationTime}>{formatDateOnly(notification.rawTimestamp)}</Text>
                 </View>
                 {!notification.isRead && <View style={styles.unreadDot} />}
               </TouchableOpacity>
