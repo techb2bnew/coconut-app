@@ -3,7 +3,7 @@
  * Form to create a new order with product type, quantity, addons, and logo upload
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,17 +17,26 @@ import {
   PermissionsAndroid,
   Platform,
   KeyboardAvoidingView,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Toast from 'react-native-toast-message';
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
-import Dropdown from '../components/Dropdown';
 import supabase from '../config/supabase';
+import Dropdown from '../components/Dropdown';
+
+const { width, height } = Dimensions.get('window');
+
+// Banner image
+const orderBannerImage = require('../assest/order.png');
+const BANNER_HEIGHT = height * 0.6; // 60% of screen height
 
 const CreateOrderScreen = ({ navigation, route }) => {
   const reorderData = route?.params?.reorderData || null;
@@ -43,8 +52,25 @@ const CreateOrderScreen = ({ navigation, route }) => {
   const [logoPreview, setLogoPreview] = useState(null);
   const [customerId, setCustomerId] = useState(null);
   const [customerDeliveryAddress, setCustomerDeliveryAddress] = useState('');
+  const [deliveryAddresses, setDeliveryAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  
+  // Bottom sheet ref and snap points
+  const bottomSheetRef = useRef(null);
+  const snapPoints = useMemo(() => ['50%', '80%'], []);
+  
+  // Handle sheet position changes to ensure it doesn't go beyond 80%
+  const handleSheetChange = useCallback((index) => {
+    // Ensure sheet doesn't go beyond 80% snap point
+    if (index >= snapPoints.length) {
+      bottomSheetRef.current?.snapToIndex(snapPoints.length - 1);
+    }
+  }, [snapPoints]);
+  
+  // Animation for banner
+  const bannerAnim = useRef(new Animated.Value(0)).current;
 
   // Product type options
   const productTypeOptions = [
@@ -112,12 +138,53 @@ const CreateOrderScreen = ({ navigation, route }) => {
     }
   };
 
-  // Fetch customer ID and delivery address
+  // Parse delivery addresses from customer data
+  const parseDeliveryAddresses = (deliveryAddress) => {
+    if (!deliveryAddress) return [];
+    try {
+      let addresses = [];
+      
+      if (typeof deliveryAddress === 'string') {
+        try {
+          const parsed = JSON.parse(deliveryAddress);
+          if (Array.isArray(parsed)) {
+            addresses = parsed;
+          } else if (parsed && typeof parsed === 'object' && parsed.address) {
+            addresses = [{
+              id: '1',
+              label: 'Main Office',
+              street: parsed.address,
+              city: '',
+              state: '',
+              zipCode: '',
+              isSelected: true,
+            }];
+          }
+        } catch {
+          return [];
+        }
+      } else if (Array.isArray(deliveryAddress)) {
+        addresses = deliveryAddress;
+      }
+      
+      // Ensure all addresses have IDs
+      return addresses.map((addr, index) => ({
+        ...addr,
+        id: addr.id || `${index + 1}`,
+        label: addr.label || `Address ${index + 1}`,
+      }));
+    } catch (error) {
+      console.error('Error parsing addresses:', error);
+      return [];
+    }
+  };
+
+  // Fetch customer ID and delivery addresses
   const fetchCustomerData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !user.email) {
-        return { customerId: null, deliveryAddress: null };
+        return { customerId: null, deliveryAddresses: [], selectedAddress: null };
       }
 
       const { data: customer, error } = await supabase
@@ -128,19 +195,23 @@ const CreateOrderScreen = ({ navigation, route }) => {
 
       if (error) {
         console.error('Error fetching customer:', error);
-        return { customerId: null, deliveryAddress: null };
+        return { customerId: null, deliveryAddresses: [], selectedAddress: null };
       }
 
-      // Get selected/default address from array
-      const selectedAddress = getSelectedAddressFromArray(customer?.delivery_address);
+      // Parse all addresses
+      const addresses = parseDeliveryAddresses(customer?.delivery_address);
+      
+      // Find selected address or use first one
+      const selected = addresses.find(addr => addr.isSelected) || addresses[0];
 
       return {
         customerId: customer?.id || null,
-        deliveryAddress: selectedAddress,
+        deliveryAddresses: addresses,
+        selectedAddress: selected,
       };
     } catch (error) {
       console.error('Error in fetchCustomerData:', error);
-      return { customerId: null, deliveryAddress: null };
+      return { customerId: null, deliveryAddresses: [], selectedAddress: null };
     }
   };
 
@@ -169,13 +240,30 @@ const CreateOrderScreen = ({ navigation, route }) => {
       setProductType(productTypeOptions[0].value);
     }
     
-    // Fetch customer ID and delivery address
+    // Fetch customer ID and delivery addresses
     const loadCustomerData = async () => {
-      const { customerId: id, deliveryAddress } = await fetchCustomerData();
+      const { customerId: id, deliveryAddresses: addresses, selectedAddress } = await fetchCustomerData();
       setCustomerId(id);
-      setCustomerDeliveryAddress(deliveryAddress || '');
+      setDeliveryAddresses(addresses);
+      if (selectedAddress) {
+        setSelectedAddressId(selectedAddress.id);
+        const addressStr = [
+          selectedAddress.street,
+          selectedAddress.city,
+          selectedAddress.state,
+          selectedAddress.zipCode,
+        ].filter(Boolean).join(', ');
+        setCustomerDeliveryAddress(addressStr);
+      }
     };
     loadCustomerData();
+    
+    // Animate banner on mount
+    Animated.timing(bannerAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   // Handle reorder data - pre-fill form when reordering
@@ -217,9 +305,18 @@ const CreateOrderScreen = ({ navigation, route }) => {
       
       // Handle delivery address
       if (reorderData.deliveryAddress) {
-        const selectedAddress = getSelectedAddressFromArray(reorderData.deliveryAddress);
-        if (selectedAddress) {
-          setCustomerDeliveryAddress(selectedAddress);
+        const addresses = parseDeliveryAddresses(reorderData.deliveryAddress);
+        setDeliveryAddresses(addresses);
+        const selected = addresses.find(addr => addr.isSelected) || addresses[0];
+        if (selected) {
+          setSelectedAddressId(selected.id);
+          const addressStr = [
+            selected.street,
+            selected.city,
+            selected.state,
+            selected.zipCode,
+          ].filter(Boolean).join(', ');
+          setCustomerDeliveryAddress(addressStr);
         }
       }
     }
@@ -300,10 +397,6 @@ const CreateOrderScreen = ({ navigation, route }) => {
   // Validate form
   const validateForm = () => {
     const newErrors = {};
-
-    if (!productType) {
-      newErrors.productType = 'Product Type is required';
-    }
 
     if (!quantity || quantity.trim() === '') {
       newErrors.quantity = 'Quantity is required';
@@ -470,6 +563,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
       const orderData = {
         order_name: generateOrderName(),
         customer_id: customerId,
+        product_type: 'Case (9 pieces or 9 units)',
         quantity: parseInt(quantity),
         po_number: poNumber.trim() || null,
         delivery_address: customerDeliveryAddress || null,
@@ -558,38 +652,110 @@ const CreateOrderScreen = ({ navigation, route }) => {
     handleBack();
   };
 
+  // Handle address selection
+  const handleAddressSelect = (addressId) => {
+    const selected = deliveryAddresses.find(addr => addr.id === addressId);
+    if (selected) {
+      setSelectedAddressId(addressId);
+      const addressStr = [
+        selected.street,
+        selected.city,
+        selected.state,
+        selected.zipCode,
+      ].filter(Boolean).join(', ');
+      setCustomerDeliveryAddress(addressStr);
+    }
+  };
+
+  // Format address for dropdown display
+  const formatAddressForDropdown = (address) => {
+    if (!address) return '';
+    const parts = [
+      address.street,
+      address.city,
+      address.state,
+      address.zipCode,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : (address.label || 'Address');
+  };
+
+  // Prepare dropdown options for addresses
+  const addressOptions = deliveryAddresses.map(addr => ({
+    label: `${addr.label || 'Address'}: ${formatAddressForDropdown(addr)}`,
+    value: addr.id,
+  }));
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}>
-        {/* Header */}
-        <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.header}>
+      {/* Banner Section with Animation */}
+      <Animated.View
+        style={[
+          styles.bannerContainer,
+          {
+            opacity: bannerAnim,
+            transform: [
+              {
+                translateY: bannerAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-50, 0],
+                }),
+              },
+            ],
+          },
+        ]}>
+        {/* Background Image with Blur Effect */}
+        <View style={styles.bannerImageBackground}>
+          <Image
+            source={orderBannerImage}
+            style={styles.bannerBackgroundImage}
+            resizeMode="cover"
+            blurRadius={3}
+          />
+          {/* Dark Overlay */}
+          <View style={styles.bannerOverlay} />
+        </View>
+        
+        {/* Content Overlay */}
+        <View style={styles.bannerContentWrapper}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Icon name="arrow-back" size={24} color={Colors.cardBackground} />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
-        </LinearGradient>
-
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}>
           
+          <View style={styles.bannerContent}>
+            <Text style={styles.bannerTitle}>Create New Order</Text>
+            <Text style={styles.bannerSubtitle}>Fresh coconuts delivered to your door</Text>
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Bottom Sheet for Form */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={0}
+        snapPoints={snapPoints}
+        enablePanDownToClose={false}
+        enableOverDrag={false}
+        maxDynamicContentSize={height * 0.8}
+        onChange={handleSheetChange}
+        backgroundStyle={styles.bottomSheetBackground}
+        handleIndicatorStyle={styles.handleIndicator}
+        animateOnMount={true}>
+        <BottomSheetScrollView
+          contentContainerStyle={styles.bottomSheetContent}
+          showsVerticalScrollIndicator={false}> 
+
           {/* Product Type */}
           <View style={styles.formCard}>
             <Text style={styles.label}>Product Type</Text>
-            <Dropdown
-              placeholder="Select product type"
-              value={productType}
-              onSelect={setProductType}
-              options={productTypeOptions}
-              errorMessage={errors.productType}
-            />
+            <View style={[styles.inputContainer, styles.readOnlyInputContainer]}>
+              <TextInput
+                style={[styles.input, styles.readOnlyInput]}
+                value="Case (9 pieces or 9 units)"
+                editable={false}
+                placeholderTextColor={Colors.textSecondary}
+              />
+            </View>
           </View>
 
           {/* Quantity */}
@@ -680,6 +846,20 @@ const CreateOrderScreen = ({ navigation, route }) => {
             )}
           </View>
 
+              {/* Delivery Address Dropdown */}
+              {deliveryAddresses.length > 0 && (
+            <View style={styles.formCard}>
+              <Text style={styles.label}>Delivery Address</Text>
+              <Dropdown
+                placeholder="Select delivery address"
+                value={selectedAddressId}
+                onSelect={handleAddressSelect}
+                options={addressOptions}
+                errorMessage={errors.deliveryAddress}
+              />
+            </View>
+          )}
+
           {/* PO Number */}
           <View style={styles.formCard}>
             <Text style={styles.label}>PO Number (Optional)</Text>
@@ -711,16 +891,8 @@ const CreateOrderScreen = ({ navigation, route }) => {
             </View>
           </View>
 
-          {/* Estimated Delivery Date */}
-          {/* <View style={styles.deliveryDateCard}>
-            <Icon name="calendar-outline" size={24} color={Colors.success} />
-            <View style={styles.deliveryDateContent}>
-              <Text style={styles.deliveryDateLabel}>Estimated Delivery Date</Text>
-              <Text style={styles.deliveryDateValue}>{estimatedDeliveryDate}</Text>
-            </View>
-          </View> */}
-        </ScrollView>
-
+        </BottomSheetScrollView>
+        
         {/* Footer Buttons */}
         <View style={styles.footer}>
           <TouchableOpacity
@@ -739,7 +911,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
             </Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </BottomSheet>
     </SafeAreaView>
   );
 };
@@ -749,16 +921,70 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.backgroundGray,
   },
-  keyboardView: {
-    flex: 1,
+  bannerContainer: {
+    height: BANNER_HEIGHT,
+    width: '100%',
+    position: 'relative',
+    overflow: 'hidden',
   },
-  header: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+  bannerImageBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  bannerBackgroundImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  bannerContentWrapper: {
+    flex: 1,
+    paddingTop: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    position: 'relative',
+    zIndex: 2,
+  },
+  bannerContent: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  bannerTitle: {
+    fontSize: 32,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '700',
+    color: Colors.cardBackground,
+    marginBottom: 8,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  bannerSubtitle: {
+    fontSize: 16,
+    fontFamily: fontFamilyBody,
+    color: Colors.cardBackground,
+    textAlign: 'center',
+    opacity: 0.95,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    zIndex: 3,
   },
   backText: {
     color: Colors.cardBackground,
@@ -778,7 +1004,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
@@ -809,6 +1035,13 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     paddingVertical: 12,
+  },
+  readOnlyInputContainer: {
+    backgroundColor: Colors.backgroundGray,
+    opacity: 0.7,
+  },
+  readOnlyInput: {
+    color: Colors.textSecondary,
   },
   textAreaContainer: {
     minHeight: 100,
@@ -967,6 +1200,22 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     fontWeight: '600',
     color: Colors.primaryPink,
+  },
+  bottomSheetBackground: {
+    backgroundColor: Colors.cardBackground,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
+  handleIndicator: {
+    backgroundColor: Colors.textSecondary,
+    opacity: 0.3,
+    width: 40,
+    height: 4,
+  },
+  bottomSheetContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
 });
 

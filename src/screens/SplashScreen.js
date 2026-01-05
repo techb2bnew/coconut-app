@@ -181,7 +181,7 @@ const SplashScreen = ({ navigation }) => {
           ]}
         >
           <View style={styles.logoCircle}>
-            <Logo size={120} />
+            <Logo size={160} />
           </View>
         </Animated.View>
 
@@ -261,12 +261,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   logoCircle: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: Colors.darkPink,
+    width: 160,
+    height: 160,
+    borderRadius: 70,   
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

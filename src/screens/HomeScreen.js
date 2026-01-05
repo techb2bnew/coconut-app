@@ -116,9 +116,21 @@ const HomeScreen = ({ navigation }) => {
   
     try {
       const customer = JSON.parse(order.customer_details);
-      if (!customer?.delivery_address?.length) return null;
+      
+      // Check if delivery_address exists and is an array
+      if (!customer?.delivery_address) return null;
+      
+      // If delivery_address is not an array, return null
+      if (!Array.isArray(customer.delivery_address)) {
+        console.warn('delivery_address is not an array:', customer.delivery_address);
+        return null;
+      }
+      
+      // Check if array has items
+      if (customer.delivery_address.length === 0) return null;
   
-      return customer.delivery_address.find(addr => addr.isSelected);
+      // Find selected address
+      return customer.delivery_address.find(addr => addr && addr.isSelected);
     } catch (e) {
       console.error('Invalid customer_details JSON', e);
       return null;
@@ -155,10 +167,20 @@ const HomeScreen = ({ navigation }) => {
         const statusColor = getStatusColor(status);
         const selectedAddress = getSelectedDeliveryAddressFromOrder(order);
 
-      const delivery_address = selectedAddress
-        ? `${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state} - ${selectedAddress.zipCode}`
-        : order.delivery_address || 'No delivery address selected';
-          console.log('delivery_address', delivery_address);
+        // Safely construct delivery address string
+        let delivery_address = 'No delivery address selected';
+        if (selectedAddress && selectedAddress.street && selectedAddress.city) {
+          const street = selectedAddress.street || '';
+          const city = selectedAddress.city || '';
+          const state = selectedAddress.state || '';
+          const zipCode = selectedAddress.zipCode || selectedAddress.zip_code || '';
+          delivery_address = `${street}, ${city}, ${state}${zipCode ? ' - ' + zipCode : ''}`.trim();
+        } else if (order.delivery_address) {
+          // Fallback to order.delivery_address if it's a string
+          delivery_address = typeof order.delivery_address === 'string' 
+            ? order.delivery_address 
+            : 'No delivery address selected';
+        }
         return {
           id: order.id,
           orderName: order.order_name || `ORD-${order.id}`,
@@ -644,7 +666,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   bottomSpacing: {
-    height: 80, // Space for bottom navigation
+    height: 50, // Space for bottom navigation
   },
 });
 

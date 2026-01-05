@@ -21,7 +21,7 @@ import Colors from '../theme/colors';
 import { fontFamilyBody } from '../theme/fonts';
 import supabase from '../config/supabase';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyBXNyT9zcGdvhAUCUEYTm6e_qPw26AOPgI';
+const GOOGLE_MAPS_API_KEY = 'AIzaSyBtb6hSmwJ9_OznDC5e8BcZM90ms4WD_DE';
 
 const { width, height } = Dimensions.get('window');
 
@@ -310,7 +310,7 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containe
 
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(deliveryAddress)}&key=AIzaSyBXNyT9zcGdvhAUCUEYTm6e_qPw26AOPgI`
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(deliveryAddress)}&key=AIzaSyBtb6hSmwJ9_OznDC5e8BcZM90ms4WD_DE`
       );
       const data = await response.json();
       
@@ -341,7 +341,7 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containe
       setEta('Calculating...');
       
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${driverLat},${driverLng}&destinations=${deliveryLat},${deliveryLng}&key=AIzaSyBXNyT9zcGdvhAUCUEYTm6e_qPw26AOPgI&units=imperial`
+        `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${driverLat},${driverLng}&destinations=${deliveryLat},${deliveryLng}&key=AIzaSyBtb6hSmwJ9_OznDC5e8BcZM90ms4WD_DE&units=imperial`
       );
       const data = await response.json();
       
