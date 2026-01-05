@@ -835,7 +835,7 @@ const CreateAccountScreen = ({ navigation }) => {
                     }
                   }}
                   query={{
-                    key: 'AIzaSyBXNyT9zcGdvhAUCUEYTm6e_qPw26AOPgI', // TODO: Replace with your Google Places API key
+                    key: 'AIzaSyBtb6hSmwJ9_OznDC5e8BcZM90ms4WD_DE', // TODO: Replace with your Google Places API key
                     language: 'en',
                     components: 'country:us', // Adjust based on your country
                   }}
