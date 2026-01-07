@@ -35,7 +35,7 @@ import Dropdown from '../components/Dropdown';
 const { width, height } = Dimensions.get('window');
 
 // Banner image
-const orderBannerImage = require('../assest/order.png');
+const orderBannerImage = require('../assest/coconut1.png');
 const BANNER_HEIGHT = height * 0.6; // 60% of screen height
 
 const CreateOrderScreen = ({ navigation, route }) => {
@@ -723,7 +723,10 @@ const CreateOrderScreen = ({ navigation, route }) => {
           </TouchableOpacity>
           
           <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>Create New Order</Text>
+            <View style={styles.bannerTitleRow}>
+              <Text style={styles.bannerSparkleIcon}>✨</Text>
+              <Text style={styles.bannerTitle}>Create New Order</Text>
+            </View>
             <Text style={styles.bannerSubtitle}>Fresh coconuts delivered to your door</Text>
           </View>
         </View>
@@ -957,16 +960,19 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   bannerContent: {
-    marginTop: 20,
-    alignItems: 'center',
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 100,
+    alignItems: 'flex-start',
   },
   bannerTitle: {
     fontSize: 32,
     fontFamily: fontFamilyHeading,
-    fontWeight: '700',
+    fontWeight: '600',
     color: Colors.cardBackground,
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: 'left',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
@@ -975,11 +981,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
-    textAlign: 'center',
+    textAlign: 'left',
     opacity: 0.95,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  bannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bannerSparkleIcon: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    marginRight: 8,
   },
   backButton: {
     flexDirection: 'row',

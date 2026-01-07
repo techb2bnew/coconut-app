@@ -1,9 +1,11 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
+import { View, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import Colors from "../../theme/colors";
 import HomeStack from "../stacks/HomeStack";
 import NewStack from "../stacks/NewStack";
+import OrdersStack from "../stacks/OrdersStack";
 import NotificationsStack from "../stacks/NotificationsStack";
 import ProfileStack from "../stacks/ProfileStack";
 
@@ -16,12 +18,13 @@ const defaultTabBarStyle = {
   borderTopRightRadius: 20,
   paddingTop: 8,
   paddingBottom: 8,
-  height: 80,
+  height: 70,
   shadowColor: '#000',
   shadowOffset: { width: 0, height: -2 },
   shadowOpacity: 0.1,
   shadowRadius: 4,
   elevation: 8,
+  overflow: 'visible',
 };
 
 export default function BottomTabNavigator() {
@@ -29,13 +32,13 @@ export default function BottomTabNavigator() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primaryPink,
-        tabBarInactiveTintColor: Colors.textPrimary,
+        tabBarActiveTintColor: Colors.primaryBlue,
+        tabBarInactiveTintColor: '#9E9E9E',
         tabBarStyle: defaultTabBarStyle,
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600',
-          marginTop: 4,
+          marginTop: 2,
         },
       }}>
       <Tab.Screen
@@ -44,11 +47,25 @@ export default function BottomTabNavigator() {
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'Home';
           return {
-            tabBarLabel: 'Orders',
+            tabBarLabel: 'Home',
             tabBarIcon: ({ color, size }) => (
               <Icon name="home" size={size || 24} color={color} />
             ),
             tabBarStyle: (routeName === 'OrderDetail' || routeName === 'OrdersList') ? { display: 'none' } : defaultTabBarStyle,
+          };
+        }}
+      />
+      <Tab.Screen
+        name="OrdersStack"
+        component={OrdersStack}
+        options={({ route }) => {
+          const routeName = getFocusedRouteNameFromRoute(route) ?? 'OrdersList';
+          return {
+            tabBarLabel: 'Orders',
+            tabBarIcon: ({ color, size }) => (
+              <Icon name="list-outline" size={size || 24} color={color} />
+            ),
+            tabBarStyle: routeName === 'OrderDetail' ? { display: 'none' } : defaultTabBarStyle,
           };
         }}
       />
@@ -58,9 +75,20 @@ export default function BottomTabNavigator() {
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'CreateOrder';
           return {
-            tabBarLabel: 'New',
-            tabBarIcon: ({ color, size }) => (
-              <Icon name="add-circle" size={size || 24} color={color} />
+            tabBarLabel: '',
+            tabBarIcon: ({ focused }) => (
+              <View style={styles.centerButton}>
+                <View style={[styles.circularButton, { backgroundColor: Colors.primaryBlue }]}>
+                  <Icon name="add" size={28} color="#FFFFFF" />
+                </View>
+              </View>
+            ),
+            tabBarButton: (props) => (
+              <TouchableOpacity
+                {...props}
+                style={[props.style, styles.centerButtonContainer]}
+                activeOpacity={0.7}
+              />
             ),
             tabBarStyle: routeName === 'CreateOrder' ? { display: 'none' } : defaultTabBarStyle,
           };
@@ -71,6 +99,11 @@ export default function BottomTabNavigator() {
         component={NotificationsStack}
         options={{
           tabBarLabel: 'Notifications',
+          tabBarLabelStyle: {
+            fontSize: 10,
+            fontWeight: '600',
+            marginTop: 2,
+          },
           tabBarIcon: ({ color, size }) => (
             <Icon name="notifications-outline" size={size || 24} color={color} />
           ),
@@ -89,4 +122,25 @@ export default function BottomTabNavigator() {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  centerButtonContainer: {
+    top: -20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  circularButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: Colors.cardBackground,
+    justifyContent: 'center',
+    alignItems: 'center', 
+  },
+});
 

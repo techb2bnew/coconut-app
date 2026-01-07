@@ -21,7 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { Calendar } from 'react-native-calendars';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import supabase from '../config/supabase';
@@ -34,10 +34,9 @@ const OrdersListScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [customerId, setCustomerId] = useState(null);
   const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'today', 'week', 'month'
-  const [selectedDates, setSelectedDates] = useState([]); // Array of selected dates
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDates, setSelectedDates] = useState([]); // Array of selected dates in YYYY-MM-DD format
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
-  const [tempDate, setTempDate] = useState(new Date());
+  const [markedDates, setMarkedDates] = useState({}); // For calendar marked dates
   const bottomSheetRef = useRef(null);
   const snapPoints = useMemo(() => ['75%'], []);
   const [stats, setStats] = useState({
@@ -145,20 +144,23 @@ const OrdersListScreen = ({ navigation }) => {
 
   // Helper function to format date to YYYY-MM-DD
   const formatDateToString = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    if (!date) return '';
+    const d = date instanceof Date ? date : new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
-  // Helper function to check if two dates are the same day
-  const isSameDay = (date1, date2) => {
-    if (!date1 || !date2) return false;
-    const d1 = new Date(date1);
-    const d2 = new Date(date2);
-    return d1.getFullYear() === d2.getFullYear() &&
-           d1.getMonth() === d2.getMonth() &&
-           d1.getDate() === d2.getDate();
+  // Helper function to normalize date to YYYY-MM-DD format for comparison
+  const normalizeDateToString = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return null;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   // Apply filters based on search, time period, and selected dates
@@ -180,14 +182,13 @@ const OrdersListScreen = ({ navigation }) => {
       filtered = filtered.filter((order) => {
         const createdDate = order.createdAt || order.created_at || order.orderDateRaw;
         if (!createdDate) return false;
-        const orderCreatedDate = new Date(createdDate);
-        if (isNaN(orderCreatedDate.getTime())) return false;
         
-        // Check if order's created date matches any selected date
-        return dates.some((selectedDate) => {
-          const selectedDateObj = new Date(selectedDate);
-          return isSameDay(orderCreatedDate, selectedDateObj);
-        });
+        // Normalize order date to YYYY-MM-DD format
+        const orderDateNormalized = normalizeDateToString(createdDate);
+        if (!orderDateNormalized) return false;
+        
+        // Check if order's normalized date matches any selected date (already in YYYY-MM-DD format)
+        return dates.includes(orderDateNormalized);
       });
     } else {
       // Apply time period filter based on created_at date (only if no dates selected)
@@ -372,6 +373,11 @@ const OrdersListScreen = ({ navigation }) => {
     applyFilters(orders, searchQuery, timeFilter, selectedDates);
   }, [searchQuery, orders, timeFilter, selectedDates]);
 
+  // Update marked dates when selectedDates changes
+  useEffect(() => {
+    updateMarkedDates(selectedDates);
+  }, [selectedDates]);
+
   // Refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
@@ -435,28 +441,38 @@ const OrdersListScreen = ({ navigation }) => {
   const handleOpenDatePicker = () => {
     setShowDatePickerModal(true);
     bottomSheetRef.current?.expand();
+    // Update marked dates when opening
+    updateMarkedDates(selectedDates);
   };
 
-  // Handle date selection from picker
-  const handleDateSelect = (event, selectedDate) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    if (event.type === 'set' && selectedDate) {
-      setTempDate(selectedDate);
-    }
+  // Update marked dates for calendar display
+  const updateMarkedDates = (dates) => {
+    const marked = {};
+    dates.forEach((date) => {
+      marked[date] = {
+        selected: true,
+        selectedColor: Colors.primaryBlue,
+        selectedTextColor: Colors.cardBackground,
+      };
+    });
+    setMarkedDates(marked);
   };
 
-  // Add selected date to list
-  const handleAddDate = () => {
-    const dateStr = formatDateToString(tempDate);
-    if (!selectedDates.includes(dateStr)) {
-      setSelectedDates([...selectedDates, dateStr]);
+  // Handle date selection from calendar
+  const handleDayPress = (day) => {
+    const dateStr = day.dateString; // Already in YYYY-MM-DD format
+    let newSelectedDates;
+    
+    if (selectedDates.includes(dateStr)) {
+      // Remove date if already selected
+      newSelectedDates = selectedDates.filter((d) => d !== dateStr);
+    } else {
+      // Add date if not selected
+      newSelectedDates = [...selectedDates, dateStr];
     }
-    setTempDate(new Date());
-    if (Platform.OS === 'ios') {
-      setShowDatePicker(false);
-    }
+    
+    setSelectedDates(newSelectedDates);
+    updateMarkedDates(newSelectedDates);
   };
 
   // Remove date from selected dates
@@ -784,40 +800,36 @@ const OrdersListScreen = ({ navigation }) => {
                 </View>
 
                 <View style={styles.datePickerContainer}>
-                  <Text style={styles.datePickerLabel}>Choose Date:</Text>
-                  {Platform.OS === 'ios' ? (
-                    <DateTimePicker
-                      value={tempDate}
-                      mode="date"
-                      display="inline"
-                      onChange={handleDateSelect}
-                      style={styles.iosDatePicker}
-                    />
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => setShowDatePicker(true)}
-                      style={styles.androidDatePickerButton}>
-                      <Text style={styles.androidDatePickerText}>
-                        {formatDateDisplay(formatDateToString(tempDate))}
-                      </Text>
-                      <Icon name="calendar-outline" size={20} color={Colors.primaryBlue} />
-                    </TouchableOpacity>
-                  )}
-                  {showDatePicker && Platform.OS === 'android' && (
-                    <DateTimePicker
-                      value={tempDate}
-                      mode="date"
-                      display="default"
-                      onChange={handleDateSelect}
-                    />
-                  )}
-                  <TouchableOpacity
-                    onPress={handleAddDate}
-                    style={styles.addDateButton}
-                    activeOpacity={0.8}>
-                    <Icon name="add-circle-outline" size={20} color={Colors.cardBackground} />
-                    <Text style={styles.addDateButtonText}>Add Date</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.datePickerLabel}>Select Multiple Dates</Text>
+                  <Text style={styles.datePickerSubLabel}>
+                    Tap dates to select/deselect
+                  </Text>
+                  <Calendar
+                    onDayPress={handleDayPress}
+                    markedDates={markedDates}
+                    markingType="simple"
+                    theme={{
+                      backgroundColor: Colors.cardBackground,
+                      calendarBackground: Colors.cardBackground,
+                      textSectionTitleColor: Colors.textPrimary,
+                      selectedDayBackgroundColor: Colors.primaryBlue,
+                      selectedDayTextColor: Colors.cardBackground,
+                      todayTextColor: Colors.primaryBlue,
+                      dayTextColor: Colors.textPrimary,
+                      textDisabledColor: Colors.textSecondary,
+                      dotColor: Colors.primaryBlue,
+                      selectedDotColor: Colors.cardBackground,
+                      arrowColor: Colors.primaryBlue,
+                      monthTextColor: Colors.textPrimary,
+                      textDayFontFamily: fontFamilyBody,
+                      textMonthFontFamily: fontFamilyHeading,
+                      textDayHeaderFontFamily: fontFamilyBody,
+                      textDayFontSize: 14,
+                      textMonthFontSize: 16,
+                      textDayHeaderFontSize: 12,
+                    }}
+                    style={styles.calendar}
+                  />
                 </View>
 
                 {selectedDates.length > 0 && (
@@ -1314,47 +1326,24 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   datePickerLabel: {
-    fontSize: 14,
-    fontFamily: fontFamilyBody,
-    fontWeight: '600',
+    fontSize: 16,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  iosDatePicker: {
-    alignSelf: 'center',
-    marginVertical: 20,
+  datePickerSubLabel: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    marginBottom: 16,
   },
-  androidDatePickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.backgroundGray,
-    padding: 14,
+  calendar: {
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.borderLight,
     marginBottom: 16,
-  },
-  androidDatePickerText: {
-    fontSize: 16,
-    fontFamily: fontFamilyBody,
-    color: Colors.textPrimary,
-  },
-  addDateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primaryBlue,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-  },
-  addDateButtonText: {
-    fontSize: 16,
-    fontFamily: fontFamilyBody,
-    fontWeight: '600',
-    color: Colors.cardBackground,
-    marginLeft: 8,
+    paddingBottom: 10,
   },
   selectedDatesListContainer: {
     marginBottom: 24,

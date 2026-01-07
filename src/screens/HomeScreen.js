@@ -3,7 +3,7 @@
  * Dashboard with summary cards, recent orders, and activity
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,9 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
+  Animated,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -23,17 +26,41 @@ import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import Logo from '../components/Logo';
 import supabase from '../config/supabase';
 
+const { width } = Dimensions.get('window');
+
+// Coconut images
+const coconut1 = require('../assest/coconut1.png');
+const coconut2 = require('../assest/coconut2.png');
+const coconut3 = require('../assest/coconut3.png');
+
 const HomeScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [customerId, setCustomerId] = useState(null); 
+  const [customerId, setCustomerId] = useState(null);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'today', 'week', 'month'
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const slideInterval = useRef(null);
+  const carouselRef = useRef(null);
+  
   const [stats, setStats] = useState({
     activeOrders: 0,
     pending: 0,
     thisMonth: 0,
   });
   const [recentOrders, setRecentOrders] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
+
+  // Coconut images array
+  const coconutImages = [coconut1, coconut2, coconut3];
+  
+  // Animation values for filter tabs
+  const filterAnimations = useRef({
+    all: new Animated.Value(1),
+    today: new Animated.Value(1),
+    week: new Animated.Value(1),
+    month: new Animated.Value(1),
+  }).current;
 
   // Helper function to format date
   const formatDate = (dateString) => {
@@ -150,8 +177,7 @@ const HomeScreen = ({ navigation }) => {
         .from('orders')
         .select('*')
         .eq('customer_id', customerId)
-        .order('order_date', { ascending: false })
-        .limit(20); // Get recent 20 orders
+        .order('order_date', { ascending: false }); // Get all orders
         
       if (error) {
         console.error('Error fetching orders:', error);
@@ -205,8 +231,11 @@ const HomeScreen = ({ navigation }) => {
         };
       });
 
-      // Set recent orders (latest 3)
-      setRecentOrders(processedOrders.slice(0, 3));
+      // Set recent orders
+      setRecentOrders(processedOrders);
+      
+      // Apply initial filter
+      applyTimeFilter(processedOrders, timeFilter);
 
       // Calculate stats
       const currentDate = new Date();
@@ -243,53 +272,85 @@ const HomeScreen = ({ navigation }) => {
         pending: pendingCount,
         thisMonth: thisMonthCount,
       });
-
-      // Create recent activity from orders
-      const activity = processedOrders.slice(0, 3).map((order, index) => {
-        let icon = 'cube-outline';
-        let iconColor = Colors.primaryPink;
-        let title = 'Order Confirmed';
-
-        const statusLower = (order.status || '').toLowerCase();
-        if (statusLower.includes('completed')) {
-          icon = 'cube-outline';
-          iconColor = '#4CAF50'; // Green
-          title = 'Order Completed';
-        } else if (statusLower.includes('processing')) {
-          icon = 'time-outline';
-          iconColor = '#FFE082'; // Yellow
-          title = 'Order Processing';
-        } else if (statusLower.includes('delivered')) {
-          icon = 'cube-outline';
-          iconColor = '#4CAF50';
-          title = 'Order Delivered';
-        } else if (statusLower.includes('delivery')) {
-          icon = 'car-outline';
-          iconColor = Colors.primaryPink;
-          title = 'Out for Delivery';
-        } else if (statusLower.includes('pending')) {
-          icon = 'time-outline';
-          iconColor = '#FFCC80'; // Orange
-          title = 'Order Pending';
-        }
-
-        return {
-          id: order.id.toString(),
-          icon,
-          iconColor,
-          title,
-          details: `${order.orderName}${order.cases > 0 ? ` • ${order.cases} cases` : ''}`,
-          time: getTimeAgo(order.orderDate),
-        };
-      });
-
-      setRecentActivity(activity);
     } catch (error) {
       console.error('Error in fetchOrders:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  // Auto-slide carousel
+  useEffect(() => {
+    slideInterval.current = setInterval(() => {
+      const nextIndex = (currentSlideIndex + 1) % coconutImages.length;
+      setCurrentSlideIndex(nextIndex);
+      if (carouselRef.current) {
+        carouselRef.current.scrollToIndex({ index: nextIndex, animated: true });
+      }
+    }, 3000);
+
+    return () => {
+      if (slideInterval.current) {
+        clearInterval(slideInterval.current);
+      }
+    };
+  }, [currentSlideIndex]);
+
+  // Apply time filter
+  const applyTimeFilter = (ordersList, filter) => {
+    if (filter === 'all') {
+      setFilteredOrders(ordersList); // Show all orders
+      return;
+    }
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const filtered = ordersList.filter((order) => {
+      const orderDate = order.orderDateRaw || order.orderDate;
+      if (!orderDate) return false;
+      const orderCreatedDate = new Date(orderDate);
+      if (isNaN(orderCreatedDate.getTime())) return false;
+
+      if (filter === 'today') {
+        return orderCreatedDate >= todayStart && orderCreatedDate <= todayEnd;
+      } else if (filter === 'week') {
+        const weekAgo = new Date(now);
+        weekAgo.setDate(weekAgo.getDate() - 6);
+        weekAgo.setHours(0, 0, 0, 0);
+        return orderCreatedDate >= weekAgo && orderCreatedDate <= todayEnd;
+      } else if (filter === 'month') {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        return orderCreatedDate >= monthStart && orderCreatedDate <= todayEnd;
+      }
+      return true;
+    });
+
+    setFilteredOrders(filtered); // Show all filtered orders
+  };
+
+  // Handle time filter change with animation
+  const handleTimeFilterChange = (filter) => {
+    // Animate scale for all buttons
+    Object.keys(filterAnimations).forEach((key) => {
+      Animated.sequence([
+        Animated.timing(filterAnimations[key], {
+          toValue: 0.95,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(filterAnimations[key], {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+
+    setTimeFilter(filter);
+    applyTimeFilter(recentOrders, filter);
   };
 
   // Load data on component mount
@@ -308,6 +369,67 @@ const HomeScreen = ({ navigation }) => {
     loadData();
   }, []);
 
+  // Update filtered orders when recentOrders changes
+  useEffect(() => {
+    if (recentOrders.length > 0) {
+      applyTimeFilter(recentOrders, timeFilter);
+    }
+  }, [recentOrders]);
+
+  // Skeleton loader component
+  const OrderCardSkeleton = () => (
+    <View style={styles.orderCard}>
+      <View style={styles.orderCardContent}>
+        <View style={styles.orderLeft}>
+          <View style={[styles.skeletonBox, { width: 120, height: 16, marginBottom: 8 }]} />
+          <View style={[styles.skeletonBox, { width: 80, height: 14 }]} />
+        </View>
+        <View style={[styles.skeletonBox, { width: 90, height: 24, borderRadius: 12 }]} />
+      </View>
+      <View style={[styles.skeletonBox, { width: 150, height: 14, marginTop: 8 }]} />
+    </View>
+  );
+
+  // Render carousel item
+  const renderCarouselItem = ({ item, index }) => {
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
+
+    const opacity = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.3, 1, 0.3],
+    });
+
+    const scale = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.8, 1, 0.8],
+    });
+
+    return (
+      <Animated.View
+        style={[
+          styles.carouselItem,
+          {
+            opacity,
+            transform: [{ scale }],
+          },
+        ]}>
+        <Image source={item} style={styles.carouselImage} resizeMode="cover" />
+        <View style={styles.carouselOverlay} /> 
+        <View style={styles.carouselContent}>
+          <Text style={styles.carouselSubtitle}>Premium Quality</Text>
+          <Text style={styles.carouselTitle}>Fresh Coconuts Delivered</Text>
+          <Text style={styles.carouselDescription}>
+            Wholesale pricing for your business
+          </Text>
+        </View>
+      </Animated.View>
+    );
+  };
+
   // Refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
@@ -323,7 +445,7 @@ const HomeScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {loading && recentOrders.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primaryPink} />
+          <ActivityIndicator size="large" color={Colors.primaryBlue} />
         </View>
       ) : (
       <ScrollView
@@ -331,51 +453,81 @@ const HomeScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryPink} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryBlue} />
         }>
-        {/* Header Section */}
-        <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.header}>
-          <View style={styles.logoHeader}>
-            <Logo size={150} />
-          </View> 
-          <Text style={styles.welcomeText}>Welcome Back!</Text>
-          <Text style={styles.taglineText}>
-            Manage your orders and track deliveries
-          </Text>
-        </LinearGradient>
-
-        {/* Summary Cards - Overlapping pink background */}
-        <View style={styles.summaryContainer}>
-          {/* Active Orders Card */}
-          <View style={styles.summaryCard}>
-            <View style={[styles.iconContainer, { backgroundColor: Colors.primaryPink }]}>
-              <Icon name="cube-outline" size={24} color="#ffffff" />
+        {/* Header Section with Logo and Text */}
+        <View style={styles.topHeader}>
+          <View style={styles.headerLeft}>
+            <Logo style={styles.logo} size={100} variant="black" />
+            <View style={styles.headerTextContainer}> 
+              <Text style={styles.headerMainText}>Order Fresh and</Text>
+              <Text style={styles.headerMainText}>Stay Stocked</Text>
             </View>
-            <Text style={styles.summaryNumber}>{stats.activeOrders}</Text>
-            <Text style={styles.summaryLabel}>Active Orders</Text>
           </View>
+          <Text style={styles.headerTreeIcon}>🌴</Text>
+        </View>
 
-          {/* Pending Card */}
-          <View style={styles.summaryCard}>
-            <View style={[styles.iconContainer, { backgroundColor: '#fd5b00' }]}>
-              <Icon name="time-outline" size={24} color="#ffffff" />
-            </View>
-            <Text style={styles.summaryNumber}>{stats.pending}</Text>
-            <Text style={styles.summaryLabel}>Pending</Text>
+        {/* Image Carousel Banner */}
+        <View style={styles.carouselContainer}>
+          <FlatList
+            ref={carouselRef}
+            data={coconutImages}
+            renderItem={renderCarouselItem}
+            keyExtractor={(item, index) => index.toString()}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+              { useNativeDriver: false }
+            )}
+            scrollEventThrottle={16}
+            onMomentumScrollEnd={(event) => {
+              const itemWidth = width - 32;
+              const index = Math.round(event.nativeEvent.contentOffset.x / itemWidth);
+              setCurrentSlideIndex(index);
+            }}
+            getItemLayout={(data, index) => {
+              const itemWidth = width - 32;
+              return {
+                length: itemWidth,
+                offset: itemWidth * index,
+                index,
+              };
+            }}
+          />
+          {/* Carousel Indicators */}
+          <View style={styles.carouselIndicators}>
+            {coconutImages.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.indicator,
+                  currentSlideIndex === index && styles.indicatorActive,
+                ]}
+              />
+            ))}
           </View>
+        </View>
 
-          {/* This Month Card */}
-          <View style={styles.summaryCard}>
-            <View style={[styles.iconContainer, { backgroundColor: '#a230ff' }]}>
-              <Icon name="trending-up-outline" size={24} color="#ffffff" />
+        {/* Product Offering Card */}
+        <View style={styles.productCard}>
+          <View style={styles.productCardContent}>
+            <View style={styles.productCardLeft}>
+              <Text style={styles.productCardLabel}>FRESH & WHOLESALE</Text> 
+              <Text style={styles.productCardDescription}>
+                High-quality coconuts sourced fresh for your business needs
+              </Text>
             </View>
-            <Text style={styles.summaryNumber}>{stats.thisMonth}</Text>
-            <Text style={styles.summaryLabel}>This Month</Text>
+            <Text style={styles.productCardIcon}>🥥</Text>
           </View>
+          <TouchableOpacity
+            style={styles.orderNowButton}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('NewStack', { screen: 'CreateOrder' })}>
+            <Icon name="cart-outline" size={20} color={Colors.cardBackground} />
+            <Text style={styles.orderNowText}>Order Now</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Recent Orders Section */}
@@ -383,55 +535,98 @@ const HomeScreen = ({ navigation }) => {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Orders</Text>
             <TouchableOpacity onPress={() => navigation.navigate('OrdersList')}>
-              <Text style={styles.viewAllText}>View All</Text>
+              <View style={styles.viewAllContainer}>
+                <Text style={styles.viewAllText}>View All</Text>
+                <Icon name="chevron-forward" size={16} color={Colors.primaryBlue} />
+              </View>
             </TouchableOpacity>
           </View>
 
-          {recentOrders.map((order, index) => (
-            <TouchableOpacity
-              key={order.id}
-              style={styles.orderCard}
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('OrderDetail', { order })}>
-              <View style={styles.orderCardContent}>
-                <View style={styles.orderLeft}>
-                  <Text style={styles.orderId}>{order.orderName || `ORD-${order.id}`}</Text>
-                  {order.cases > 0 && (
-                    <Text style={styles.orderCases}>{order.cases} cases</Text>
-                  )}
-                </View>
-                <View style={styles.orderRight}>
-                  <View style={[styles.statusBadge, { backgroundColor: order.deliveryStatus ? getStatusColor(order.deliveryStatus) : order.statusColor }]}>
-                    <Text style={styles.statusText}>{order.deliveryStatus || order.status}</Text>
+          {/* Time Period Filters */}
+          <View style={styles.timeFilterContainer}>
+            {[
+              { key: 'all', label: 'All Time' },
+              { key: 'today', label: 'Today' },
+              { key: 'week', label: 'This Week' },
+              { key: 'month', label: 'This Month' },
+            ].map((filter) => (
+              <Animated.View
+                key={filter.key}
+                style={{ transform: [{ scale: filterAnimations[filter.key] }] }}>
+                <TouchableOpacity
+                  style={[
+                    styles.timeFilterButton,
+                    timeFilter === filter.key && styles.timeFilterButtonActive,
+                  ]}
+                  onPress={() => handleTimeFilterChange(filter.key)}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.timeFilterButtonText,
+                      timeFilter === filter.key && styles.timeFilterButtonTextActive,
+                    ]}>
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            ))}
+          </View>
+
+          {/* Orders List */}
+          {loading ? (
+            <View>
+              {[1, 2, 3].map((index) => (
+                <OrderCardSkeleton key={index} />
+              ))}
+            </View>
+          ) : filteredOrders.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No orders found</Text>
+            </View>
+          ) : (
+            filteredOrders.map((order, index) => (
+              <TouchableOpacity
+                key={order.id}
+                style={styles.orderCard}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('OrderDetail', { order })}>
+                <View style={styles.orderCardContent}>
+                  <View style={styles.orderLeft}>
+                    <Text style={styles.orderId}>{order.orderName || `ORD-${order.id}`}</Text>
+                    {order.cases > 0 && (
+                      <Text style={styles.orderCases}>{order.cases} cases</Text>
+                    )}
+                  </View>
+                  <View style={styles.orderRight}>
+                    <View style={[styles.statusBadge, { backgroundColor: order.deliveryStatus ? getStatusColor(order.deliveryStatus) : order.statusColor }]}>
+                      <Text style={styles.statusText}>{order.deliveryStatus || order.status}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-              <Text style={styles.deliveryDate}>Delivery: {order.deliveryDate}</Text>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.deliveryDateRow}>
+                  <Text style={styles.deliveryDate}>Delivery: {order.deliveryDate}</Text>
+                  <Icon name="chevron-forward" size={20} color={Colors.primaryBlue} />
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
-        {/* Recent Activity Section */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('OrdersList')}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
+        {/* Need Coconuts Fast Card */}
+        <View style={styles.needCoconutsCard}>
+          <View style={styles.needCoconutsIconContainer}>
+            <Icon name="sparkles" size={32} color={Colors.cardBackground} />
           </View>
-
-          {recentActivity.map((activity) => (
-            <View key={activity.id} style={styles.activityItem}>
-              <View style={[styles.activityIcon, { backgroundColor: activity.iconColor + '20' }]}>
-                <Icon name={activity.icon} size={20} color={activity.iconColor} />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>{activity.title}</Text>
-                <Text style={styles.activityDetails}>{activity.details}</Text>
-                <Text style={styles.activityTime}>{activity.time}</Text>
-              </View>
-            </View>
-          ))}
+          <Text style={styles.needCoconutsTitle}>Need Coconuts Fast?</Text>
+          <Text style={styles.needCoconutsSubtitle}>
+            Quick ordering with next-day delivery available
+          </Text>
+          <TouchableOpacity
+            style={styles.startNewOrderButton}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('NewStack', { screen: 'CreateOrder' })}>
+            <Text style={styles.startNewOrderText}>Start New Order</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Bottom spacing for navigation */}
@@ -460,35 +655,191 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.backgroundGray,
   },
-  header: {
-    paddingTop: 20,
-    paddingBottom: 60, // Extra padding for overlapping cards
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  logoHeader: {
+  logo: {
+    alignSelf: 'flex-start', 
     marginBottom: 8,
+  },
+  // Top Header Styles
+  topHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16, 
+  },
+  
+  headerTextContainer: {
+    flex: 1, 
+    justifyContent: 'flex-start',
   },
   brandText: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.primaryBlue,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  headerMainText: {
+    fontSize: 28,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    lineHeight: 30,
+  },
+  headerTreeIcon: {
+    fontSize: 32,
+    marginTop: 8,
+  },
+  // Carousel Styles
+  carouselContainer: {
+    height: 200,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    position: 'relative',
+  },
+  carouselItem: {
+    width: width - 32,
+    height: 200,
+    position: 'relative',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  carouselImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  carouselOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 16,
+  },
+  promotionLabel: {
+    position: 'absolute',
+    top: 16,
+    left: 20,
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontWeight: '400',
+  },
+  carouselContent: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+  },
+  carouselSubtitle: {
+    fontSize: 13,
+    fontFamily: fontFamilyBody,
+    color: Colors.cardBackground,
+    opacity: 0.95,
+    marginBottom: 6,
+    fontWeight: '400',
+  },
+  carouselTitle: {
+    fontSize: 26,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '600',
+    color: Colors.cardBackground,
+    marginBottom: 8,
+    lineHeight: 32,
+  },
+  carouselDescription: {
     fontSize: 14,
     fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
-    fontWeight: '500',
-    marginBottom: 8,
+    opacity: 0.95,
+    fontWeight: '400',
   },
-  welcomeText: {
+  carouselIndicators: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 4,
+  },
+  indicatorActive: {
+    width: 24,
+    backgroundColor: Colors.cardBackground,
+  },
+  // Product Card Styles
+  productCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  productCardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  productCardLeft: {
+    flex: 1,
+  },
+  productCardLabel: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.primaryBlue,
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  productCardTitle: {
     fontSize: 20,
     fontFamily: fontFamilyHeading,
-    color: Colors.cardBackground,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: Colors.textPrimary,
     marginBottom: 8,
   },
-  taglineText: {
-    fontSize: 14,
+  productCardDescription: {
+    fontSize: 13,
     fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+  },
+  productCardIcon: {
+    fontSize: 40,
+    marginLeft: 12,
+    opacity: 0.6,
+  },
+  orderNowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primaryBlue,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  orderNowText: {
+    fontSize: 16,
+    fontFamily: fontFamilyBody,
+    fontWeight: '600',
     color: Colors.cardBackground,
-    textAlign: 'center',
-    opacity: 0.9,
   },
   summaryContainer: {
     flexDirection: 'row',
@@ -549,11 +900,60 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.textPrimary,
   },
+  viewAllContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   viewAllText: {
     fontSize: 14,
     fontFamily: fontFamilyBody,
-    color: Colors.primaryPink,
+    color: Colors.primaryBlue,
     fontWeight: '500',
+  },
+  // Time Filter Styles
+  timeFilterContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  timeFilterButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.cardBackground,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    alignItems: 'center',
+  },
+  timeFilterButtonActive: {
+    backgroundColor: Colors.primaryBlue,
+    borderColor: Colors.primaryBlue,
+  },
+  timeFilterButtonText: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  timeFilterButtonTextActive: {
+    color: Colors.cardBackground,
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+  },
+  skeletonBox: {
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+    opacity: 0.5,
   },
   orderCard: {
     backgroundColor: Colors.cardBackground,
@@ -608,6 +1008,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
+  deliveryDateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
   deliveryDate: {
     fontSize: 13,
     fontFamily: fontFamilyBody,
@@ -624,46 +1030,59 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.cardBackground,
   },
-  activityItem: {
-    flexDirection: 'row',
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 16,
+  // Need Coconuts Fast Card Styles
+  needCoconutsCard: {
+    backgroundColor: Colors.primaryBlue,
+    borderRadius: 16,
+    padding: 24,
+    marginHorizontal: 16,
+    marginTop: 24,
+    marginBottom: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  needCoconutsIconContainer: {
     marginBottom: 12,
+  },
+  needCoconutsTitle: {
+    fontSize: 22,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '700',
+    color: Colors.cardBackground,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  needCoconutsSubtitle: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.cardBackground,
+    opacity: 0.95,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  startNewOrderButton: {
+    backgroundColor: Colors.cardBackground,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    minWidth: 200,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityTitle: {
-    fontSize: 15,
+  startNewOrderText: {
+    fontSize: 16,
     fontFamily: fontFamilyBody,
     fontWeight: '600',
-    color: Colors.textPrimary,
-    marginBottom: 4,
-  },
-  activityDetails: {
-    fontSize: 13,
-    fontFamily: fontFamilyBody,
-    color: Colors.textSecondary,
-    marginBottom: 4,
-  },
-  activityTime: {
-    fontSize: 12,
-    fontFamily: fontFamilyBody,
-    color: Colors.textSecondary,
+    color: Colors.primaryBlue,
   },
   bottomSpacing: {
     height: 50, // Space for bottom navigation

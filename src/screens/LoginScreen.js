@@ -197,7 +197,7 @@ const LoginScreen = ({ navigation }) => {
             </View>
 
             {/* Create Account Section */}
-            <View style={styles.createAccountSection}>
+            {/* <View style={styles.createAccountSection}>
               <Text style={[TextStyles.secondaryText, styles.subtitleText, styles.createAccountPrompt]}>
                 Don't have an account?
               </Text>
@@ -207,7 +207,7 @@ const LoginScreen = ({ navigation }) => {
                 variant="outline"
                 style={styles.createAccountButton}
               />
-            </View>
+            </View> */}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
