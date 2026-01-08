@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
-    "ios": "react-native run-ios",
+    "ios": "./scripts/run-ios.sh",
+    "ios:pod-install": "cd ios && export LANG=en_US.UTF-8 && export RCT_NEW_ARCH_ENABLED=1 && export SSL_CERT_FILE= && export CURL_CA_BUNDLE= && /opt/homebrew/bin/pod install && cp Podfile.lock Pods/Manifest.lock 2>/dev/null || true && cd ..",
+    "ios:direct": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest"

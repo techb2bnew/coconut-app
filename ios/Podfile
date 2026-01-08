@@ -5,30 +5,74 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
+# Enable New Architecture
+ENV['RCT_NEW_ARCH_ENABLED'] = '1'
+
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
-linkage = ENV['USE_FRAMEWORKS']
-if linkage != nil
-  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
-  use_frameworks! :linkage => linkage.to_sym
-end
+# React Native Firebase requires static frameworks on iOS
+# According to: https://rnfirebase.io/ and working driver app reference
+use_frameworks! :linkage => :static
+
+# Enable static frameworks for React Native Firebase
+# This is required for firebase-ios-sdk v9+ (react-native-firebase v15+)
+$RNFirebaseAsStaticFramework = true
 
 target 'demo' do
   config = use_native_modules!
+  
+  # Fallback if use_native_modules! returns nil or doesn't have reactNativePath
+  react_native_path = (config && config[:reactNativePath]) ? config[:reactNativePath] : "../node_modules/react-native"
 
   use_react_native!(
-    :path => config[:reactNativePath],
+    :path => react_native_path,
     # An absolute path to your application root.
-    :app_path => "#{Pod::Config.instance.installation_root}/.."
+    :app_path => "#{Pod::Config.instance.installation_root}/..",
+    # Enable New Architecture
+    :new_arch_enabled => true
   )
 
   post_install do |installer|
     react_native_post_install(
       installer,
-      config[:reactNativePath],
+      react_native_path,
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    
+    # ============================================================
+    # CRITICAL FIX: Firebase C++ std module issues (1271 errors)
+    # Based on working driver app reference - simplified approach
+    # ============================================================
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        # Firebase targets - disable C++ modules completely
+        if target.name.include?('Firebase') || target.name.include?('GoogleUtilities') || target.name.include?('GoogleDataTransport') || target.name.include?('nanopb') || target.name.include?('PromisesObjC')
+          # Force disable C++ modules - this fixes 1271 errors
+          config.build_settings['OTHER_CFLAGS'] ||= ['$(inherited)']
+          config.build_settings['OTHER_CPLUSPLUSFLAGS'] ||= ['$(inherited)']
+          
+          # Remove C++ module flags
+          ['OTHER_CFLAGS', 'OTHER_CPLUSPLUSFLAGS'].each do |flag_key|
+            flags = config.build_settings[flag_key]
+            if flags.is_a?(Array)
+              flags.reject! { |f| f.to_s.include?('fcxx-modules') || f.to_s.include?('fmodules') }
+              flags << '-fno-cxx-modules' unless flags.any? { |f| f.to_s.include?('fno-cxx-modules') }
+              config.build_settings[flag_key] = flags
+            end
+          end
+          
+          # Allow non-modular includes
+          config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        end
+        
+        # glog module fix
+        if target.name == 'glog'
+          config.build_settings['CLANG_ENABLE_MODULES'] = 'NO'
+          config.build_settings['DEFINES_MODULE'] = 'NO'
+        end
+      end
+    end
   end
 end

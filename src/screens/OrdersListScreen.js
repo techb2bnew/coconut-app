@@ -540,7 +540,7 @@ const OrdersListScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -876,7 +876,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.backgroundGray,
   },
   header: {
-    paddingTop: 10,
+    paddingTop: Platform.OS === 'ios' ? 10 : 20,
     paddingBottom: 70,
     paddingHorizontal: 20,
   },
