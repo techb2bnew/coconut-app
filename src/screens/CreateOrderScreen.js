@@ -686,7 +686,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
   }));
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Banner Section with Animation */}
       <Animated.View
         style={[
@@ -1021,10 +1021,10 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: Platform.OS === 'ios' ? 2 : 1 },
+    shadowOpacity: Platform.OS === 'ios' ? 0.1 : 0.08,
+    shadowRadius: Platform.OS === 'ios' ? 4 : 3,
+    elevation: Platform.OS === 'android' ? 2 : 0,
   },
   specialEventCard: {
     backgroundColor: Colors.lightPink,

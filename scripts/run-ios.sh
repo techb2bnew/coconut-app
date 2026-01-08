@@ -73,11 +73,25 @@ echo "🚀 Building and running iOS app on simulator: $SIMULATOR"
 # Start Metro bundler in background if not already running
 if ! lsof -Pi :8081 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
   echo "📡 Starting Metro bundler in background..."
+  # Kill any existing Metro processes
+  pkill -f "react-native.*start" 2>/dev/null || true
+  pkill -f "metro" 2>/dev/null || true
+  sleep 2
+  
+  # Start Metro with proper environment
+  cd "$(dirname "$0")/.."
   npm start --reset-cache > /tmp/metro.log 2>&1 &
   METRO_PID=$!
-  sleep 8
-  echo "✅ Metro bundler started (PID: $METRO_PID)"
-  echo "📝 Metro logs: tail -f /tmp/metro.log"
+  sleep 10
+  
+  # Verify Metro is actually running
+  if lsof -Pi :8081 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
+    echo "✅ Metro bundler started successfully (PID: $METRO_PID)"
+    echo "📝 Metro logs: tail -f /tmp/metro.log"
+  else
+    echo "⚠️  Metro bundler may not have started. Check logs: tail -f /tmp/metro.log"
+    echo "💡 Try manually: npm start"
+  fi
 else
   echo "✅ Metro bundler already running"
   METRO_PID=""

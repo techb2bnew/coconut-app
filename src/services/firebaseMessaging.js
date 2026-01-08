@@ -122,7 +122,12 @@ export const getFCMToken = async () => {
     
     return token;
   } catch (error) {
-    console.error('❌ Error getting FCM token:', error); 
+    console.error('❌ Error getting FCM token:', error);
+    // On iOS simulator, FCM token may not be available - this is expected
+    if (Platform.OS === 'ios' && error.message?.includes('aps-environment')) {
+      console.warn('⚠️  Push notifications not configured. FCM token requires proper entitlements.');
+      console.warn('💡 To enable: Add Push Notifications capability in Xcode and configure entitlements.');
+    }
     return null;
   }
 };

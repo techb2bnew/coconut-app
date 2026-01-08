@@ -307,7 +307,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingVertical: 16, 
+    paddingTop: Platform.OS === 'ios' ? 16 : 20,
+    paddingBottom: 16, 
   },
   headerRow: {
     flexDirection: 'row',
@@ -391,9 +392,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    marginHorizontal: Platform.OS === 'ios' ? 0 : 0,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,  
+    shadowOffset: { width: 0, height: Platform.OS === 'ios' ? 2 : 1 },
+    shadowOpacity: Platform.OS === 'ios' ? 0.1 : 0.08,
+    shadowRadius: Platform.OS === 'ios' ? 4 : 2,
+    elevation: Platform.OS === 'android' ? 2 : 0,
     position: 'relative',
   },
   notificationCardUnread: {
