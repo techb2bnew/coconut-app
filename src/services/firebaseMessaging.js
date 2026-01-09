@@ -22,11 +22,10 @@ export const requestNotificationPermission = async () => {
       
       // Check current permission status first
       let permissionAvailable = false;
-      let currentStatus = null;
       try {
         if (PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS) {
           permissionAvailable = true;
-          currentStatus = await PermissionsAndroid.check(
+          await PermissionsAndroid.check(
             PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
           ); 
         } else {
@@ -83,17 +82,130 @@ export const requestNotificationPermission = async () => {
         return false;
       }
     } else {
-      // iOS - Use FCM permission request
-      const authStatus = await messaging().requestPermission();
-      const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      // iOS - Use native iOS permission request (same as Android)
+      try {
+        // Request permission FIRST - this will show native iOS permission dialog
+        // The dialog will automatically appear if permission is NOT_DETERMINED
+        // If already authorized/denied, it won't show again (iOS behavior)
+        console.log('🔔 Requesting iOS notification permission (native dialog will appear if not already determined)...');
+        
+        let authStatus;
+        try {
+          authStatus = await messaging().requestPermission({
+            alert: true,
+            badge: true,
+            sound: true,
+            provisional: false,
+          });
+        } catch (permissionError) {
+          console.error('❌ requestPermission() threw an error:', permissionError);
+          console.error('Error message:', permissionError.message);
+          console.error('Error code:', permissionError.code);
+          console.error('Error name:', permissionError.name);
+          
+          // Check if it's a specific error we can handle
+          if (permissionError.message?.includes('already registered') || 
+              permissionError.message?.includes('already requested')) {
+            console.log('📱 Permission already requested, checking current status...');
+            // Try to get current authorization status
+            try {
+              // Check if we can get token (indicates permission granted)
+              const token = await messaging().getToken();
+              if (token) {
+                console.log('✅ Permission already granted (token available)');
+                return true;
+              }
+            } catch (tokenError) {
+              console.log('⚠️ Could not get token:', tokenError.message);
+            }
+          }
+          
+          // Re-throw to be caught by outer catch
+          throw permissionError;
+        }
+        
+        console.log('📱 iOS permission request result:', authStatus);
+        console.log('📱 AuthorizationStatus values:', {
+          NOT_DETERMINED: messaging.AuthorizationStatus.NOT_DETERMINED,
+          DENIED: messaging.AuthorizationStatus.DENIED,
+          AUTHORIZED: messaging.AuthorizationStatus.AUTHORIZED,
+          PROVISIONAL: messaging.AuthorizationStatus.PROVISIONAL,
+          'Current Status': authStatus,
+        });
+        
+        // Check if permission is enabled
+        const enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+        
+        // AFTER permission is granted, register device for remote messages
+        // This is required for iOS to receive APNS token
+        if (enabled) {
+          // Only register if permission is granted
+          try {
+            await messaging().registerDeviceForRemoteMessages();
+            console.log('✅ iOS device registered for remote messages');
+          } catch (registerError) {
+            // This might fail if already registered - not critical
+            console.log('⚠️ registerDeviceForRemoteMessages warning:', registerError.message);
+            console.log('📱 This is usually not critical - device might already be registered');
+          }
+        }
 
-      if (enabled) {
-        console.log('✅ iOS notification permission granted');
-        return true;
-      } else {
-        console.log('❌ iOS notification permission denied'); 
+        if (enabled) {
+          console.log('✅ iOS notification permission granted, status:', authStatus);
+          return true;
+        } else {
+          console.log('❌ iOS notification permission denied, status:', authStatus);
+          
+          // If permission was denied, show alert to guide user to Settings
+          if (authStatus === messaging.AuthorizationStatus.DENIED) {
+            Alert.alert(
+              'Notification Permission Required',
+              'This app needs notification permission to send you important updates and alerts. Please enable it in Settings.',
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+                {
+                  text: 'Open Settings',
+                  onPress: () => {
+                    // Open iOS Settings app to app's settings page
+                    const { Linking } = require('react-native');
+                    Linking.openURL('app-settings:');
+                  },
+                },
+              ]
+            );
+          }
+          
+          return false;
+        }
+      } catch (error) {
+        console.error('❌ Error requesting iOS notification permission:', error);
+        console.error('Error type:', typeof error);
+        console.error('Error details:', error.message);
+        console.error('Error code:', error.code);
+        console.error('Error name:', error.name);
+        console.error('Error stack:', error.stack);
+        console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        
+        // More specific error messages
+        let errorMessage = 'Failed to request notification permission.';
+        if (error.message?.includes('simulator')) {
+          errorMessage = 'Push notifications are not supported on iOS Simulator. Please test on a real device.';
+        } else if (error.message?.includes('entitlements') || error.message?.includes('aps-environment')) {
+          errorMessage = 'Push notifications are not configured. Please enable Push Notifications capability in Xcode.';
+        } else if (error.message) {
+          errorMessage = `Failed to request notification permission: ${error.message}`;
+        }
+        
+        Alert.alert(
+          'Permission Error',
+          errorMessage,
+          [{ text: 'OK' }]
+        );
         return false;
       }
     }
@@ -108,25 +220,42 @@ export const requestNotificationPermission = async () => {
  */
 export const getFCMToken = async () => {
   try {
-    // For iOS, register device first
-    if (Platform.OS === 'ios') {
-      await messaging().registerDeviceForRemoteMessages();
-    }
-
+    // Note: registerDeviceForRemoteMessages is now called in requestNotificationPermission
+    // So we don't need to call it again here
+    
+    console.log('🔍 Getting FCM token...');
     const token = await messaging().getToken(); 
     
     if (!token) {
       console.error('❌ FCM token is null or undefined');
-      console.error('Check Firebase configuration and google-services.json file');
+      console.error('Check Firebase configuration and GoogleService-Info.plist file');
+      if (Platform.OS === 'ios') {
+        console.error('For iOS: Make sure APNS token is set and entitlements are configured');
+      }
+    } else {
+      console.log('✅ FCM token retrieved successfully');
+      console.log('📱 Full FCM Token:', token);
+      console.log('📱 FCM Token length:', token.length);
     }
     
     return token;
   } catch (error) {
     console.error('❌ Error getting FCM token:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
     // On iOS simulator, FCM token may not be available - this is expected
-    if (Platform.OS === 'ios' && error.message?.includes('aps-environment')) {
-      console.warn('⚠️  Push notifications not configured. FCM token requires proper entitlements.');
-      console.warn('💡 To enable: Add Push Notifications capability in Xcode and configure entitlements.');
+    if (Platform.OS === 'ios') {
+      if (error.message?.includes('aps-environment')) {
+        console.warn('⚠️  Push notifications not configured. FCM token requires proper entitlements.');
+        console.warn('💡 To enable: Add Push Notifications capability in Xcode and configure entitlements.');
+      } else {
+        console.warn('⚠️  iOS FCM token error. Make sure:');
+        console.warn('   1. App is running on a real device (not simulator)');
+        console.warn('   2. Push Notifications capability is enabled in Xcode');
+        console.warn('   3. APNS token is received (check AppDelegate logs)');
+        console.warn('   4. Firebase is properly configured');
+        console.warn('   5. Network connection is stable');
+      }
     }
     return null;
   }
@@ -218,37 +347,127 @@ export const initializeFCM = async () => {
  * Shows toast when app is in foreground
  */
 export const setupForegroundMessageHandler = () => {
-  return messaging().onMessage(async (remoteMessage) => { 
+  console.log('🔧 Setting up foreground message handler...');
+  console.log('🔍 Platform:', Platform.OS);
+  
+  try {
+    // Verify handler is being set up
+    const messagingInstance = messaging();
+    console.log('🔍 Messaging instance:', messagingInstance ? 'exists' : 'null');
     
-    const notification = remoteMessage.notification;
-    if (notification) {
-      // Show toast for foreground notifications
-      Toast.show({
-        type: 'info',
-        text1: notification.title || 'New Notification',
-        text2: notification.body || 'You have a new notification',
-        visibilityTime: 4000,
-        topOffset: 60,
-        onPress: () => {
-          console.log('Toast notification pressed');
-          Toast.hide();
-        },
-      });
-    }
-
-    // Also handle data payload if present
-    const data = remoteMessage.data;
-    if (data) {
-      console.log('📨 Message data:', data);
+    // IMPORTANT: Check if handler is already set up
+    // React Native Firebase might have issues with multiple handlers
+    const unsubscribe = messagingInstance.onMessage(async (remoteMessage) => { 
+      console.log('📨 ========== FOREGROUND NOTIFICATION RECEIVED ==========');
+      console.log('📨 Platform:', Platform.OS);
+      console.log('📨 Full remoteMessage:', JSON.stringify(remoteMessage, null, 2));
+      console.log('📨 Message ID:', remoteMessage?.messageId);
+      console.log('📨 From:', remoteMessage?.from);
+      console.log('📨 Sent Time:', remoteMessage?.sentTime);
+      console.log('📨 RemoteMessage type:', typeof remoteMessage);
+      console.log('📨 RemoteMessage keys:', Object.keys(remoteMessage || {}));
       
-      // If it's an admin notification, trigger refresh event
-      if (data.type === 'admin_notification') {
-        console.log('🔄 Admin notification received, triggering refresh event...');
-        // Emit event to refresh notifications
-        DeviceEventEmitter.emit(NOTIFICATION_RECEIVED_EVENT, data);
+      // Handle both notification and data-only messages
+      const notification = remoteMessage.notification;
+      const data = remoteMessage.data;
+      
+      if (notification) {
+        console.log('📨 Notification object exists');
+        console.log('📨 Notification payload:', {
+          title: notification.title,
+          body: notification.body,
+          android: notification.android,
+          ios: notification.ios,
+          data: remoteMessage.data
+        });
+        
+        try {
+          // Show toast for foreground notifications
+          Toast.show({
+            type: 'info',
+            text1: notification.title || 'New Notification',
+            text2: notification.body || 'You have a new notification',
+            visibilityTime: 4000,
+            topOffset: 60,
+            onPress: () => {
+              console.log('Toast notification pressed');
+              Toast.hide();
+            },
+          });
+          
+          console.log('✅ Toast notification shown successfully');
+        } catch (toastError) {
+          console.error('❌ Error showing toast:', toastError);
+          console.error('Toast error details:', toastError.message);
+        }
+      } else if (data) {
+        // Handle data-only messages (no notification object)
+        console.log('📨 Data-only message received (no notification object)');
+        console.log('📨 Message data payload:', data);
+        
+        // Show toast for data-only messages too
+        try {
+          Toast.show({
+            type: 'info',
+            text1: data.title || 'New Notification',
+            text2: data.body || data.message || 'You have a new notification',
+            visibilityTime: 4000,
+            topOffset: 60,
+            onPress: () => {
+              console.log('Toast notification pressed');
+              Toast.hide();
+            },
+          });
+          
+          console.log('✅ Toast notification shown for data-only message');
+        } catch (toastError) {
+          console.error('❌ Error showing toast:', toastError);
+          console.error('Toast error details:', toastError.message);
+        }
+      } else {
+        console.warn('⚠️ Notification object is null or undefined');
+        console.warn('⚠️ RemoteMessage structure:', Object.keys(remoteMessage));
+        console.warn('⚠️ Full remoteMessage:', remoteMessage);
+        
+        // Even if no notification/data, try to show something
+        try {
+          Toast.show({
+            type: 'info',
+            text1: 'New Notification',
+            text2: 'You have a new notification',
+            visibilityTime: 4000,
+            topOffset: 60,
+          });
+        } catch (e) {
+          console.error('❌ Error showing fallback toast:', e);
+        }
       }
-    }
-  });
+
+      // Handle data payload
+      if (data) {
+        console.log('📨 Message data payload:', data);
+        
+        // If it's an admin notification, trigger refresh event
+        if (data.type === 'admin_notification' || data.notification_type) {
+          console.log('🔄 Admin notification received, triggering refresh event...');
+          // Emit event to refresh notifications
+          DeviceEventEmitter.emit(NOTIFICATION_RECEIVED_EVENT, data);
+        }
+      }
+      
+      console.log('📨 ========== END FOREGROUND NOTIFICATION ==========');
+    });
+    
+    console.log('✅ Foreground message handler subscribed');
+    console.log('🔍 Handler will trigger when notification received in foreground');
+    return unsubscribe;
+  } catch (error) {
+    console.error('❌ Error setting up foreground message handler:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    // Return a no-op function to prevent crashes
+    return () => {};
+  }
 };
 
 /**
@@ -256,11 +475,25 @@ export const setupForegroundMessageHandler = () => {
  * This handler must be registered outside of React component
  */
 export const setupBackgroundMessageHandler = () => {
-  messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-    console.log('📨 Background message received:', remoteMessage);
-    // Background messages are automatically displayed by FCM
-    // No need to show toast here
-  });
+  console.log('🔧 Setting up background message handler...');
+  try {
+    messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+      console.log('📨 ========== BACKGROUND MESSAGE RECEIVED ==========');
+      console.log('📨 Platform:', Platform.OS);
+      console.log('📨 Full remoteMessage:', JSON.stringify(remoteMessage, null, 2));
+      console.log('📨 Message ID:', remoteMessage?.messageId);
+      console.log('📨 From:', remoteMessage?.from);
+      console.log('📨 Notification:', remoteMessage?.notification);
+      console.log('📨 Data:', remoteMessage?.data);
+      console.log('📨 ========== END BACKGROUND MESSAGE ==========');
+      // Background messages are automatically displayed by FCM
+      // No need to show toast here
+    });
+    console.log('✅ Background message handler registered');
+  } catch (error) {
+    console.error('❌ Error setting up background message handler:', error);
+    console.error('Error details:', error.message);
+  }
 };
 
 /**

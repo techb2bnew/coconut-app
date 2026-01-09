@@ -458,7 +458,7 @@ const HomeScreen = ({ navigation }) => {
         {/* Header Section with Logo and Text */}
         <View style={styles.topHeader}>
           <View style={styles.headerLeft}>
-            <Logo style={styles.logo} size={100} variant="black" />
+            <Logo style={styles.logo} size={70} variant="black" />
             <View style={styles.headerTextContainer}> 
               <Text style={styles.headerMainText}>Order Fresh and</Text>
               <Text style={styles.headerMainText}>Stay Stocked</Text>
