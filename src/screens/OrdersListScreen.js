@@ -540,7 +540,7 @@ const OrdersListScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top', 'bottom']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -552,31 +552,27 @@ const OrdersListScreen = ({ navigation }) => {
           />
         }>
         {/* Header */}
-        <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.header}>
+        <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Icon name="arrow-back" size={24} color={Colors.cardBackground} />
             <Text style={styles.backText}>Dashboard</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Orders</Text>
           <Text style={styles.headerSubtitle}>Manage your coconut deliveries</Text>
-            {/* Search Bar */}
-    <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Icon name="search" size={20} color={Colors.textSecondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search by order or PO number..."
-              placeholderTextColor={Colors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <View style={styles.searchBar}>
+              <Icon name="search" size={20} color={Colors.textSecondary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by order or PO number..."
+                placeholderTextColor={Colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
           </View>
         </View>
-        </LinearGradient>
   
         {/* Summary Cards */}
         <View style={styles.summaryContainer}>
@@ -697,11 +693,8 @@ const OrdersListScreen = ({ navigation }) => {
           </View>
         ) : (
           filteredOrders.map((order) => (
-            <LinearGradient
+            <View
               key={order.id}
-              colors={['#eff6ff', '#ffffff']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
               style={styles.orderCard}>
               {/* Header with Order ID and Status */}
               <View style={styles.orderCardHeader}>
@@ -762,7 +755,7 @@ const OrdersListScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 )}
               </View>
-            </LinearGradient>
+            </View>
           ))
         )}
 
@@ -876,8 +869,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.backgroundGray,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 10 : 20,
-    paddingBottom: 70,
+    width: '100%',
+    backgroundColor: Colors.primaryBlue,
+    paddingTop: Platform.OS === 'ios' ? 55 : 10,
+    paddingBottom: Platform.OS === 'ios' ? 70 : 70,
     paddingHorizontal: 20,
   },
   backButton: {
@@ -896,22 +891,24 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontFamily: fontFamilyHeading,
     fontWeight: '600',
-    color: Colors.cardBackground, 
+    color: Colors.cardBackground,
+    marginTop: Platform.OS === 'ios' ? 4 : 0,
   },
   headerSubtitle: {
     fontSize: 14,
     fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
     opacity: 0.9,
+    marginTop: Platform.OS === 'ios' ? 6 : 4,
+    marginBottom: 0,
   },
   summaryContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginTop: -60,
+    marginTop: Platform.OS === 'ios' ? -60 : -60,
     paddingBottom: 16,
     zIndex: 10,
-    position: 'relative',
   },
   summaryCard: {
     flex: 1,
@@ -947,15 +944,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   searchContainer: { 
-    paddingTop: 10, 
+    width: '100%',
+    paddingTop: Platform.OS === 'ios' ? 14 : 10,
+    marginTop: Platform.OS === 'ios' ? 6 : 0,
   },
   searchBar: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+    minHeight: Platform.OS === 'ios' ? 44 : 40,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: Platform.OS === 'ios' ? 2 : 1 },
     shadowOpacity: Platform.OS === 'ios' ? 0.1 : 0.08,
@@ -1005,7 +1006,7 @@ const styles = StyleSheet.create({
   },
   timeFilterLabel: {
     fontSize: 14,
-    fontFamily: fontFamilyHeading,
+    fontFamily: fontFamilyBody,
     fontWeight: '700',
     color: Colors.textPrimary,
     marginBottom: 12,
@@ -1055,6 +1056,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   orderCard: {
+    backgroundColor: Colors.cardBackground,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -1076,7 +1078,7 @@ const styles = StyleSheet.create({
   },
   orderId: {
     fontSize: 14,
-    fontFamily: fontFamilyHeading,
+    fontFamily: fontFamilyBody,
     fontWeight: '700',
     color: '#000000', 
   },

@@ -963,7 +963,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
-    bottom: 100,
+    bottom: 170,
     alignItems: 'flex-start',
   },
   bannerTitle: {

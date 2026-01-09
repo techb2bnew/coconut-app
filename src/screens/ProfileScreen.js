@@ -768,11 +768,7 @@ const ProfileScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
-        <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.profileHeader}>
+        <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               {getCompanyLogo() ? (
@@ -795,7 +791,7 @@ const ProfileScreen = ({ navigation }) => {
               {customerData?.company_name || 'Beach Resort & Spa'}
             </Text>
           </View>
-        </LinearGradient>
+        </View>
 
         {/* Summary Cards */}
         <View style={styles.summaryContainer}>
@@ -1224,6 +1220,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   profileHeader: {
+    backgroundColor: Colors.primaryBlue,
     paddingTop: Platform.OS === 'ios' ? 40 : 50,
     paddingBottom: 60,
     paddingHorizontal: 20,

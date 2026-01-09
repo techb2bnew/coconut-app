@@ -27,18 +27,14 @@ const PrivacyPolicyScreen = ({ navigation }) => {
         {/* Main Card Container */}
         <View style={styles.cardContainer}>
           {/* Header */}
-          <LinearGradient
-            colors={[Colors.gradientStart, Colors.gradientEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.header}>
+          <View style={styles.header}>
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => navigation.goBack()}>
               <Icon name="arrow-back" size={20} color={Colors.cardBackground} />
               <Text style={styles.backText}>Back</Text>
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
 
           {/* Content */}
           <View style={styles.content}>
@@ -177,6 +173,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   header: {
+    backgroundColor: Colors.primaryBlue,
     paddingVertical: 16,
     paddingHorizontal: 20,
     flexDirection: 'row',

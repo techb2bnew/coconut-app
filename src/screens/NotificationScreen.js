@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, DeviceEventEmitter } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, DeviceEventEmitter, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -217,11 +217,7 @@ const NotificationScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
-      <LinearGradient
-        colors={[Colors.gradientStart, Colors.gradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={styles.header}>
+      <View style={styles.header}>
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Notifications</Text>
                 {/* Mark All as Read Button */}
@@ -240,7 +236,7 @@ const NotificationScreen = ({ navigation }) => {
          
         </View>
     
-      </LinearGradient>
+      </View>
 
     
 
@@ -306,6 +302,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.backgroundGray,
   },
   header: {
+    backgroundColor: Colors.primaryBlue,
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'ios' ? 16 : 20,
     paddingBottom: 16, 

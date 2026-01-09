@@ -306,11 +306,7 @@ const AllAboutCoconutsScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         {/* Header Section */}
-        <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.header}>
+        <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}>
@@ -321,7 +317,7 @@ const AllAboutCoconutsScreen = ({ navigation }) => {
           <View style={styles.logoContainer}>
             <Logo size={80} showTagline={false} />
           </View>
-        </LinearGradient>
+        </View>
 
         {/* Content Section */}
         <View style={styles.contentContainer}>
@@ -478,6 +474,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   header: {
+    backgroundColor: Colors.primaryBlue,
     paddingTop: 20,
     paddingBottom: 40,
     paddingHorizontal: 20,
