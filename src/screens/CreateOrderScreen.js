@@ -54,6 +54,11 @@ const CreateOrderScreen = ({ navigation, route }) => {
   const [customerDeliveryAddress, setCustomerDeliveryAddress] = useState('');
   const [deliveryAddresses, setDeliveryAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [franchiseId, setFranchiseId] = useState(null);
+  const [deliveryZone, setDeliveryZone] = useState(null);
+  const [zoneCity, setZoneCity] = useState(null);
+  const [calculatedDeliveryDate, setCalculatedDeliveryDate] = useState(null);
+  const [deliveryDayText, setDeliveryDayText] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   
@@ -184,18 +189,18 @@ const CreateOrderScreen = ({ navigation, route }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !user.email) {
-        return { customerId: null, deliveryAddresses: [], selectedAddress: null };
+        return { customerId: null, deliveryAddresses: [], selectedAddress: null, franchiseId: null, deliveryZone: null, zoneCity: null };
       }
 
       const { data: customer, error } = await supabase
         .from('customers')
-        .select('id, delivery_address')
+        .select('id, delivery_address, franchise_id, delivery_zone, zoneCity')
         .eq('email', user.email)
         .single();
 
       if (error) {
         console.error('Error fetching customer:', error);
-        return { customerId: null, deliveryAddresses: [], selectedAddress: null };
+        return { customerId: null, deliveryAddresses: [], selectedAddress: null, franchiseId: null, deliveryZone: null, zoneCity: null };
       }
 
       // Parse all addresses
@@ -208,33 +213,474 @@ const CreateOrderScreen = ({ navigation, route }) => {
         customerId: customer?.id || null,
         deliveryAddresses: addresses,
         selectedAddress: selected,
+        franchiseId: customer?.franchise_id || null,
+        deliveryZone: customer?.delivery_zone || null,
+        zoneCity: customer?.zoneCity || null,
       };
     } catch (error) {
       console.error('Error in fetchCustomerData:', error);
-      return { customerId: null, deliveryAddresses: [], selectedAddress: null };
+      return { customerId: null, deliveryAddresses: [], selectedAddress: null, franchiseId: null, deliveryZone: null, zoneCity: null };
     }
   };
 
-  // Calculate estimated delivery date (7 days from now)
-  useEffect(() => {
-    const calculateDeliveryDate = () => {
-      const today = new Date();
-      const deliveryDate = new Date(today);
-      deliveryDate.setDate(deliveryDate.getDate() + 7);
-      
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      
-      const dayName = days[deliveryDate.getDay()];
-      const monthName = months[deliveryDate.getMonth()];
-      const day = deliveryDate.getDate();
-      const year = deliveryDate.getFullYear();
-      
-      setEstimatedDeliveryDate(`${dayName}, ${monthName} ${day}, ${year}`);
-    };
+  // Fetch delivery rules and calculate delivery date
+  // Returns: { deliveryDate: Date, deliveryDayText: string } or null
+  const fetchDeliveryRulesAndCalculate = async (franchiseId, orderQuantity, orderTime, customerZone, zoneCityName) => {
+    console.log('🔄 Starting delivery date calculation:', {
+      franchiseId,
+      orderQuantity,
+      orderTime,
+      customerZone,
+      zoneCityName
+    });
 
-    calculateDeliveryDate();
-    
+    if (!franchiseId) {
+      console.log('❌ No franchise ID, using fallback - delivery_day_date will be blank');
+      const defaultDate = new Date();
+      defaultDate.setHours(0, 0, 0, 0);
+      setCalculatedDeliveryDate(defaultDate);
+      setDeliveryDayText(''); // Empty for fallback case
+      return { deliveryDate: defaultDate, deliveryDayText: null, isFallback: true };
+    }
+
+    // Parse order quantity
+    const orderQty = parseInt(orderQuantity) || 0;
+    console.log('📦 Parsed order quantity:', orderQty, 'from input:', orderQuantity);
+
+    try {
+      // PRIORITY 1: Fetch quantity-based rules first (exactly like warehouse code)
+      const { data: quantityRules, error: qError } = await supabase
+        .from('quantity_delivery_rules')
+        .select('*')
+        .eq('franchise_id', franchiseId)
+        .eq('status', 'Active')
+        .order('min_quantity', { ascending: true });
+
+      console.log('📦 Quantity rules query result:', {
+        rules: quantityRules,
+        error: qError,
+        orderQty: orderQty
+      });
+
+      let quantityRuleMatched = false;
+
+      if (!qError && quantityRules && quantityRules.length > 0) {
+        console.log('📦 All quantity rules fetched:', quantityRules.map(r => ({
+          id: r.id,
+          min: r.min_quantity,
+          max: r.max_quantity,
+          offset: r.delivery_offset,
+          offsetType: typeof r.delivery_offset
+        })));
+        console.log('📦 Order quantity to match:', orderQty);
+        
+        // Find ALL matching quantity rules first, then select the best match
+        // Handle null max_quantity properly - if null, don't use Infinity, skip that rule
+        const matchingRules = quantityRules.filter(rule => {
+          const min = parseInt(rule.min_quantity);
+          const max = rule.max_quantity !== null && rule.max_quantity !== undefined 
+            ? parseInt(rule.max_quantity) 
+            : null;
+          
+          // If max is null or invalid, skip this rule
+          if (max === null || isNaN(min) || isNaN(max)) {
+            console.log(`⚠️ Skipping invalid rule: min=${rule.min_quantity} (${typeof rule.min_quantity}), max=${rule.max_quantity} (${typeof rule.max_quantity})`);
+            return false;
+          }
+          
+          // Check if order quantity falls within range
+          const matches = orderQty >= min && orderQty <= max;
+          const range = max - min;
+          console.log(`🔍 Checking quantity rule: min=${min}, max=${max}, range=${range}, orderQty=${orderQty}, matches=${matches}, delivery_offset=${rule.delivery_offset} (${typeof rule.delivery_offset})`);
+          return matches;
+        });
+        
+        console.log(`📊 Total matching rules found: ${matchingRules.length}`, matchingRules.map(r => ({
+          min: r.min_quantity,
+          max: r.max_quantity,
+          offset: r.delivery_offset
+        })));
+        
+        // If multiple rules match, select the one with the smallest range (most specific)
+        // This handles overlapping ranges correctly
+        let matchingRule = null;
+        if (matchingRules.length > 0) {
+          if (matchingRules.length === 1) {
+            matchingRule = matchingRules[0];
+          } else {
+            // Multiple matches - find the one with smallest range (most specific)
+            matchingRule = matchingRules.reduce((best, current) => {
+              const bestRange = parseInt(best.max_quantity) - parseInt(best.min_quantity);
+              const currentRange = parseInt(current.max_quantity) - parseInt(current.min_quantity);
+              return currentRange < bestRange ? current : best;
+            });
+            console.log(`📊 Multiple rules matched (${matchingRules.length}), selected most specific:`, {
+              min: matchingRule.min_quantity,
+              max: matchingRule.max_quantity,
+              offset: matchingRule.delivery_offset
+            });
+          }
+        }
+
+        if (matchingRule) {
+          console.log('✅ Matching quantity rule found:', {
+            id: matchingRule.id,
+            min: matchingRule.min_quantity,
+            max: matchingRule.max_quantity,
+            offset: matchingRule.delivery_offset,
+            orderQty: orderQty
+          });
+          
+          // delivery_offset can be number (0, 1, 2) or text ("Same Day", "1 day", "2 day")
+          let deliveryOffset = 0;
+          const offsetValue = matchingRule.delivery_offset;
+          
+          console.log('📅 Raw delivery_offset value:', offsetValue, 'Type:', typeof offsetValue);
+          
+          if (offsetValue === null || offsetValue === undefined) {
+            deliveryOffset = 0;
+          } else if (typeof offsetValue === 'string') {
+            // Handle text format: "Same Day", "1 day", "2 day", "2 days", etc.
+            const offsetLower = String(offsetValue).toLowerCase().trim();
+            if (offsetLower.includes('same') || offsetLower === '0' || offsetLower === 'same day') {
+              deliveryOffset = 0;
+            } else if (offsetLower.includes('1 day') || offsetLower === '1' || offsetLower.startsWith('1')) {
+              deliveryOffset = 1;
+            } else if (offsetLower.includes('2 day') || offsetLower === '2' || offsetLower.startsWith('2')) {
+              deliveryOffset = 2;
+            } else {
+              // Try to extract number from string
+              const numMatch = String(offsetValue).match(/\d+/);
+              if (numMatch) {
+                deliveryOffset = parseInt(numMatch[0]);
+              } else {
+                console.warn('⚠️ Could not parse delivery_offset from string:', offsetValue);
+                deliveryOffset = 0;
+              }
+            }
+          } else {
+            // Handle numeric format
+            deliveryOffset = parseInt(offsetValue) || 0;
+          }
+          
+          // Validate delivery_offset
+          if (isNaN(deliveryOffset)) {
+            console.warn('⚠️ Invalid delivery_offset after parsing, defaulting to Same Day. Original value:', offsetValue);
+            const deliveryDate = new Date();
+            deliveryDate.setHours(0, 0, 0, 0);
+            setCalculatedDeliveryDate(deliveryDate);
+            setDeliveryDayText('Same Day');
+            return deliveryDate;
+          }
+          
+          console.log('📅 Parsed delivery_offset:', deliveryOffset, 'from original:', offsetValue);
+          
+          const deliveryDate = new Date();
+          
+          if (deliveryOffset === 0) {
+            deliveryDate.setHours(0, 0, 0, 0);
+            setDeliveryDayText('Same Day');
+          } else if (deliveryOffset === 1) {
+            deliveryDate.setDate(deliveryDate.getDate() + 1);
+            deliveryDate.setHours(0, 0, 0, 0);
+            setDeliveryDayText('1 day');
+          } else if (deliveryOffset === 2) {
+            deliveryDate.setDate(deliveryDate.getDate() + 2);
+            deliveryDate.setHours(0, 0, 0, 0);
+            setDeliveryDayText('2 days');
+          } else {
+            // Fallback for any other value
+            deliveryDate.setDate(deliveryDate.getDate() + deliveryOffset);
+            deliveryDate.setHours(0, 0, 0, 0);
+            setDeliveryDayText(`${deliveryOffset} ${deliveryOffset === 1 ? 'day' : 'days'}`);
+          }
+          
+          const dayText = deliveryOffset === 0 ? 'Same Day' : deliveryOffset === 1 ? '1 day' : '2 days';
+          console.log('✅ Calculated delivery date from quantity rule:', {
+            date: deliveryDate,
+            text: dayText,
+            offset: deliveryOffset
+          });
+          setCalculatedDeliveryDate(deliveryDate);
+          setDeliveryDayText(dayText);
+          console.log('🛑 Quantity rule matched - RETURNING EARLY, zone rules will NOT be checked');
+          return { deliveryDate, deliveryDayText: dayText };
+        } else {
+          console.log('❌ No matching quantity rule found for order quantity:', orderQty, 'Available rules:', quantityRules.map(r => `${r.min_quantity}-${r.max_quantity}`));
+        }
+      } else {
+        console.log('❌ No quantity rules found or error:', qError);
+      }
+
+      // PRIORITY 2: If no quantity rule matched, check zone-based rules (exactly like warehouse code)
+      // IMPORTANT: Only check zone rules if NO quantity rule matched
+      // This prevents zone rules from overriding quantity rules
+      // Note: If quantity rule matched above, function already returned, so we won't reach here
+      console.log('🔄 No quantity rule matched, proceeding to check zone-based rules');
+      
+      if (customerZone || zoneCityName) {
+        console.log('🌍 Checking zone-based rules:', { customerZone, zoneCityName });
+        
+        let zoneRules = null;
+        let zError = null;
+
+        // First try with zone_id (UUID) - convert to string for comparison
+        if (customerZone) {
+          const customerZoneStr = String(customerZone);
+          const result = await supabase
+            .from('zone_delivery_rules')
+            .select('*')
+            .eq('franchise_id', franchiseId)
+            .eq('status', 'Active');
+          
+          // Try to match by zone_id
+          const { data: allZoneRules } = await result;
+          if (allZoneRules && allZoneRules.length > 0) {
+            zoneRules = allZoneRules.find(rule => String(rule.zone_id) === customerZoneStr);
+            if (!zoneRules) {
+              zError = { message: 'Zone rule not found' };
+            }
+          } else {
+            zError = { message: 'No zone rules found' };
+          }
+        }
+
+        // If not found with zone_id, try with zone name
+        if ((zError || !zoneRules) && zoneCityName) {
+          console.log('🔍 Trying to find zone by name:', zoneCityName);
+          // Fetch zone by name from delivery_zones table
+          const { data: zoneData } = await supabase
+            .from('delivery_zones')
+            .select('id, name')
+            .ilike('name', `%${zoneCityName}%`)
+            .limit(1)
+            .maybeSingle();
+
+          if (zoneData?.id) {
+            const zoneIdStr = String(zoneData.id);
+            const result = await supabase
+              .from('zone_delivery_rules')
+              .select('*')
+              .eq('franchise_id', franchiseId)
+              .eq('status', 'Active');
+            
+            const { data: allZoneRules } = await result;
+            if (allZoneRules && allZoneRules.length > 0) {
+              zoneRules = allZoneRules.find(rule => String(rule.zone_id) === zoneIdStr);
+            }
+          }
+        }
+
+        if (zoneRules && zoneRules.cutoff_time) {
+          console.log('✅ Zone rule found:', zoneRules);
+          
+          // Use next_day_offset (before cutoff) and after_cutoff_offset (after cutoff) - exactly like warehouse code
+          const cutoffTime = zoneRules.cutoff_time; // Format: "HH:MM:SS" or "HH:MM"
+          // Parse offsets - handle 0 as valid value (don't use || fallback for 0)
+          // Use Number() instead of parseInt() to handle both integers and ensure 0 is preserved
+          const nextDayOffsetParsed = zoneRules.next_day_offset != null ? Number(zoneRules.next_day_offset) : null;
+          const afterCutoffOffsetParsed = zoneRules.after_cutoff_offset != null ? Number(zoneRules.after_cutoff_offset) : null;
+          const nextDayOffset = (nextDayOffsetParsed != null && !isNaN(nextDayOffsetParsed)) ? nextDayOffsetParsed : 1; // Before cutoff offset
+          const afterCutoffOffset = (afterCutoffOffsetParsed != null && !isNaN(afterCutoffOffsetParsed)) ? afterCutoffOffsetParsed : 2; // After cutoff offset
+          
+          console.log('📊 Zone rule offsets parsed:', {
+            raw_next_day_offset: zoneRules.next_day_offset,
+            raw_after_cutoff_offset: zoneRules.after_cutoff_offset,
+            parsed_next_day_offset: nextDayOffset,
+            parsed_after_cutoff_offset: afterCutoffOffset
+          });
+
+          // Parse cutoff time (format: "HH:MM:SS" or "HH:MM")
+          const [cutoffHours, cutoffMinutes] = cutoffTime.split(':').map(Number);
+          
+          // Get order time in local timezone (convert from UTC if needed)
+          let orderTimeLocal;
+          const orderDateStr = orderTime ? orderTime.toISOString() : new Date().toISOString();
+          
+          // If order_date is in ISO format without timezone, treat as UTC
+          if (orderDateStr.includes('T') && !orderDateStr.includes('Z') && !orderDateStr.includes('+') && !orderDateStr.match(/-\d{2}:\d{2}$/)) {
+            orderTimeLocal = new Date(orderDateStr + 'Z');
+          } else {
+            orderTimeLocal = new Date(orderDateStr);
+          }
+          
+          // Get local time hours and minutes
+          const orderHours = orderTimeLocal.getHours();
+          const orderMinutes = orderTimeLocal.getMinutes();
+          
+          // Compare order time with cutoff time (using LOCAL time)
+          const orderTimeMinutes = orderHours * 60 + orderMinutes;
+          const cutoffTimeMinutes = cutoffHours * 60 + cutoffMinutes;
+          
+          // Zone-based rule logic (exactly like warehouse code):
+          // - If order time is BEFORE cutoff time → use next_day_offset
+          // - If order time is AFTER or EQUAL to cutoff time → use after_cutoff_offset
+          const isAfterCutoff = orderTimeMinutes >= cutoffTimeMinutes;
+          const deliveryOffset = isAfterCutoff ? afterCutoffOffset : nextDayOffset;
+          
+          console.log('🌍 Zone rule calculation:', {
+            orderTime: `${orderHours}:${orderMinutes}`,
+            cutoffTime: `${cutoffHours}:${cutoffMinutes}`,
+            isAfterCutoff,
+            nextDayOffset,
+            afterCutoffOffset,
+            deliveryOffset
+          });
+
+          const deliveryDate = new Date();
+          
+          if (deliveryOffset === 0) {
+            deliveryDate.setHours(0, 0, 0, 0);
+            setDeliveryDayText('Same Day');
+          } else if (deliveryOffset === 1) {
+            deliveryDate.setDate(deliveryDate.getDate() + 1);
+            deliveryDate.setHours(0, 0, 0, 0);
+            setDeliveryDayText('1 day');
+          } else if (deliveryOffset === 2) {
+            deliveryDate.setDate(deliveryDate.getDate() + 2);
+            deliveryDate.setHours(0, 0, 0, 0);
+            setDeliveryDayText('2 days');
+          } else {
+            deliveryDate.setDate(deliveryDate.getDate() + deliveryOffset);
+            deliveryDate.setHours(0, 0, 0, 0);
+            setDeliveryDayText(`${deliveryOffset} ${deliveryOffset === 1 ? 'day' : 'days'}`);
+          }
+
+          const dayText = deliveryOffset === 0 ? 'Same Day' : deliveryOffset === 1 ? '1 day' : '2 days';
+          console.log('✅ Calculated delivery date from zone rule:', deliveryDate, 'Text:', dayText);
+          setCalculatedDeliveryDate(deliveryDate);
+          setDeliveryDayText(dayText);
+          return { deliveryDate, deliveryDayText: dayText };
+        } else {
+          console.log('❌ No zone rule found or no cutoff_time');
+        }
+      }
+
+      // Default fallback (only if no rules matched)
+      console.log('⚠️ No matching rules found, using fallback - delivery_day_date will be blank');
+      const defaultDate = new Date();
+      defaultDate.setHours(0, 0, 0, 0);
+      setCalculatedDeliveryDate(defaultDate);
+      setDeliveryDayText(''); // Empty for fallback case
+      return { deliveryDate: defaultDate, deliveryDayText: null, isFallback: true };
+    } catch (error) {
+      console.error('Error calculating delivery date:', error);
+      // Default fallback
+      const defaultDate = new Date();
+      defaultDate.setHours(0, 0, 0, 0);
+      setCalculatedDeliveryDate(defaultDate);
+      setDeliveryDayText(''); // Empty for fallback case
+      return { deliveryDate: defaultDate, deliveryDayText: null, isFallback: true };
+    }
+  };
+
+  // Use ref to track the latest calculation call to prevent race conditions
+  const calculationRef = useRef(0);
+  // Use ref to store debounce timeout
+  const debounceTimeoutRef = useRef(null);
+
+  // Calculate estimated delivery date based on rules with debouncing
+  useEffect(() => {
+    // Clear previous timeout if user is still typing
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    // Don't calculate if quantity is empty - clear immediately
+    if (!quantity || quantity.trim() === '') {
+      setEstimatedDeliveryDate('');
+      setDeliveryDayText('');
+      return;
+    }
+
+    // Debounce: Wait 500ms after user stops typing before calculating
+    debounceTimeoutRef.current = setTimeout(async () => {
+      const calculateDeliveryDate = async () => {
+        // Increment call counter to track latest call
+        const callId = ++calculationRef.current;
+        console.log(`🔄 [Call ${callId}] Starting calculation for quantity:`, quantity);
+        
+        // If no franchise, show default Same Day
+        if (!franchiseId) {
+          const today = new Date();
+          const deliveryDate = new Date(today);
+          deliveryDate.setHours(0, 0, 0, 0);
+          
+          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          
+          const dayName = days[deliveryDate.getDay()];
+          const monthName = months[deliveryDate.getMonth()];
+          const day = deliveryDate.getDate();
+          const year = deliveryDate.getFullYear();
+          
+          setEstimatedDeliveryDate(`${dayName}, ${monthName} ${day}, ${year}`);
+          setDeliveryDayText('Same Day');
+          return;
+        }
+
+        // Calculate based on rules - trim and parse quantity
+        const quantityValue = quantity ? quantity.trim() : '';
+        console.log(`🔄 [Call ${callId}] Calculating delivery date with:`, { 
+          franchiseId, 
+          quantity: quantityValue, 
+          parsedQuantity: parseInt(quantityValue) || 0,
+          deliveryZone, 
+          zoneCity 
+        });
+        
+        const result = await fetchDeliveryRulesAndCalculate(
+          franchiseId,
+          quantityValue,
+          new Date(),
+          deliveryZone,
+          zoneCity
+        );
+
+        // Check if this is still the latest call (prevent race condition)
+        if (callId !== calculationRef.current) {
+          console.log(`⏭️ [Call ${callId}] Skipping state update - newer call (${calculationRef.current}) is in progress`);
+          return;
+        }
+
+        if (result && result.deliveryDate) {
+          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          
+          const dayName = days[result.deliveryDate.getDay()];
+          const monthName = months[result.deliveryDate.getMonth()];
+          const day = result.deliveryDate.getDate();
+          const year = result.deliveryDate.getFullYear();
+          
+          setEstimatedDeliveryDate(`${dayName}, ${monthName} ${day}, ${year}`);
+          // Set deliveryDayText from the returned result (not from state)
+          // If isFallback is true, deliveryDayText will be null and message will show
+          setDeliveryDayText(result.deliveryDayText || '');
+          console.log(`✅ [Call ${callId}] Delivery date set:`, {
+            date: `${dayName}, ${monthName} ${day}, ${year}`,
+            deliveryDayText: result.deliveryDayText,
+            isFallback: result.isFallback
+          });
+        } else {
+          console.log(`⚠️ [Call ${callId}] No delivery date returned from fetchDeliveryRulesAndCalculate`);
+        }
+      };
+
+      calculateDeliveryDate();
+    }, 500); // 500ms debounce delay
+
+    // Cleanup: Clear timeout on unmount or when dependencies change
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+    // Recalculate when quantity, franchiseId, or zone data changes
+    // But quantity rules take priority - if they match, zone rules won't override
+  }, [franchiseId, quantity, deliveryZone, zoneCity]);
+
+  // Fetch customer data on mount
+  useEffect(() => {
     // Auto-select first product type option
     if (productTypeOptions.length > 0 && !productType) {
       setProductType(productTypeOptions[0].value);
@@ -242,9 +688,12 @@ const CreateOrderScreen = ({ navigation, route }) => {
     
     // Fetch customer ID and delivery addresses
     const loadCustomerData = async () => {
-      const { customerId: id, deliveryAddresses: addresses, selectedAddress } = await fetchCustomerData();
+      const { customerId: id, deliveryAddresses: addresses, selectedAddress, franchiseId: fid, deliveryZone: zone, zoneCity: zCity } = await fetchCustomerData();
       setCustomerId(id);
       setDeliveryAddresses(addresses);
+      setFranchiseId(fid);
+      setDeliveryZone(zone);
+      setZoneCity(zCity);
       if (selectedAddress) {
         setSelectedAddressId(selectedAddress.id);
         const addressStr = [
@@ -554,10 +1003,33 @@ const CreateOrderScreen = ({ navigation, route }) => {
         }
       }
 
-      // Step 2: Calculate delivery date (7 days from now)
-      const deliveryDate = new Date();
-      deliveryDate.setDate(deliveryDate.getDate() + 7);
-      deliveryDate.setHours(0, 0, 0, 0);
+      // Step 2: Calculate delivery date based on franchise rules
+      const orderTime = new Date();
+      const calculationResult = await fetchDeliveryRulesAndCalculate(
+        franchiseId,
+        quantity,
+        orderTime,
+        deliveryZone,
+        zoneCity
+      );
+
+      // Extract deliveryDate and deliveryDayText from result object (now returns { deliveryDate, deliveryDayText, isFallback })
+      let deliveryDate = calculationResult?.deliveryDate;
+      let deliveryDayText = calculationResult?.deliveryDayText || null;
+      const isFallback = calculationResult?.isFallback || false;
+      
+      // Ensure deliveryDate is a valid Date object
+      if (!deliveryDate || !(deliveryDate instanceof Date) || isNaN(deliveryDate.getTime())) {
+        console.warn('Invalid deliveryDate from calculation, using fallback');
+        deliveryDate = new Date();
+        deliveryDate.setHours(0, 0, 0, 0);
+        deliveryDayText = null; // Blank for fallback
+      }
+      
+      // If fallback, set delivery_day_date to null
+      if (isFallback) {
+        deliveryDayText = null;
+      }
 
       // Step 3: Create order in database
       const orderData = {
@@ -572,8 +1044,9 @@ const CreateOrderScreen = ({ navigation, route }) => {
         special_event_amount: specialEvent ? 150 : null,
         order_date: new Date().toISOString(),
         delivery_date: deliveryDate.toISOString(),
-        status: 'Processing',
-        deliveryStatus: 'processing', // Set initial delivery status
+        delivery_day_date: deliveryDayText || null, // Text value: "Same Day", "1 day", "2 days", or null for fallback
+        status: 'pending',
+        deliveryStatus: 'pending', // Set initial delivery status to pending
       };
       console.log('orderData', orderData);
       console.log('special_event_logo value:', orderData.special_event_logo);
@@ -779,6 +1252,26 @@ const CreateOrderScreen = ({ navigation, route }) => {
             )}
           </View>
 
+          {/* Delivery Date Card */}
+          {quantity && estimatedDeliveryDate && (
+            <View style={styles.deliveryDateCard}>
+              <Icon name="calendar-outline" size={24} color={Colors.success} />
+              <View style={styles.deliveryDateContent}>
+                <Text style={styles.deliveryDateLabel}>Estimated Delivery</Text>
+                <Text style={styles.deliveryDateValue}>{estimatedDeliveryDate}</Text>
+                {deliveryDayText && deliveryDayText.trim() !== '' ? (
+                  <Text style={[styles.deliveryDateLabel, { fontSize: 12, marginTop: 4 }]}>
+                    ({deliveryDayText})
+                  </Text>
+                ) : (
+                  <Text style={[styles.deliveryDateLabel, { fontSize: 12, marginTop: 4, fontStyle: 'italic', color: Colors.textSecondary }]}>
+                    Delivery updates will be sent to your email soon.
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+
           {/* Coconut Opener Kit */}
           <View style={styles.formCard}>
             <View style={styles.toggleRow}>
@@ -922,7 +1415,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.backgroundGray,
+    backgroundColor: Colors.backgroundGray, 
   },
   bannerContainer: {
     height: BANNER_HEIGHT,
@@ -959,12 +1452,10 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 2,
   },
-  bannerContent: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 170,
-    alignItems: 'flex-start',
+  bannerContent: { 
+    textAlign: 'center',
+    alignItems: 'center',
+    marginTop: 20,
   },
   bannerTitle: {
     fontSize: 32,

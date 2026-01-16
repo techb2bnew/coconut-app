@@ -1,13 +1,16 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { StyleSheet, View, Text } from "react-native";
+import { useState, useEffect } from "react";
 import Icon from "react-native-vector-icons/Ionicons";
 import Colors from "../../theme/colors";
+import { fontFamilyBody } from "../../theme/fonts";
 import HomeStack from "../stacks/HomeStack";
 import NewStack from "../stacks/NewStack";
 import OrdersStack from "../stacks/OrdersStack";
 import NotificationsStack from "../stacks/NotificationsStack";
 import ProfileStack from "../stacks/ProfileStack";
+import { getCustomerId, fetchNotifications } from "../../services/notificationService";
 
 const Tab = createBottomTabNavigator();
 
@@ -28,6 +31,48 @@ const defaultTabBarStyle = {
 };
 
 export default function BottomTabNavigator() {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread notification count
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      try {
+        const customerId = await getCustomerId();
+        if (customerId) {
+          const notifications = await fetchNotifications(customerId);
+          const unread = notifications.filter((n) => !n.isRead).length;
+          setUnreadCount(unread);
+        }
+      } catch (error) {
+        console.error('Error fetching unread count:', error);
+      }
+    };
+
+    loadUnreadCount();
+    // Refresh count every 30 seconds
+    const interval = setInterval(loadUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Refresh count when screen comes into focus
+  useEffect(() => {
+    const refreshCount = async () => {
+      try {
+        const customerId = await getCustomerId();
+        if (customerId) {
+          const notifications = await fetchNotifications(customerId);
+          const unread = notifications.filter((n) => !n.isRead).length;
+          setUnreadCount(unread);
+        }
+      } catch (error) {
+        console.error('Error refreshing unread count:', error);
+      }
+    };
+
+    // Refresh on mount and when component updates
+    refreshCount();
+  }, []);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -75,20 +120,9 @@ export default function BottomTabNavigator() {
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'CreateOrder';
           return {
-            tabBarLabel: '',
-            tabBarIcon: ({ focused }) => (
-              <View style={styles.centerButton}>
-                <View style={[styles.circularButton, { backgroundColor: Colors.primaryBlue }]}>
-                  <Icon name="add" size={28} color="#FFFFFF" />
-                </View>
-              </View>
-            ),
-            tabBarButton: (props) => (
-              <TouchableOpacity
-                {...props}
-                style={[props.style, styles.centerButtonContainer]}
-                activeOpacity={0.7}
-              />
+            tabBarLabel: 'New',
+            tabBarIcon: ({ color, size }) => (
+              <Icon name="add" size={size || 24} color={color} />
             ),
             tabBarStyle: routeName === 'CreateOrder' ? { display: 'none' } : defaultTabBarStyle,
           };
@@ -105,8 +139,32 @@ export default function BottomTabNavigator() {
             marginTop: 2,
           },
           tabBarIcon: ({ color, size }) => (
-            <Icon name="notifications-outline" size={size || 24} color={color} />
+            <View style={styles.iconContainer}>
+              <Icon name="notifications-outline" size={size || 24} color={color} />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           ),
+        }}
+        listeners={{
+          tabPress: async () => {
+            // Refresh count when tab is pressed
+            try {
+              const customerId = await getCustomerId();
+              if (customerId) {
+                const notifications = await fetchNotifications(customerId);
+                const unread = notifications.filter((n) => !n.isRead).length;
+                setUnreadCount(unread);
+              }
+            } catch (error) {
+              console.error('Error refreshing unread count:', error);
+            }
+          },
         }}
       />
       <Tab.Screen
@@ -124,23 +182,30 @@ export default function BottomTabNavigator() {
 }
 
 const styles = StyleSheet.create({
-  centerButtonContainer: {
-    top: -20,
+  iconContainer: {
+    position: 'relative',
+    width: 24,
+    height: 24,
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    backgroundColor: Colors.error || '#FF3B30',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.cardBackground || '#FFFFFF',
   },
-  centerButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  circularButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 30,
-    borderWidth: 3,
-    borderColor: Colors.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center', 
+  badgeText: {
+    color: Colors.cardBackground || '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: fontFamilyBody,
+    lineHeight: 12,
   },
 });
-

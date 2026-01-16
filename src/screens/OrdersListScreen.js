@@ -279,6 +279,7 @@ const OrdersListScreen = ({ navigation }) => {
         }
         return {
           id: order.id,
+          customer_id: order.customer_id, // Include customer_id for OrderDetailScreen
           orderName: order.order_name || `ORD-${order.id}`,
           cases: order.total_cases || order.cases || order.quantity || 0,
           deliveryDate: formatDate(order.delivery_date),
@@ -289,6 +290,7 @@ const OrdersListScreen = ({ navigation }) => {
           poNumber: order.po_number || '',
           orderDateRaw: order.order_date,
           deliveryDateRaw: order.delivery_date,
+          delivery_day_date: order.delivery_day_date || null, // Text value: "Same Day", "1 day", "2 days", or null
           createdAt: createdAt,
           created_at: createdAt,
           deliveryStatus: deliveryStatusValue,
@@ -313,12 +315,12 @@ const OrdersListScreen = ({ navigation }) => {
       // Calculate stats
       const activeCount = processedOrders.filter(o => {
         const status = (o.deliveryStatus || o.status || '').toLowerCase();
-        return !status.includes('completed') && !status.includes('delivered') && !status.includes('pending') && !status.includes('processing');
+        return !status.includes('completed') && !status.includes('delivered')  ;
       }).length;
       
       const pendingCount = processedOrders.filter(o => {
         const status = (o.deliveryStatus || o.status || '').toLowerCase();
-        return status.includes('pending') || status.includes('processing');
+        return status.includes('pending')  ;
       }).length;
 
       setStats({
@@ -570,6 +572,14 @@ const OrdersListScreen = ({ navigation }) => {
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  style={styles.clearButton}
+                  activeOpacity={0.7}>
+                  <Icon name="close-circle" size={20} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -711,14 +721,22 @@ const OrdersListScreen = ({ navigation }) => {
                   <Text style={[styles.statusText, { color: order.statusTextColor || '#424242' }]}>{order.deliveryStatus || order.status}</Text>
                 </View>
               </View>
-
-              {/* Delivery Date with Icon */}
-              {order.deliveryDate && (
+ 
+                  {order.delivery_day_date ? (
                 <View style={styles.deliveryDateRow}>
-                  <Icon name="calendar-outline" size={18} color={Colors.primaryBlue} />
-                  <Text style={styles.deliveryDateText}>{order.deliveryDate}</Text>
-                </View>
-              )}
+                  <Icon name="calendar-outline" size={18} color={Colors.primaryBlue} /> 
+                    <Text style={[styles.deliveryDateText, { color: Colors.success, marginTop: 4, fontWeight: '600' }]}>
+                      Delivery: {order.delivery_day_date}
+                    </Text>
+                    </View>
+                  ) : (
+                <View style={styles.deliveryDateRow}>
+                  <Icon name="calendar-outline" size={18} color={Colors.primaryBlue} /> 
+                    <Text style={[styles.deliveryDateText, { color: Colors.textSecondary, marginTop: 4,  }]}>
+                      Delivery updates will be sent to your email soon.
+                    </Text>
+                    </View>
+                  )} 
 
               {/* Product Type and Quantity Together */}
               <View style={styles.productInfoRow}>
@@ -969,6 +987,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
+  },
+  clearButton: {
+    marginLeft: 8,
+    padding: 4,
   },
   buttonContainer: {
     paddingHorizontal: 16,

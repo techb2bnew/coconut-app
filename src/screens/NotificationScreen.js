@@ -191,17 +191,76 @@ const NotificationScreen = ({ navigation }) => {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  // Helper function to format date only (no time)
-  const formatDateOnly = (dateString) => {
+  // Helper function to format notification timestamp in human-readable format
+  const formatNotificationTime = (dateString) => {
     if (!dateString) return '';
     try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return dateString; // Return original if invalid date
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const year = date.getFullYear();
+      // Parse the date string - handle both UTC and local time formats
+      // If the string doesn't have timezone info, treat it as UTC (database format)
+      let date;
+      if (dateString.includes('T') && !dateString.includes('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
+        // ISO format without timezone (e.g., "2026-01-16T09:20:33.353") - treat as UTC
+        date = new Date(dateString + 'Z');
+      } else {
+        date = new Date(dateString);
+      }
+      
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date:', dateString);
+        return dateString; // Return original if invalid date
+      }
+      
+      // Get current time in UTC for accurate comparison
+      const now = new Date();
+      
+      // Calculate difference in milliseconds
+      const diffMs = now.getTime() - date.getTime();
+      
+      // Handle negative differences (future dates) - show as "Just now"
+      if (diffMs < 0) {
+        return 'Just now';
+      }
+      
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      // Less than 1 minute ago
+      if (diffMins < 1) {
+        return 'Just now';
+      }
+      
+      // Less than 1 hour ago - show minutes
+      if (diffMins < 60) {
+        return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+      }
+      
+      // Less than 24 hours ago - show hours
+      if (diffHours < 24) {
+        return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+      }
+      
+      // Check if it's yesterday (compare dates in local timezone for display)
+      const notificationDate = new Date(date);
+      const today = new Date(now);
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      // Reset time to compare only dates
+      const notifDateOnly = new Date(notificationDate.getFullYear(), notificationDate.getMonth(), notificationDate.getDate());
+      const yesterdayDateOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+      
+      if (notifDateOnly.getTime() === yesterdayDateOnly.getTime()) {
+        return 'Yesterday';
+      }
+      
+      // Older than yesterday - show full date in local timezone
+      const month = String(notificationDate.getMonth() + 1).padStart(2, '0');
+      const day = String(notificationDate.getDate()).padStart(2, '0');
+      const year = notificationDate.getFullYear();
       return `${month}/${day}/${year}`;
     } catch (error) {
+      console.error('Error formatting notification time:', error, dateString);
       return dateString; // Return original if error
     }
   };
@@ -281,7 +340,7 @@ const NotificationScreen = ({ navigation }) => {
                 <View style={styles.notificationContent}>
                   <Text style={[styles.notificationTitle, { textTransform: 'capitalize' }]}>{notification.title}</Text>
                   <Text style={styles.notificationDescription}>{notification.message}</Text>
-                  <Text style={styles.notificationTime}>{formatDateOnly(notification.rawTimestamp)}</Text>
+                  <Text style={styles.notificationTime}>{formatNotificationTime(notification.rawTimestamp)}</Text>
                 </View>
                 {!notification.isRead && <View style={styles.unreadDot} />}
               </TouchableOpacity>

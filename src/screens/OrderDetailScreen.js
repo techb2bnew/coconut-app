@@ -548,6 +548,15 @@ const OrderDetailScreen = ({ navigation, route }) => {
                 <View style={styles.restaurantInfo}>
                   <Text style={styles.restaurantName}>{getOrderId()}</Text>
                   <Text style={styles.orderDate}>{formatDateOnly(order.deliveryDateRaw || order.delivery_date || order.orderDateRaw || order.order_date)}</Text>
+                  {order.delivery_day_date ? (
+                    <Text style={[styles.orderDate, { color: Colors.success, marginTop: 4, fontWeight: '600' }]}>
+                      Delivery: {order.delivery_day_date}
+                    </Text>
+                  ) : (
+                    <Text style={[styles.orderDate, { color: Colors.textSecondary, marginTop: 4 }]}>
+                      Delivery updates will be sent to your email soon.
+                    </Text>
+                  )}
                   <Text style={styles.orderItems}>{order.cases || 0} Cases</Text>
                 </View>
                 {/* Order Status Badge */}
@@ -690,8 +699,16 @@ const OrderDetailScreen = ({ navigation, route }) => {
           {/* Order Info */}
           <View style={styles.restaurantSection}> 
             <View style={styles.restaurantInfo}>
-              <Text style={styles.restaurantName}>{getOrderId()}</Text>
-              <Text style={styles.orderDate}>{formatDateOnly(order.deliveryDateRaw || order.delivery_date || order.orderDateRaw || order.order_date)}</Text>
+              <Text style={styles.restaurantName}>{getOrderId()}</Text> 
+              {order.delivery_day_date ? (
+                <Text style={[styles.orderDate, { color: Colors.success, marginTop: 4, fontWeight: '600' }]}>
+                  Delivery: {order.delivery_day_date}
+                </Text>
+              ) : (
+                <Text style={[styles.orderDate, { color: Colors.textSecondary, marginTop: 4 }]}>
+                  Delivery updates will be sent to your email soon.
+                </Text>
+              )}
               <Text style={styles.orderItems}>{order.cases || 0} Cases</Text>
             </View>
             {/* Order Status Badge */}
@@ -741,9 +758,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
                     ]}>
                     {item.title}
                   </Text>
-                  {item.time && (
-                    <Text style={styles.timelineTime}>{item.time}</Text>
-                  )}
+                 
                   {item.description && (
                     <Text style={styles.timelineDescription}>{item.description}</Text>
                   )}
@@ -959,7 +974,7 @@ const styles = StyleSheet.create({
   timelineLine: {
     width: 2,
     flex: 1,
-    minHeight: 40,
+    minHeight: 30,
     marginTop: 4,
   },
   timelineContent: {

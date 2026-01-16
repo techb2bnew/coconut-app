@@ -16,12 +16,15 @@ import {
   Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { validateRequired } from '../utils/validation';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
+
+const GOOGLE_PLACES_API_KEY = 'AIzaSyBtb6hSmwJ9_OznDC5e8BcZM90ms4WD_DE';
 
 const AddAddressModal = ({ visible, onClose, onSave }) => {
   const [addressLabel, setAddressLabel] = useState('');
@@ -31,6 +34,8 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
   const [zipCode, setZipCode] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [isProcessingAddress, setIsProcessingAddress] = useState(false);
   const [errors, setErrors] = useState({
     addressLabel: '',
     streetAddress: '',
@@ -41,6 +46,59 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
 
   const updateError = (field, message) => {
     setErrors((prev) => ({ ...prev, [field]: message }));
+  };
+
+  // Parse address components from Google Places details
+  const parseAddressDetails = (details) => {
+    if (!details || !details.address_components) {
+      return;
+    }
+
+    const addressComponents = details.address_components || [];
+    
+    // Extract street address
+    const streetNumber = addressComponents.find(
+      (component) => component.types.includes('street_number')
+    )?.long_name || '';
+    
+    const route = addressComponents.find(
+      (component) => component.types.includes('route')
+    )?.long_name || '';
+    
+    const fullStreet = `${streetNumber} ${route}`.trim();
+    if (fullStreet) {
+      setStreetAddress(fullStreet);
+    } else {
+      // Fallback to formatted address if street components not found
+      setStreetAddress(details.formatted_address || details.name || '');
+    }
+
+    // Extract city
+    const cityComponent = addressComponents.find(
+      (component) => 
+        component.types.includes('locality') || 
+        component.types.includes('administrative_area_level_2')
+    );
+    if (cityComponent) {
+      setCity(cityComponent.long_name);
+    }
+
+    // Extract state
+    const stateComponent = addressComponents.find(
+      (component) => 
+        component.types.includes('administrative_area_level_1')
+    );
+    if (stateComponent) {
+      setState(stateComponent.short_name || stateComponent.long_name);
+    }
+
+    // Extract zip code
+    const zipComponent = addressComponents.find(
+      (component) => component.types.includes('postal_code')
+    );
+    if (zipComponent) {
+      setZipCode(zipComponent.long_name);
+    }
   };
 
   const validateForm = () => {
@@ -71,11 +129,7 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
       isValid = false;
     }
 
-    const zipError = validateRequired(zipCode, 'ZIP Code');
-    if (zipError) {
-      newErrors.zipCode = zipError;
-      isValid = false;
-    }
+    // ZIP Code is now optional, so no validation needed
 
     setErrors(newErrors);
     return isValid;
@@ -152,6 +206,134 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
               </TouchableOpacity>
             </View>
 
+            {/* Street Address with Google Places Autocomplete - Outside ScrollView to avoid nested VirtualizedList */}
+            <View style={styles.addressAutocompleteWrapper}>
+              <View style={styles.addressAutocompleteContainer}>
+                <Text style={styles.inputLabel}>
+                  Street Address <Text style={styles.required}>*</Text>
+                </Text>
+                <GooglePlacesAutocomplete
+                  placeholder="Enter street address"
+                  onPress={(data, details = null) => {
+                    // Prevent double selection
+                    if (isProcessingAddress) {
+                      return;
+                    }
+                    
+                    setIsProcessingAddress(true);
+                    console.log('Address selected:', data, details);
+                    const fullAddress = data.description || data.structured_formatting?.main_text || '';
+                    if (fullAddress) {
+                      setStreetAddress(fullAddress);
+                      updateError('streetAddress', '');
+                      
+                      // Parse address details to auto-fill city, state, zip code
+                      if (details) {
+                        parseAddressDetails(details);
+                      }
+                      
+                      // Hide suggestions immediately
+                      setShowAddressSuggestions(false);
+                      
+                      // Reset processing flag after a delay
+                      setTimeout(() => {
+                        setIsProcessingAddress(false);
+                      }, 500);
+                    } else {
+                      setIsProcessingAddress(false);
+                    }
+                  }}
+                  query={{
+                    key: GOOGLE_PLACES_API_KEY,
+                    language: 'en',
+                    components: 'country:us',
+                  }}
+                  fetchDetails={true}
+                  enablePoweredByContainer={false}
+                  debounce={300}
+                  listViewDisplayed={showAddressSuggestions ? 'auto' : false}
+                  onFocus={() => {
+                    setShowAddressSuggestions(true);
+                  }}
+                  onBlur={() => {
+                    // Delay to allow onPress to fire first
+                    setTimeout(() => {
+                      setShowAddressSuggestions(false);
+                    }, 300);
+                  }}
+                  textInputProps={{
+                    value: streetAddress,
+                    onChangeText: (text) => {
+                      setStreetAddress(text);
+                      updateError('streetAddress', '');
+                      if (text.length > 0) {
+                        setShowAddressSuggestions(true);
+                      } else {
+                        setShowAddressSuggestions(false);
+                      }
+                    },
+                    placeholder: 'Enter street address',
+                    placeholderTextColor: Colors.textSecondary,
+                    onBlur: () => {
+                      // Don't hide immediately on blur, let onPress handle it
+                    },
+                  }}
+                  styles={{
+                    container: {
+                      flex: 0,
+                      zIndex: 1000,
+                    },
+                    textInputContainer: {
+                      backgroundColor: Colors.cardBackground,
+                      borderRadius: 12,
+                      borderWidth: errors.streetAddress ? 1.5 : 1,
+                      borderColor: errors.streetAddress ? Colors.error : Colors.borderLight,
+                      paddingHorizontal: 0,
+                    },
+                    textInput: {
+                      fontSize: 14,
+                      fontFamily: fontFamilyBody,
+                      color: Colors.textPrimary,
+                      paddingVertical: 12,
+                      paddingHorizontal: 12,
+                      minHeight: 36,
+                    },
+                    predefinedPlacesDescription: {
+                      color: Colors.textSecondary,
+                    },
+                    listView: {
+                      backgroundColor: Colors.cardBackground,
+                      borderRadius: 8,
+                      marginTop: 4,
+                      elevation: 10,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 4,
+                      maxHeight: 200,
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      zIndex: 99999,
+                      overflow: 'auto',
+                    },
+                    row: {
+                      backgroundColor: Colors.cardBackground,
+                      padding: 12,
+                    },
+                    separator: {
+                      height: 1,
+                      backgroundColor: Colors.borderLight,
+                    },
+                  }}
+                />
+                {errors.streetAddress ? (
+                  <Text style={styles.errorText}>{errors.streetAddress}</Text>
+                ) : null}
+              </View>
+            </View>
+
             <ScrollView
               style={styles.scrollView}
               contentContainerStyle={styles.scrollContent}
@@ -167,20 +349,6 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
                   updateError('addressLabel', '');
                 }}
                 errorMessage={errors.addressLabel}
-                required
-                inputStyle={styles.inputField}
-              />
-
-              {/* Street Address */}
-              <Input
-                label="Street Address"
-                placeholder="Enter street address"
-                value={streetAddress}
-                onChangeText={(text) => {
-                  setStreetAddress(text);
-                  updateError('streetAddress', '');
-                }}
-                errorMessage={errors.streetAddress}
                 required
                 inputStyle={styles.inputField}
               />
@@ -217,9 +385,9 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
                 </View>
               </View>
 
-              {/* ZIP Code */}
+              {/* ZIP Code (Optional) */}
               <Input
-                label="ZIP Code"
+                label="ZIP Code (Optional)"
                 placeholder="ZIP Code"
                 value={zipCode}
                 onChangeText={(text) => {
@@ -228,7 +396,6 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
                 }}
                 keyboardType="numeric"
                 errorMessage={errors.zipCode}
-                required
                 inputStyle={styles.inputField}
               />
 
@@ -309,7 +476,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   scrollView: {
-    maxHeight: 500,
+    maxHeight: 600,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -343,6 +510,31 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
+  },
+  addressAutocompleteWrapper: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    zIndex: 1000,
+  },
+  addressAutocompleteContainer: { 
+    position: 'relative',
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    fontWeight: '500',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+  },
+  required: {
+    color: Colors.error,
+  },
+  errorText: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.error,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });
 

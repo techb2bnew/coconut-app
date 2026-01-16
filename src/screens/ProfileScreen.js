@@ -3,7 +3,7 @@
  * Complete profile view with user info, summary cards, and sections
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,10 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Toast from 'react-native-toast-message';
@@ -30,6 +32,7 @@ import supabase from '../config/supabase';
 
 const ProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [customerData, setCustomerData] = useState(null);
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -47,6 +50,7 @@ const ProfileScreen = ({ navigation }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [phone, setPhone] = useState('');
   const [accountErrors, setAccountErrors] = useState({});
   const [savingAccount, setSavingAccount] = useState(false);
   
@@ -75,67 +79,101 @@ const ProfileScreen = ({ navigation }) => {
     return '#f2f2f2'; // Default gray
   };
 
-  // Fetch customer data
-  useEffect(() => {
-    const fetchCustomerData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || !user.email) {
-          setLoading(false);
-          return;
-        }
-
-        // Fetch customer data
-        const { data: customer, error: customerError } = await supabase
-          .from('customers')
-          .select('*')
-          .eq('email', user.email)
-          .single();
-
-        if (customerError) {
-          console.error('Error fetching customer:', customerError);
-          setLoading(false);
-          return;
-        }
-
-        setCustomerData(customer);
-        
-        // Initialize form fields when customer data is loaded
-        if (customer) {
-          setFirstName(customer.first_name || '');
-          setLastName(customer.last_name || '');
-          setCompanyName(customer.company_name || '');
-        }
-
-        // Fetch orders for stats
-        if (customer?.id) {
-          const { data: orders, error: ordersError } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('customer_id', customer.id);
-
-          if (!ordersError && orders) {
-            setStats({
-              totalOrders: orders.length,
-              activeOrders: orders.filter((o) => o.status === 'Processing' || o.status === 'Pending').length,
-            });
-
-            // Get recent orders
-            const recent = orders
-              .sort((a, b) => new Date(b.order_date) - new Date(a.order_date))
-              .slice(0, 3);
-            setRecentOrders(recent);
-          }
-        }
-      } catch (error) {
-        console.error('Error in fetchCustomerData:', error);
-      } finally {
-        setLoading(false);
+  // Fetch customer data function (extracted to be reusable)
+  const fetchCustomerData = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
       }
-    };
 
-    fetchCustomerData();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !user.email) {
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      // Fetch customer data
+      const { data: customer, error: customerError } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('email', user.email)
+        .single();
+
+      if (customerError) {
+        console.error('Error fetching customer:', customerError);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      setCustomerData(customer);
+      
+      // Initialize form fields when customer data is loaded
+      if (customer) {
+        setFirstName(customer.first_name || '');
+        setLastName(customer.last_name || '');
+        setCompanyName(customer.company_name || '');
+        setPhone(customer.phone || '');
+      }
+
+      // Fetch orders for stats
+      if (customer?.id) {
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('customer_id', customer.id)
+          .order('created_at', { ascending: false }); // Sort by created_at to get latest orders first
+
+        if (!ordersError && orders) {
+          // Calculate active orders (orders that are NOT completed or delivered)
+          const activeOrdersCount = orders.filter((order) => {
+            const status = (order.status || '').trim().toLowerCase();
+            const deliveryStatus = (order.delivery_status || order.deliveryStatus || '').trim().toLowerCase();
+            const statusToCheck = deliveryStatus || status;
+            
+            // Count orders that are NOT completed or delivered
+            const isCompleted = statusToCheck.includes('completed') || statusToCheck.includes('delivered');
+            return !isCompleted;
+          }).length;
+
+          setStats({
+            totalOrders: orders.length,
+            activeOrders: activeOrdersCount,
+          });
+
+          // Get recent orders (already sorted by created_at desc from query)
+          const recent = orders.slice(0, 3);
+          setRecentOrders(recent);
+        }
+      }
+    } catch (error) {
+      console.error('Error in fetchCustomerData:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    fetchCustomerData(true);
+  }, [fetchCustomerData]);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔄 Profile screen focused, refreshing data...');
+      fetchCustomerData(false);
+    }, [fetchCustomerData])
+  );
+
+  // Pull to refresh handler
+  const onRefresh = useCallback(() => {
+    fetchCustomerData(false);
+  }, [fetchCustomerData]);
 
   // Get initials for avatar (first and last letter of name)
   const getInitials = () => {
@@ -179,55 +217,99 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  // Parse delivery addresses from JSON
+  // Parse delivery addresses from JSON - handles admin-added addresses
   const parseAddresses = () => {
     if (!customerData?.delivery_address) return [];
     try {
       let addresses = [];
       
-      // If it's a string, try to parse it
+      // If it's a string, try to parse it as JSON first
       if (typeof customerData.delivery_address === 'string') {
-        const parsed = JSON.parse(customerData.delivery_address);
-        // If it's an object with "address" key (old format), convert to array
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.address) {
+        try {
+          const parsed = JSON.parse(customerData.delivery_address);
+          // If parsed successfully and it's an array
+          if (Array.isArray(parsed)) {
+            addresses = parsed;
+          } 
+          // If it's an object with "address" key (old format)
+          else if (parsed && typeof parsed === 'object' && parsed.address) {
+            addresses = [{
+              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              label: parsed.label || 'Main Office',
+              street: parsed.address || parsed.street || '',
+              city: parsed.city || '',
+              state: parsed.state || '',
+              zipCode: parsed.zipCode || parsed.zip_code || '',
+              notes: parsed.notes || '',
+              isSelected: parsed.isSelected !== undefined ? parsed.isSelected : true,
+            }];
+          }
+          // If it's a plain object (admin might have added it this way)
+          else if (parsed && typeof parsed === 'object') {
+            addresses = [parsed];
+          }
+        } catch (parseError) {
+          // If JSON parsing fails, treat it as a plain string address (admin-added format)
           addresses = [{
             id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            label: 'Main Office',
-            street: parsed.address,
+            label: 'Delivery Address',
+            street: customerData.delivery_address,
             city: '',
             state: '',
             zipCode: '',
             notes: '',
             isSelected: true,
           }];
-        } else if (Array.isArray(parsed)) {
-          addresses = parsed;
         }
-      } else if (Array.isArray(customerData.delivery_address)) {
-        // If it's already an array
+      } 
+      // If it's already an array (jsonb array format)
+      else if (Array.isArray(customerData.delivery_address)) {
         addresses = customerData.delivery_address;
-      } else if (typeof customerData.delivery_address === 'object' && customerData.delivery_address.address) {
-        // If it's an object with address key
-        addresses = [{
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          label: 'Main Office',
-          street: customerData.delivery_address.address,
-          city: '',
-          state: '',
-          zipCode: '',
-          notes: '',
-          isSelected: true,
-        }];
+      } 
+      // If it's an object (jsonb object format)
+      else if (typeof customerData.delivery_address === 'object') {
+        // Check if it has an address property
+        if (customerData.delivery_address.address || customerData.delivery_address.street) {
+          addresses = [{
+            id: customerData.delivery_address.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            label: customerData.delivery_address.label || 'Main Office',
+            street: customerData.delivery_address.address || customerData.delivery_address.street || '',
+            city: customerData.delivery_address.city || '',
+            state: customerData.delivery_address.state || '',
+            zipCode: customerData.delivery_address.zipCode || customerData.delivery_address.zip_code || '',
+            notes: customerData.delivery_address.notes || '',
+            isSelected: customerData.delivery_address.isSelected !== undefined ? customerData.delivery_address.isSelected : true,
+          }];
+        } else {
+          // If it's an object but doesn't have address/street, treat it as a single address object
+          addresses = [customerData.delivery_address];
+        }
       }
       
-      // Ensure all addresses have IDs
+      // Ensure all addresses have IDs and proper structure
       return addresses.map((addr, index) => {
+        // If address is just a string, convert it to proper format
+        if (typeof addr === 'string') {
+          return {
+            id: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+            label: 'Delivery Address',
+            street: addr,
+            city: '',
+            state: '',
+            zipCode: '',
+            notes: '',
+            isSelected: index === 0,
+          };
+        }
+        
+        // Ensure all addresses have IDs
         if (!addr.id) {
           return {
             ...addr,
             id: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
           };
         }
+        
         // Ensure ID is a string for consistent comparison
         return {
           ...addr,
@@ -236,6 +318,21 @@ const ProfileScreen = ({ navigation }) => {
       });
     } catch (error) {
       console.error('Error parsing addresses:', error);
+      // Fallback: if parsing fails completely, try to show the raw value
+      if (customerData.delivery_address) {
+        return [{
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          label: 'Delivery Address',
+          street: typeof customerData.delivery_address === 'string' 
+            ? customerData.delivery_address 
+            : JSON.stringify(customerData.delivery_address),
+          city: '',
+          state: '',
+          zipCode: '',
+          notes: '',
+          isSelected: true,
+        }];
+      }
       return [];
     }
   };
@@ -521,6 +618,7 @@ const ProfileScreen = ({ navigation }) => {
       setFirstName(customerData.first_name || '');
       setLastName(customerData.last_name || '');
       setCompanyName(customerData.company_name || '');
+      setPhone(customerData.phone || '');
     }
     setIsEditingAccount(true);
     setAccountErrors({});
@@ -533,6 +631,7 @@ const ProfileScreen = ({ navigation }) => {
       setFirstName(customerData.first_name || '');
       setLastName(customerData.last_name || '');
       setCompanyName(customerData.company_name || '');
+      setPhone(customerData.phone || '');
     }
   };
 
@@ -540,7 +639,12 @@ const ProfileScreen = ({ navigation }) => {
     const newErrors = {};
     if (!firstName.trim()) newErrors.firstName = 'First Name is required';
     if (!lastName.trim()) newErrors.lastName = 'Last Name is required';
-    if (!companyName.trim()) newErrors.companyName = 'Company is required';
+    if (!phone.trim()) {
+      newErrors.phone = 'Phone Number is required';
+    } else if (phone.trim().length !== 10) {
+      newErrors.phone = 'Phone Number must be exactly 10 digits';
+    }
+    // Company is read-only, no validation needed
 
     if (Object.keys(newErrors).length > 0) {
       setAccountErrors(newErrors);
@@ -567,7 +671,8 @@ const ProfileScreen = ({ navigation }) => {
         .update({
           first_name: firstName.trim(),
           last_name: lastName.trim(),
-          company_name: companyName.trim(),
+          phone: phone.trim(),
+          // Company is read-only, don't update it
         })
         .eq('email', user.email);
 
@@ -646,6 +751,33 @@ const ProfileScreen = ({ navigation }) => {
         type: 'error',
         text1: 'Error',
         text2: 'Unable to open phone dialer. Please try again.',
+        position: 'top',
+        visibilityTime: 2500,
+      });
+    }
+  };
+
+  // Handle social media link opening
+  const handleSocialLink = async (url) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Unable to open this link.',
+          position: 'top',
+          visibilityTime: 2500,
+        });
+      }
+    } catch (error) {
+      console.error('Error opening social media link:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Unable to open this link. Please try again.',
         position: 'top',
         visibilityTime: 2500,
       });
@@ -766,7 +898,15 @@ const ProfileScreen = ({ navigation }) => {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primaryBlue}
+            colors={[Colors.primaryBlue]}
+          />
+        }>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
@@ -816,8 +956,10 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.sectionHeader}>
             <Icon name="cube-outline" size={18} color={Colors.primaryPink} />
             <Text style={styles.sectionTitle}>Recent Orders</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('HomeStack', { screen: 'OrdersList' })}>
-              <Text style={styles.viewAllText}>View All</Text>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('HomeStack', { screen: 'OrdersList' })}>
+              <Icon name="chevron-forward" size={18} color={Colors.primaryPink} />
             </TouchableOpacity>
           </View>
           {recentOrders.length > 0 ? (
@@ -831,7 +973,9 @@ const ProfileScreen = ({ navigation }) => {
                   </View>
                   <View style={styles.orderInfo}>
                     <Text style={styles.orderId}>{order.order_name || `ORD-${order.id}`}</Text>
-                    <Text style={styles.orderTime}>{formatDate(order.order_date)}</Text>
+                    <Text style={styles.orderTime}>
+                      {formatDate(order.created_at || order.createdAt || order.created_date || order.order_date)}
+                    </Text>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
                     <Text style={styles.statusText}>{deliveryStatus.charAt(0).toUpperCase() + deliveryStatus.slice(1)}</Text>
@@ -847,14 +991,13 @@ const ProfileScreen = ({ navigation }) => {
         {/* Account Information */}
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
-            <View style={styles.headerIconContainer}>
+            <View  >
               <Icon name="person" size={18} color={Colors.primaryPink} />
             </View>
             <Text style={styles.sectionTitle}>Account Information</Text>
             {!isEditingAccount && (
-              <TouchableOpacity style={styles.editButton} onPress={handleEditAccount}>
-                <Icon name="pencil-outline" size={16} color={Colors.primaryPink} />
-                <Text style={styles.editButtonText}>Edit</Text>
+              <TouchableOpacity style={styles.iconButton} onPress={handleEditAccount}>
+                <Icon name="pencil-outline" size={14} color={Colors.primaryPink} />
               </TouchableOpacity>
             )}
           </View>
@@ -876,6 +1019,13 @@ const ProfileScreen = ({ navigation }) => {
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Company Name</Text>
                   <Text style={styles.infoValue}>{customerData?.company_name || 'Beach Resort & Spa'}</Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Icon name="call-outline" size={16} color={Colors.textSecondary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Phone Number</Text>
+                  <Text style={styles.infoValue}>{customerData?.phone || 'N/A'}</Text>
                 </View>
               </View>
             </>
@@ -912,18 +1062,36 @@ const ProfileScreen = ({ navigation }) => {
                   />
                 </View>
               </View>
-              <Input
-                label="Company"
-                placeholder="Company"
-                value={companyName}
-                onChangeText={(text) => {
-                  setCompanyName(text);
-                  if (accountErrors.companyName) setAccountErrors({ ...accountErrors, companyName: '' });
-                }}
-                errorMessage={accountErrors.companyName}
-                required
-                inputStyle={styles.editInputField}
-              />
+              <View style={styles.rowInputs}>
+              <View style={styles.halfInput}>
+                  <Input
+                    label="Phone Number"
+                    placeholder="Phone Number"
+                    value={phone}
+                    onChangeText={(text) => {
+                      // Only allow numeric input and limit to 10 digits
+                      const numericText = text.replace(/[^0-9]/g, '').slice(0, 10);
+                      setPhone(numericText);
+                      if (accountErrors.phone) setAccountErrors({ ...accountErrors, phone: '' });
+                    }}
+                    errorMessage={accountErrors.phone}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    required
+                    inputStyle={styles.editInputField}
+                  />
+                </View>
+                <View style={styles.halfInput}>
+                  <Input
+                    label="Company"
+                    placeholder="Company"
+                    value={companyName}
+                    editable={false}
+                    inputStyle={styles.editInputField}
+                  />
+                </View>
+               
+              </View>
               <View style={styles.buttonRow}>
                 <Button
                   title="Cancel"
@@ -950,13 +1118,12 @@ const ProfileScreen = ({ navigation }) => {
             <Icon name="location-outline" size={18} color={Colors.success} />
             <Text style={styles.sectionTitle}>Delivery Addresses</Text>
             <TouchableOpacity
-              style={styles.editButton}
+              style={styles.iconButton}
               onPress={() => {
                 setEditingAddressIndex(null);
                 setShowAddAddressModal(true);
               }}>
-              <Icon name="add-circle-outline" size={16} color={Colors.primaryPink} />
-              <Text style={styles.editButtonText}> Add</Text>
+              <Icon name="add" size={18} color={Colors.primaryPink} />
             </TouchableOpacity>
           </View>
           {(() => {
@@ -1006,14 +1173,13 @@ const ProfileScreen = ({ navigation }) => {
         {/* Security & Password */}
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
-            <View style={[styles.headerIconContainer, { backgroundColor: Colors.lightPink }]}>
+            <View>
               <Icon name="shield" size={18} color={Colors.error} />
             </View>
             <Text style={styles.sectionTitle}>Security & Password</Text>
             {!isChangingPassword && (
-              <TouchableOpacity style={styles.editButton} onPress={handleChangePassword}>
-                <Icon name="pencil-outline" size={16} color={Colors.primaryPink} />
-                <Text style={styles.editButtonText}>Change</Text>
+              <TouchableOpacity style={styles.iconButton} onPress={handleChangePassword}>
+                <Icon name="pencil-outline" size={14} color={Colors.primaryPink} />
               </TouchableOpacity>
             )}
           </View>
@@ -1150,20 +1316,25 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.sectionTitle}>Connect With Us</Text>
           <Text style={styles.socialSubtitle}>Follow us on social media for updates, tips, and special offers!</Text>
           <View style={styles.socialIcons}>
-            <TouchableOpacity style={styles.socialIcon}>
-              <Text style={styles.socialIconText}>f</Text>
+            <TouchableOpacity 
+              style={styles.socialIcon}
+              onPress={() => handleSocialLink('https://www.facebook.com/coconutstock/')}>
+              <Icon name="logo-facebook" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.socialIcon}>
+            <TouchableOpacity 
+              style={styles.socialIcon}
+              onPress={() => handleSocialLink('https://www.instagram.com/coconutstock/')}>
               <Icon name="logo-instagram" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.socialIcon}>
-              <Icon name="logo-twitter" size={20} color={Colors.textPrimary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialIcon}>
+            <TouchableOpacity 
+              style={styles.socialIcon}
+              onPress={() => handleSocialLink('https://www.linkedin.com/company/coconut-stock-corp/')}>
               <Icon name="logo-linkedin" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.socialIcon}>
-              <Icon name="logo-youtube" size={20} color={Colors.textPrimary} />
+            <TouchableOpacity 
+              style={styles.socialIcon}
+              onPress={() => handleSocialLink('https://tr.pinterest.com/coconutstockcorp/')}>
+              <Icon name="logo-pinterest" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1423,6 +1594,21 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     color: Colors.primaryPink,
     fontWeight: '500',
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.lightPink,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.primaryPink,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   infoRow: {
     flexDirection: 'row',

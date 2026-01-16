@@ -17,7 +17,7 @@ export const Colors = {
   gradientEnd: '#3b8bcc', // Gradient end color
   
   // Background Colors
-  backgroundGray: '#F5F5F5', // Light gray background
+  backgroundGray: '#eff6ff', // Light blue background
   cardBackground: '#FFFFFF', // White background for input fields
   primaryCardBackground: '#E3F2FD', // Light blue card background (replacing light pink)
   

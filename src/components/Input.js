@@ -26,6 +26,7 @@ const Input = ({
   style,
   inputStyle,
   required = false,
+  editable = true,
 }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -60,7 +61,7 @@ const Input = ({
           </TouchableOpacity>
         )}
         <TextInput
-          style={[styles.input, inputStyle]}
+          style={[styles.input, inputStyle, !editable && styles.inputDisabled]}
           placeholder={placeholder}
           placeholderTextColor={Colors.textSecondary}
           value={value}
@@ -68,6 +69,7 @@ const Input = ({
           secureTextEntry={secureTextEntry && !isPasswordVisible}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
+          editable={editable}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
         />
@@ -134,6 +136,10 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     paddingVertical: 10,
+  },
+  inputDisabled: { 
+    opacity: 0.6,
+    color: Colors.textSecondary,
   },
   iconLeft: {
     marginRight: 12,

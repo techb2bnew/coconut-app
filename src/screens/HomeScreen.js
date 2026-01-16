@@ -37,6 +37,7 @@ const HomeScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [customerId, setCustomerId] = useState(null);
+  const [franchiseLogo, setFranchiseLogo] = useState(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'today', 'week', 'month'
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -110,7 +111,7 @@ const HomeScreen = ({ navigation }) => {
     return '#f2f2f2'; // Default gray
   };
 
-  // Fetch customer ID from logged in user email
+  // Fetch customer ID and franchise logo from logged in user email
   const fetchCustomerId = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -119,10 +120,10 @@ const HomeScreen = ({ navigation }) => {
         return null;
       }
 
-      // Get customer ID from customers table using email
+      // Get customer ID and franchise_id from customers table using email
       const { data: customer, error } = await supabase
         .from('customers')
-        .select('id')
+        .select('id, franchise_id')
         .eq('email', user.email)
         .single();
 
@@ -131,10 +132,55 @@ const HomeScreen = ({ navigation }) => {
         return null;
       }
 
+      console.log('Customer data:', customer);
+      console.log('Customer franchise_id:', customer?.franchise_id);
+
+      // Fetch franchise logo if customer has franchise_id
+      if (customer?.franchise_id) {
+        console.log('Customer has franchise_id, fetching logo...');
+        await fetchFranchiseLogo(customer.franchise_id);
+      } else {
+        console.log('Customer has no franchise_id, using default logo');
+        setFranchiseLogo(null); // No franchise, use default logo
+      }
+
       return customer?.id || null;
     } catch (error) {
       console.error('Error in fetchCustomerId:', error);
       return null;
+    }
+  };
+
+  // Fetch franchise logo from franchises table
+  const fetchFranchiseLogo = async (franchiseId) => {
+    try {
+      console.log('Fetching franchise logo for franchise_id:', franchiseId);
+      const { data: franchise, error } = await supabase
+        .from('franchises')
+        .select('logo')
+        .eq('id', franchiseId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching franchise logo:', error);
+        setFranchiseLogo(null);
+        return;
+      }
+
+      console.log('Franchise data:', franchise);
+      console.log('Franchise logo URL:', franchise?.logo);
+
+      if (franchise?.logo && franchise.logo.trim() !== '' && franchise.logo !== 'NULL') {
+        const logoUrl = franchise.logo.trim();
+        console.log('Setting franchise logo:', logoUrl);
+        setFranchiseLogo(logoUrl);
+      } else {
+        console.log('No franchise logo found or logo is empty');
+        setFranchiseLogo(null);
+      }
+    } catch (error) {
+      console.error('Error in fetchFranchiseLogo:', error);
+      setFranchiseLogo(null);
     }
   };
  
@@ -209,6 +255,7 @@ const HomeScreen = ({ navigation }) => {
         }
         return {
           id: order.id,
+          customer_id: order.customer_id, // Include customer_id for OrderDetailScreen
           orderName: order.order_name || `ORD-${order.id}`,
           cases: order.total_cases || order.cases || order.quantity || 0,
           deliveryDate: formatDate(order.delivery_date),
@@ -217,6 +264,7 @@ const HomeScreen = ({ navigation }) => {
           orderDate: order.order_date,
           orderDateRaw: order.order_date,
           deliveryDateRaw: order.delivery_date,
+          delivery_day_date: order.delivery_day_date || null, // Text value: "Same Day", "1 day", "2 days", or null
           poNumber: order.po_number,
           deliveryStatus: order.delivery_status || order.deliveryStatus || null,
           driverId: order.driver_id || order.driverId || null,
@@ -433,7 +481,7 @@ const HomeScreen = ({ navigation }) => {
   // Refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
-    const id = await fetchCustomerId();
+    const id = await fetchCustomerId(); // This will also refresh franchise logo
     if (id) {
       await fetchOrders(id);
     } else {
@@ -458,7 +506,23 @@ const HomeScreen = ({ navigation }) => {
         {/* Header Section with Logo and Text */}
         <View style={styles.topHeader}>
           <View style={styles.headerLeft}>
-            <Logo style={styles.logo} size={70} variant="black" />
+            {franchiseLogo ? (
+              <Image 
+                source={{ uri: franchiseLogo }} 
+                style={[styles.logo, { width: 70, height: 70 }]}
+                resizeMode="contain"
+                onError={(error) => {
+                  console.error('Error loading franchise logo:', error);
+                  console.error('Logo URL:', franchiseLogo);
+                  setFranchiseLogo(null); // Fallback to default logo on error
+                }}
+                onLoad={() => {
+                  console.log('Franchise logo loaded successfully:', franchiseLogo);
+                }}
+              />
+            ) : (
+              <Logo style={styles.logo} size={70} variant="black" />
+            )}
             <View style={styles.headerTextContainer}> 
               <Text style={styles.headerMainText}>Order Fresh and</Text>
               <Text style={styles.headerMainText}>Stay Stocked</Text>
@@ -612,22 +676,24 @@ const HomeScreen = ({ navigation }) => {
           )}
         </View>
 
-        {/* Need Coconuts Fast Card */}
-        <View style={styles.needCoconutsCard}>
-          <View style={styles.needCoconutsIconContainer}>
-            <Icon name="sparkles" size={32} color={Colors.cardBackground} />
+        {/* Need Coconuts Fast Card - Only show when customer has no orders */}
+        {recentOrders.length === 0 && !loading && (
+          <View style={styles.needCoconutsCard}>
+            <View style={styles.needCoconutsIconContainer}>
+              <Icon name="sparkles" size={32} color={Colors.cardBackground} />
+            </View>
+            <Text style={styles.needCoconutsTitle}>Need Coconuts Fast?</Text>
+            <Text style={styles.needCoconutsSubtitle}>
+              Quick ordering with next-day delivery available
+            </Text>
+            <TouchableOpacity
+              style={styles.startNewOrderButton}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('NewStack', { screen: 'CreateOrder' })}>
+              <Text style={styles.startNewOrderText}>Start New Order</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.needCoconutsTitle}>Need Coconuts Fast?</Text>
-          <Text style={styles.needCoconutsSubtitle}>
-            Quick ordering with next-day delivery available
-          </Text>
-          <TouchableOpacity
-            style={styles.startNewOrderButton}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('NewStack', { screen: 'CreateOrder' })}>
-            <Text style={styles.startNewOrderText}>Start New Order</Text>
-          </TouchableOpacity>
-        </View>
+        )}
 
         {/* Bottom spacing for navigation */}
         <View style={styles.bottomSpacing} />

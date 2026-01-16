@@ -8,7 +8,7 @@ import { View, Text, StyleSheet, Image } from 'react-native';
 import Colors from '../theme/colors';
 
 // Logo image
-const logoImage = require('../assest/logo.png');
+const logoImage = require('../assest/logo-black.png');
 const logoBlackImage = require('../assest/logo-black.png');
 
 const Logo = ({ size = 150, showTagline = false, style, variant = 'default' }) => {

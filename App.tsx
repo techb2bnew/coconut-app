@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import AppNavigator from './src/navigation/AppNavigator';
 import { fontFamilyBody } from './src/theme/fonts';
+import Colors from './src/theme/colors';
 import {
   initializeFCM,
   setupForegroundMessageHandler,
@@ -96,7 +97,11 @@ function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <StatusBar 
+          barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+          backgroundColor="#eff6ff"
+          translucent={false}
+        />
         <AppNavigator />
         <Toast />
       </SafeAreaProvider>
