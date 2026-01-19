@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StatusBar, useColorScheme, Text, StyleSheet } from 'react-native';
+import { StatusBar, useColorScheme, Text, StyleSheet, AppState, AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -12,6 +12,10 @@ import {
   setupNotificationOpenedHandler,
   setupTokenRefreshHandler,
   getInitialNotification,
+  extractOrderId,
+  handleOrderNavigation,
+  getLastBackgroundNotification,
+  clearLastBackgroundNotification,
 } from './src/services/firebaseMessaging';
 
 // Set default font family for all Text components globally (Quicksand for body text)
@@ -58,25 +62,164 @@ function App() {
           console.warn('⚠️ FCM token not generated. Check permissions and Firebase setup.');
         }
 
-        // Set up foreground message handler
-        console.log('🔧 Setting up foreground message handler...');
-        const unsubscribeForeground = setupForegroundMessageHandler();
-        console.log('✅ Foreground handler set up');
+        // Set up foreground message handler 
+        const unsubscribeForeground = setupForegroundMessageHandler(); 
 
-        // Set up notification opened handler (background state)
-        console.log('🔧 Setting up notification opened handler...');
+        // Set up notification opened handler (background state) 
         const unsubscribeOpened = setupNotificationOpenedHandler((remoteMessage: any) => {
           console.log('📨 Notification opened app:', remoteMessage);
           // Handle navigation or other actions here
         });
-        console.log('✅ Notification opened handler set up');
+        
+        const unsubscribeTokenRefresh = setupTokenRefreshHandler(); 
 
-        // Set up token refresh handler
-        console.log('🔧 Setting up token refresh handler...');
-        const unsubscribeTokenRefresh = setupTokenRefreshHandler();
-        console.log('✅ Token refresh handler set up');
+        // Check for pending notification immediately on app start (in case app was opened from notification)
+        // Also check periodically in case notification click didn't trigger AppState change
+        let checkCount = 0;
+        const maxChecks = 10; // Check 10 times over 20 seconds (more checks for reliability)
+        let intervalId: ReturnType<typeof setInterval> | null = null;
+        
+        const checkForPendingNotification = async () => {
+          checkCount++;
+          console.log(`🔍 ========== [Check ${checkCount}/${maxChecks}] PENDING NOTIFICATION CHECK ==========`);
+          console.log(`🔍 Check timestamp: ${new Date().toISOString()}`);
+          try {
+            const lastNotification = await getLastBackgroundNotification();
+            if (lastNotification) {
+               
+              const timeDiff = Date.now() - lastNotification.timestamp;
+              
+              
+              // Only handle if notification is recent (within last 2 minutes)
+              const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
+              if (lastNotification.timestamp > twoMinutesAgo) {
+                const orderIdOrName = extractOrderId(lastNotification?.data, lastNotification?.notification);
+                console.log('📦 Extracted order ID/Name:', orderIdOrName);
+                
+                if (orderIdOrName) {
+                  console.log('📦 ✅ Handling order navigation from pending notification check...');
+                  // Clear notification immediately to prevent other handlers from processing
+                  await clearLastBackgroundNotification();
+                  // Stop periodic checks
+                  if (intervalId) {
+                    clearInterval(intervalId);
+                    intervalId = null;
+                  }
+                  // Wait a bit longer to ensure app is fully loaded and other handlers have finished
+                  setTimeout(() => {
+                    handleOrderNavigation(orderIdOrName);
+                  }, 2500); // Longer delay to ensure other handlers don't interfere
+                  return true; // Found and handled
+                }
+              } else {
+                console.log('📨 Notification is too old, clearing...');
+                await clearLastBackgroundNotification();
+              }
+            } else {
+              console.log('📨 No pending notification found');
+            }
+          } catch (error: any) {
+            console.error('❌ Error checking for pending notification:', error);
+          }
+          return false; // Not found
+        };
+        
+        // Check immediately on app start
+        console.log('⏰ Scheduling first notification check in 1 second...');
+        setTimeout(async () => {
+          console.log('⏰ First notification check starting now...');
+          const handled = await checkForPendingNotification();
+          console.log(`⏰ First check result: ${handled ? 'Handled' : 'Not handled'}, checkCount: ${checkCount}, maxChecks: ${maxChecks}`);
+          
+          if (!handled && checkCount < maxChecks) {
+            console.log('⏰ Setting up periodic checks every 2 seconds...');
+            // If not handled, check again every 2 seconds
+            intervalId = setInterval(async () => {
+              const handled = await checkForPendingNotification();
+              console.log(`⏰ Periodic check result: ${handled ? 'Handled' : 'Not handled'}, checkCount: ${checkCount}, maxChecks: ${maxChecks}`);
+              
+              if (handled || checkCount >= maxChecks) {
+                if (intervalId) {
+                  clearInterval(intervalId);
+                  intervalId = null;
+                }
+                console.log('🛑 Stopped checking for pending notifications');
+              }
+            }, 2000);
+            console.log('✅ Periodic checks started');
+          } else {
+            console.log('⏰ No periodic checks needed (handled or max checks reached)');
+          }
+        }, 1000);
 
-        console.log('✅ FCM initialization complete!');
+        // Also check for notification when app comes to foreground
+        let previousAppState: AppStateStatus = AppState.currentState;
+        console.log('📱 Initial app state:', previousAppState);
+        
+        const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+          
+          
+          if (nextAppState === 'active' && previousAppState !== 'active') { 
+            
+            // Small delay to ensure everything is ready
+            setTimeout(async () => {
+              try { 
+                await clearLastBackgroundNotification();
+                 
+                // Method 1: Check getInitialNotification (for quit state)
+                const initialNotification = await getInitialNotification(); 
+                
+                if (initialNotification) { 
+                  // Extract and handle order navigation
+                  const orderIdOrName = extractOrderId(initialNotification?.data, initialNotification?.notification);
+                   
+                  if (orderIdOrName) {
+                    console.log('📦 ✅ Handling order navigation from initial notification...');
+                    setTimeout(() => {
+                      handleOrderNavigation(orderIdOrName);
+                    }, 2000); // Longer delay to ensure app is fully loaded
+                    return;
+                  }
+                }
+                
+                
+                // Method 2: Check last background notification (workaround for onNotificationOpenedApp not firing)
+                // Note: We already cleared it above, so this should return null
+                const lastNotification = await getLastBackgroundNotification();
+                
+                
+                if (lastNotification) {
+                  
+                  // Extract and handle order navigation
+                  const orderIdOrName = extractOrderId(lastNotification?.data, lastNotification?.notification);
+                  
+                  
+                  if (orderIdOrName) {
+                    console.log('📦 ✅ Handling order navigation from last background notification...');
+                    // Clear again to be safe
+                    await clearLastBackgroundNotification();
+                    console.log('🧹 Cleared stored notification');
+                    setTimeout(() => {
+                      handleOrderNavigation(orderIdOrName);
+                    }, 2000); // Longer delay to ensure app is fully loaded
+                    return;
+                  }
+                }
+                
+                
+              } catch (error: any) {
+                console.error('❌ Error checking for pending notification:', error);
+                console.error('❌ Error stack:', error?.stack);
+              }
+            }, 500);
+          } else {
+            console.log('📱 App state change (not coming to foreground)');
+          }
+          
+          previousAppState = nextAppState;
+        };
+
+        const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
 
         // Cleanup on unmount
         return () => {
@@ -84,6 +227,7 @@ function App() {
           unsubscribeForeground();
           unsubscribeOpened();
           unsubscribeTokenRefresh();
+          appStateSubscription?.remove();
         };
       } catch (error) {
         console.error('❌ Error initializing FCM:', error);

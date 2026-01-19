@@ -16,6 +16,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Logo from '../components/Logo';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
+import supabase from '../config/supabase';
 
 const { width, height } = Dimensions.get('window');
 
@@ -138,9 +139,38 @@ const SplashScreen = ({ navigation }) => {
       pulseAnimation.start();
     }, 1300);
 
-    // Navigate to Login after animation completes
+    // Check if user is already logged in (has valid session)
+    const checkAuthAndNavigate = async () => {
+      try {
+        console.log('🔐 Checking authentication status...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Error checking session:', error);
+          // If error, go to login
+          navigation.replace('Login');
+          return;
+        }
+
+        if (session && session.access_token) {
+          console.log('✅ User is already logged in, navigating to MainTabs');
+          // User is logged in, navigate to MainTabs
+          navigation.replace('MainTabs');
+        } else {
+          console.log('ℹ️ No active session found, navigating to Login');
+          // No session, go to login
+          navigation.replace('Login');
+        }
+      } catch (error) {
+        console.error('❌ Error in checkAuthAndNavigate:', error);
+        // On error, go to login
+        navigation.replace('Login');
+      }
+    };
+
+    // Navigate after animation completes
     const timer = setTimeout(() => {
-      navigation.replace('Login');
+      checkAuthAndNavigate();
     }, 2500); // Total animation time ~2.5 seconds
 
     return () => clearTimeout(timer);
