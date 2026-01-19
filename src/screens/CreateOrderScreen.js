@@ -19,6 +19,7 @@ import {
   KeyboardAvoidingView,
   Animated,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -61,6 +62,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
   const [deliveryDayText, setDeliveryDayText] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   
   // Bottom sheet ref and snap points
   const bottomSheetRef = useRef(null);
@@ -244,8 +246,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
     }
 
     // Parse order quantity
-    const orderQty = parseInt(orderQuantity) || 0;
-    console.log('📦 Parsed order quantity:', orderQty, 'from input:', orderQuantity);
+    const orderQty = parseInt(orderQuantity) || 0; 
 
     try {
       // PRIORITY 1: Fetch quantity-based rules first (exactly like warehouse code)
@@ -256,23 +257,12 @@ const CreateOrderScreen = ({ navigation, route }) => {
         .eq('status', 'Active')
         .order('min_quantity', { ascending: true });
 
-      console.log('📦 Quantity rules query result:', {
-        rules: quantityRules,
-        error: qError,
-        orderQty: orderQty
-      });
+     
 
       let quantityRuleMatched = false;
 
       if (!qError && quantityRules && quantityRules.length > 0) {
-        console.log('📦 All quantity rules fetched:', quantityRules.map(r => ({
-          id: r.id,
-          min: r.min_quantity,
-          max: r.max_quantity,
-          offset: r.delivery_offset,
-          offsetType: typeof r.delivery_offset
-        })));
-        console.log('📦 Order quantity to match:', orderQty);
+       
         
         // Find ALL matching quantity rules first, then select the best match
         // Handle null max_quantity properly - if null, don't use Infinity, skip that rule
@@ -295,11 +285,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
           return matches;
         });
         
-        console.log(`📊 Total matching rules found: ${matchingRules.length}`, matchingRules.map(r => ({
-          min: r.min_quantity,
-          max: r.max_quantity,
-          offset: r.delivery_offset
-        })));
+        
         
         // If multiple rules match, select the one with the smallest range (most specific)
         // This handles overlapping ranges correctly
@@ -314,28 +300,17 @@ const CreateOrderScreen = ({ navigation, route }) => {
               const currentRange = parseInt(current.max_quantity) - parseInt(current.min_quantity);
               return currentRange < bestRange ? current : best;
             });
-            console.log(`📊 Multiple rules matched (${matchingRules.length}), selected most specific:`, {
-              min: matchingRule.min_quantity,
-              max: matchingRule.max_quantity,
-              offset: matchingRule.delivery_offset
-            });
+           
           }
         }
 
         if (matchingRule) {
-          console.log('✅ Matching quantity rule found:', {
-            id: matchingRule.id,
-            min: matchingRule.min_quantity,
-            max: matchingRule.max_quantity,
-            offset: matchingRule.delivery_offset,
-            orderQty: orderQty
-          });
+        
           
           // delivery_offset can be number (0, 1, 2) or text ("Same Day", "1 day", "2 day")
           let deliveryOffset = 0;
           const offsetValue = matchingRule.delivery_offset;
-          
-          console.log('📅 Raw delivery_offset value:', offsetValue, 'Type:', typeof offsetValue);
+           
           
           if (offsetValue === null || offsetValue === undefined) {
             deliveryOffset = 0;
@@ -373,8 +348,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
             return deliveryDate;
           }
           
-          console.log('📅 Parsed delivery_offset:', deliveryOffset, 'from original:', offsetValue);
-          
+           
           const deliveryDate = new Date();
           
           if (deliveryOffset === 0) {
@@ -396,11 +370,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
           }
           
           const dayText = deliveryOffset === 0 ? 'Same Day' : deliveryOffset === 1 ? '1 day' : '2 days';
-          console.log('✅ Calculated delivery date from quantity rule:', {
-            date: deliveryDate,
-            text: dayText,
-            offset: deliveryOffset
-          });
+         
           setCalculatedDeliveryDate(deliveryDate);
           setDeliveryDayText(dayText);
           console.log('🛑 Quantity rule matched - RETURNING EARLY, zone rules will NOT be checked');
@@ -410,16 +380,9 @@ const CreateOrderScreen = ({ navigation, route }) => {
         }
       } else {
         console.log('❌ No quantity rules found or error:', qError);
-      }
-
-      // PRIORITY 2: If no quantity rule matched, check zone-based rules (exactly like warehouse code)
-      // IMPORTANT: Only check zone rules if NO quantity rule matched
-      // This prevents zone rules from overriding quantity rules
-      // Note: If quantity rule matched above, function already returned, so we won't reach here
-      console.log('🔄 No quantity rule matched, proceeding to check zone-based rules');
+      } 
       
-      if (customerZone || zoneCityName) {
-        console.log('🌍 Checking zone-based rules:', { customerZone, zoneCityName });
+      if (customerZone || zoneCityName) { 
         
         let zoneRules = null;
         let zError = null;
@@ -471,8 +434,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
           }
         }
 
-        if (zoneRules && zoneRules.cutoff_time) {
-          console.log('✅ Zone rule found:', zoneRules);
+        if (zoneRules && zoneRules.cutoff_time) { 
           
           // Use next_day_offset (before cutoff) and after_cutoff_offset (after cutoff) - exactly like warehouse code
           const cutoffTime = zoneRules.cutoff_time; // Format: "HH:MM:SS" or "HH:MM"
@@ -483,12 +445,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
           const nextDayOffset = (nextDayOffsetParsed != null && !isNaN(nextDayOffsetParsed)) ? nextDayOffsetParsed : 1; // Before cutoff offset
           const afterCutoffOffset = (afterCutoffOffsetParsed != null && !isNaN(afterCutoffOffsetParsed)) ? afterCutoffOffsetParsed : 2; // After cutoff offset
           
-          console.log('📊 Zone rule offsets parsed:', {
-            raw_next_day_offset: zoneRules.next_day_offset,
-            raw_after_cutoff_offset: zoneRules.after_cutoff_offset,
-            parsed_next_day_offset: nextDayOffset,
-            parsed_after_cutoff_offset: afterCutoffOffset
-          });
+         
 
           // Parse cutoff time (format: "HH:MM:SS" or "HH:MM")
           const [cutoffHours, cutoffMinutes] = cutoffTime.split(':').map(Number);
@@ -518,14 +475,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
           const isAfterCutoff = orderTimeMinutes >= cutoffTimeMinutes;
           const deliveryOffset = isAfterCutoff ? afterCutoffOffset : nextDayOffset;
           
-          console.log('🌍 Zone rule calculation:', {
-            orderTime: `${orderHours}:${orderMinutes}`,
-            cutoffTime: `${cutoffHours}:${cutoffMinutes}`,
-            isAfterCutoff,
-            nextDayOffset,
-            afterCutoffOffset,
-            deliveryOffset
-          });
+          
 
           const deliveryDate = new Date();
           
@@ -556,8 +506,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
         }
       }
 
-      // Default fallback (only if no rules matched)
-      console.log('⚠️ No matching rules found, using fallback - delivery_day_date will be blank');
+      // Default fallback (only if no rules matched) 
       const defaultDate = new Date();
       defaultDate.setHours(0, 0, 0, 0);
       setCalculatedDeliveryDate(defaultDate);
@@ -621,13 +570,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
 
         // Calculate based on rules - trim and parse quantity
         const quantityValue = quantity ? quantity.trim() : '';
-        console.log(`🔄 [Call ${callId}] Calculating delivery date with:`, { 
-          franchiseId, 
-          quantity: quantityValue, 
-          parsedQuantity: parseInt(quantityValue) || 0,
-          deliveryZone, 
-          zoneCity 
-        });
+        
         
         const result = await fetchDeliveryRulesAndCalculate(
           franchiseId,
@@ -656,11 +599,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
           // Set deliveryDayText from the returned result (not from state)
           // If isFallback is true, deliveryDayText will be null and message will show
           setDeliveryDayText(result.deliveryDayText || '');
-          console.log(`✅ [Call ${callId}] Delivery date set:`, {
-            date: `${dayName}, ${monthName} ${day}, ${year}`,
-            deliveryDayText: result.deliveryDayText,
-            isFallback: result.isFallback
-          });
+         
         } else {
           console.log(`⚠️ [Call ${callId}] No delivery date returned from fetchDeliveryRulesAndCalculate`);
         }
@@ -869,8 +808,8 @@ const CreateOrderScreen = ({ navigation, route }) => {
     return `ORD-${timestamp}-${random}`;
   };
 
-  // Handle create order
-  const handleCreateOrder = async () => {
+  // Handle confirm order button click - show modal
+  const handleConfirmOrderClick = () => {
     if (!validateForm()) {
       return;
     }
@@ -880,6 +819,14 @@ const CreateOrderScreen = ({ navigation, route }) => {
       return;
     }
 
+    // Show confirmation modal
+    setShowConfirmModal(true);
+  };
+
+  // Handle create order (called after confirmation)
+  const handleCreateOrder = async () => {
+    // Close modal
+    setShowConfirmModal(false);
     setLoading(true);
 
     try {
@@ -1035,6 +982,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
       const orderData = {
         order_name: generateOrderName(),
         customer_id: customerId,
+        franchise_id: franchiseId || null, // Add franchise_id to payload
         product_type: 'Case (9 pieces or 9 units)',
         quantity: parseInt(quantity),
         po_number: poNumber.trim() || null,
@@ -1399,7 +1347,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.confirmButton}
-            onPress={handleCreateOrder}
+            onPress={handleConfirmOrderClick}
             activeOpacity={0.8}
             disabled={loading}>
             <Text style={styles.confirmButtonText}>
@@ -1408,6 +1356,81 @@ const CreateOrderScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </BottomSheet>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={showConfirmModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowConfirmModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              {/* Icon */}
+              <View style={styles.modalIconContainer}>
+                <Icon name="help-circle" size={64} color={Colors.primaryPink} />
+              </View>
+
+              {/* Title */}
+              <Text style={styles.modalTitle}>Confirm Order</Text>
+
+              {/* Message */}
+              <Text style={styles.modalMessage}>
+                Do you want to create this order?
+              </Text>
+
+              {/* Order Summary */}
+              <View style={styles.orderSummaryContainer}>
+                <View style={styles.orderSummaryRow}>
+                  <Text style={styles.orderSummaryLabel}>Quantity:</Text>
+                  <Text style={styles.orderSummaryValue}>{quantity} Cases</Text>
+                </View>
+                {estimatedDeliveryDate && (
+                  <View style={styles.orderSummaryRow}>
+                    <Text style={styles.orderSummaryLabel}>Delivery:</Text>
+                    <Text style={styles.orderSummaryValue}>
+                      {estimatedDeliveryDate}
+                      {deliveryDayText && ` (${deliveryDayText})`}
+                    </Text>
+                  </View>
+                )}
+                {specialEvent && (
+                  <View style={styles.orderSummaryRow}>
+                    <Text style={styles.orderSummaryLabel}>Special Event:</Text>
+                    <Text style={styles.orderSummaryValue}>Yes (+$150.00)</Text>
+                  </View>
+                )}
+                {openerKit && (
+                  <View style={styles.orderSummaryRow}>
+                    <Text style={styles.orderSummaryLabel}>Opener Kit:</Text>
+                    <Text style={styles.orderSummaryValue}>Yes (+$15.00)</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Buttons */}
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonNo]}
+                  onPress={() => setShowConfirmModal(false)}
+                  activeOpacity={0.8}>
+                  <Text style={styles.modalButtonNoText}>No</Text>
+                </TouchableOpacity>
+                <View style={{ width: 12 }} />
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonYes]}
+                  onPress={handleCreateOrder}
+                  activeOpacity={0.8}
+                  disabled={loading}>
+                  <Text style={styles.modalButtonYesText}>
+                    {loading ? 'Creating...' : 'Yes'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1722,6 +1745,111 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.lightPink,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  orderSummaryContainer: {
+    width: '100%',
+    backgroundColor: Colors.backgroundGray,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  orderSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  orderSummaryLabel: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  orderSummaryValue: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonNo: {
+    backgroundColor: Colors.backgroundGray,
+    borderWidth: 2,
+    borderColor: Colors.textSecondary,
+  },
+  modalButtonYes: {
+    backgroundColor: Colors.primaryPink,
+  },
+  modalButtonNoText: {
+    fontSize: 16,
+    fontFamily: fontFamilyBody,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  modalButtonYesText: {
+    fontSize: 16,
+    fontFamily: fontFamilyBody,
+    fontWeight: '600',
+    color: Colors.cardBackground,
   },
 });
 

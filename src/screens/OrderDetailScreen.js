@@ -13,6 +13,7 @@ import {
   Linking,
   Animated,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -386,17 +387,22 @@ const OrderDetailScreen = ({ navigation, route }) => {
     );
   }
 
-  // Check if order is completed
-  const isCompleted = order && (
-    (order.deliveryStatus && (
-      order.deliveryStatus.toLowerCase().includes('completed') ||
-      order.deliveryStatus.toLowerCase().includes('delivered')
-    )) ||
-    (order.status && (
-      order.status.toLowerCase().includes('completed') ||
-      order.status.toLowerCase().includes('delivered')
-    ))
-  );
+  // Check if order is completed - strict check
+  const isCompleted = order && (() => {
+    const deliveryStatus = order.deliveryStatus?.toLowerCase().trim() || '';
+    const status = order.status?.toLowerCase().trim() || '';
+    
+    // Check for exact matches or statuses that start with completed/delivered
+    const completedStatuses = ['completed', 'delivered'];
+    const isDeliveryStatusCompleted = completedStatuses.some(s => 
+      deliveryStatus === s || deliveryStatus.startsWith(s + ' ')
+    );
+    const isStatusCompleted = completedStatuses.some(s => 
+      status === s || status.startsWith(s + ' ')
+    );
+    
+    return isDeliveryStatusCompleted || isStatusCompleted;
+  })();
   
   // Debug log
   if (order) {
@@ -524,18 +530,50 @@ const OrderDetailScreen = ({ navigation, route }) => {
 
         {/* Celebration Content */}
         <View style={styles.celebrationContainer}>
-          <Animated.View style={styles.celebrationContent}>
-            <View style={styles.celebrationIconContainer}>
-              <Icon name="checkmark-circle" size={100} color="#4CAF50" />
-            </View>
-            <Text style={styles.celebrationTitle}>🎉 Congratulations! 🎉</Text>
-            <Text style={styles.celebrationMessage}>
-              Your order has been completed!
-            </Text>
-            <Text style={styles.celebrationSubMessage}>
-              Thank you for choosing us!
-            </Text>
-          </Animated.View>
+          <LinearGradient
+            colors={['#E8F5E9', '#FFFFFF', '#E3F2FD']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.celebrationGradient}>
+            <Animated.View style={styles.celebrationContent}>
+              {/* Success Icon with Animated Ring */}
+              <View style={styles.celebrationIconWrapper}>
+                <View style={styles.celebrationIconRing} />
+                <View style={styles.celebrationIconContainer}>
+                  <Icon name="checkmark-circle" size={50} color="#4CAF50" />
+                </View>
+                <View style={styles.celebrationIconRingOuter} />
+              </View>
+              
+              {/* Title Section */}
+              <View style={styles.celebrationTitleContainer}>
+                <Text style={styles.celebrationEmoji}>🎉</Text>
+                <View style={{ marginHorizontal: 12 }}>
+                  <Text style={styles.celebrationTitle}>Congratulations!</Text>
+                </View>
+                <Text style={styles.celebrationEmoji}>🎉</Text>
+              </View>
+              
+              {/* Message Section */}
+              <View style={styles.celebrationMessageContainer}>
+                <Text style={styles.celebrationMessage}>
+                  Your order has been completed successfully!
+                </Text>
+                <View style={styles.celebrationDivider} />
+                <Text style={styles.celebrationSubMessage}>
+                  Thank you for choosing us. We appreciate your business!
+                </Text>
+              </View>
+              
+              {/* Decorative Elements */}
+              <View style={styles.celebrationDecorations}>
+                <View style={[styles.decorationDot, { left: '10%', top: '20%' }]} />
+                <View style={[styles.decorationDot, { right: '10%', top: '30%' }]} />
+                <View style={[styles.decorationDot, { left: '15%', bottom: '25%' }]} />
+                <View style={[styles.decorationDot, { right: '15%', bottom: '20%' }]} />
+              </View>
+            </Animated.View>
+          </LinearGradient>
 
           {/* Order Details Card */}
           <View style={styles.completedOrderCard}>
@@ -606,15 +644,221 @@ const OrderDetailScreen = ({ navigation, route }) => {
                         ]}>
                         {item.title}
                       </Text>
-                      {item.time && (
-                        <Text style={styles.timelineTime}>{item.time}</Text>
-                      )}
+                      
                       {item.description && (
                         <Text style={styles.timelineDescription}>{item.description}</Text>
                       )}
                     </View>
                   </View>
                 ))}
+              </View>
+
+              {/* Order Details Section */}
+              <View style={styles.orderDetailsSection}>
+                {/* Order Details Card */}
+                <View style={styles.detailsCard}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardHeaderIcon}>
+                      <Icon name="receipt-outline" size={24} color={Colors.primaryPink} />
+                    </View>
+                    <Text style={styles.sectionTitle}>Order Details</Text>
+                  </View>
+                  
+                  {/* Product Type */}
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconWrapper}>
+                      <Icon name="cube-outline" size={20} color={Colors.primaryPink} />
+                    </View>
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Product Type</Text>
+                      <Text style={styles.detailValue}>
+                        {order.product_type || 'Case (9 pieces or 9 units)'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Quantity */}
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconWrapper}>
+                      <Icon name="layers-outline" size={20} color={Colors.primaryPink} />
+                    </View>
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Quantity</Text>
+                      <Text style={styles.detailValue}>
+                        {order.quantity || order.cases || 0} Cases
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Opener Kit */}
+                  {(order.opener_kit || order.openerKit) && (
+                    <View style={styles.detailItem}>
+                      <View style={styles.detailIconWrapper}>
+                        <Icon name="gift-outline" size={20} color={Colors.primaryPink} />
+                      </View>
+                      <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>Coconut Opener Kit</Text>
+                        <View style={styles.badgeContainer}>
+                          <Text style={styles.badgeText}>Yes (+$15.00)</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Special Event Logo */}
+                  {(order.special_event_logo || order.specialEventLogo) && (
+                    <View style={styles.detailItem}>
+                      <View style={styles.detailIconWrapper}>
+                        <Icon name="image-outline" size={20} color={Colors.primaryPink} />
+                      </View>
+                      <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>Special Event Logo</Text>
+                        <View style={styles.badgeContainer}>
+                          <Text style={styles.badgeText}>Yes (+$150.00)</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Special Event Logo Preview */}
+                  {(order.special_event_logo || order.specialEventLogo) && (
+                    <View style={styles.logoPreviewCard}>
+                      <Image
+                        source={{ uri: order.special_event_logo || order.specialEventLogo }}
+                        style={styles.logoPreview}
+                        resizeMode="contain"
+                      />
+                    </View>
+                  )}
+
+                  {/* PO Number */}
+                  {(order.po_number || order.poNumber) && (
+                    <View style={styles.detailItem}>
+                      <View style={styles.detailIconWrapper}>
+                        <Icon name="document-text-outline" size={20} color={Colors.primaryPink} />
+                      </View>
+                      <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>PO Number</Text>
+                        <Text style={styles.detailValue}>
+                          {order.po_number || order.poNumber}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Order Notes */}
+                  {(order.special_instructions || order.orderNotes || order.order_notes) && (
+                    <View style={styles.detailItem}>
+                      <View style={styles.detailIconWrapper}>
+                        <Icon name="chatbubble-outline" size={20} color={Colors.primaryPink} />
+                      </View>
+                      <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>Order Notes</Text>
+                        <View style={styles.notesContainer}>
+                          <Text style={styles.notesText}>
+                            {order.special_instructions || order.orderNotes || order.order_notes}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Delivery Address */}
+                  {order.delivery_address && (
+                    <View style={styles.detailItem}>
+                      <View style={styles.detailIconWrapper}>
+                        <Icon name="location-outline" size={20} color={Colors.primaryPink} />
+                      </View>
+                      <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>Delivery Address</Text>
+                        <View style={styles.addressContainer}>
+                          <Text style={styles.addressText}>
+                            {order.delivery_address}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                {/* Company Details Card */}
+                <View style={styles.detailsCard}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardHeaderIcon}>
+                      <Icon name="business-outline" size={24} color={Colors.primaryPink} />
+                    </View>
+                    <Text style={styles.sectionTitle}>Company Details</Text>
+                  </View>
+                  
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconWrapper}>
+                      <Icon name="business-outline" size={20} color={Colors.primaryPink} />
+                    </View>
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Company Name</Text>
+                      <Text style={styles.detailValue}>
+                        {restaurantName || 'N/A'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Company Logo */}
+                  {companyLogo && (
+                    <View style={styles.logoPreviewCard}>
+                      <Text style={styles.logoLabel}>Company Logo</Text>
+                      <Image
+                        source={{ uri: companyLogo }}
+                        style={styles.logoPreview}
+                        resizeMode="contain"
+                      />
+                    </View>
+                  )}
+
+                  {/* Order Date */}
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconWrapper}>
+                      <Icon name="calendar-outline" size={20} color={Colors.primaryPink} />
+                    </View>
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Order Date</Text>
+                      <Text style={styles.detailValue}>
+                        {formatDate(order.orderDateRaw || order.order_date)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Delivery Date */}
+                  {(order.deliveryDateRaw || order.delivery_date) && (
+                    <View style={styles.detailItem}>
+                      <View style={styles.detailIconWrapper}>
+                        <Icon name="time-outline" size={20} color={Colors.primaryPink} />
+                      </View>
+                      <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>Delivery Date</Text>
+                        <Text style={styles.detailValue}>
+                          {formatDate(order.deliveryDateRaw || order.delivery_date)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Delivery Day Date */}
+                  {order.delivery_day_date && (
+                    <View style={styles.detailItem}>
+                      <View style={styles.detailIconWrapper}>
+                        <Icon name="flash-outline" size={20} color={Colors.success} />
+                      </View>
+                      <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>Delivery Timeline</Text>
+                        <View style={[styles.badgeContainer, styles.successBadge]}>
+                          <Text style={[styles.badgeText, styles.successBadgeText]}>
+                            {order.delivery_day_date}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                </View>
               </View>
             </ScrollView>
           </View>
@@ -667,18 +911,14 @@ const OrderDetailScreen = ({ navigation, route }) => {
 
       {/* Map Section - Fixed height (85%) */}
       <View style={[styles.mapContainer, { height: MAX_MAP_HEIGHT }]}>
-        {hasDriver ? (
+        {!isCompleted ? (
           <DriverLocationMap
             orderId={order.id || order.order_id}
             deliveryAddress={order.delivery_address || order.deliveryAddress}
             driverId={order.driver_id || order.driverId}
             containerStyle={{ width: '100%', height: '100%', borderRadius: 0 }}
           />
-        ) : (
-          <View style={styles.mapPlaceholder}>
-            <Text style={styles.mapPlaceholderText}>Map will appear when driver is assigned</Text>
-          </View>
-        )}
+        ) : null}
       </View>
 
       {/* Bottom Sheet */}
@@ -765,6 +1005,199 @@ const OrderDetailScreen = ({ navigation, route }) => {
                 </View>
               </View>
             ))}
+          </View>
+
+          {/* Order Details Section */}
+          <View style={styles.orderDetailsSection}>
+            {/* Order Details Card */}
+            <View style={styles.detailsCard}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderIcon}>
+                  <Icon name="receipt-outline" size={24} color={Colors.primaryPink} />
+                </View>
+                <Text style={styles.sectionTitle}>Order Details</Text>
+              </View>
+              
+              {/* Product Type */}
+              <View style={styles.detailItem}>
+                <View style={styles.detailIconWrapper}>
+                  <Icon name="cube-outline" size={20} color={Colors.primaryPink} />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Product Type</Text>
+                  <Text style={styles.detailValue}>
+                    {order.product_type || 'Case (9 pieces or 9 units)'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Quantity */}
+              <View style={styles.detailItem}>
+                <View style={styles.detailIconWrapper}>
+                  <Icon name="layers-outline" size={20} color={Colors.primaryPink} />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Quantity</Text>
+                  <Text style={styles.detailValue}>
+                    {order.quantity || order.cases || 0} Cases
+                  </Text>
+                </View>
+              </View>
+
+              {/* Opener Kit */}
+              {(order.opener_kit || order.openerKit) && (
+                <View style={styles.detailItem}>
+                  <View style={styles.detailIconWrapper}>
+                    <Icon name="gift-outline" size={20} color={Colors.primaryPink} />
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>Coconut Opener Kit</Text>
+                    <View style={styles.badgeContainer}>
+                      <Text style={styles.badgeText}>Yes (+$15.00)</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Special Event Logo */}
+              {(order.special_event_logo || order.specialEventLogo) && (
+                <View style={styles.detailItem}>
+                  <View style={styles.detailIconWrapper}>
+                    <Icon name="image-outline" size={20} color={Colors.primaryPink} />
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>Special Event Logo</Text>
+                    <View style={styles.badgeContainer}>
+                      <Text style={styles.badgeText}>Yes (+$150.00)</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Special Event Logo Preview */}
+              {(order.special_event_logo || order.specialEventLogo) && (
+                <View style={styles.logoPreviewCard}>
+                  <Image
+                    source={{ uri: order.special_event_logo || order.specialEventLogo }}
+                    style={styles.logoPreview}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
+
+              {/* PO Number */}
+              {(order.po_number || order.poNumber) && (
+                <View style={styles.detailItem}>
+                  <View style={styles.detailIconWrapper}>
+                    <Icon name="document-text-outline" size={20} color={Colors.primaryPink} />
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>PO Number</Text>
+                    <Text style={styles.detailValue}>
+                      {order.po_number || order.poNumber}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Order Notes */}
+              {(order.special_instructions || order.orderNotes || order.order_notes) && (
+                <View style={styles.detailItem}>
+                  <View style={styles.detailIconWrapper}>
+                    <Icon name="chatbubble-outline" size={20} color={Colors.primaryPink} />
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>Order Notes</Text>
+                    <View style={styles.notesContainer}>
+                      <Text style={styles.notesText}>
+                        {order.special_instructions || order.orderNotes || order.order_notes}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Delivery Address */}
+              {order.delivery_address && (
+                <View style={styles.detailItem}>
+                  <View style={styles.detailIconWrapper}>
+                    <Icon name="location-outline" size={20} color={Colors.primaryPink} />
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>Delivery Address</Text>
+                    <View style={styles.addressContainer}>
+                      <Text style={styles.addressText}>
+                        {order.delivery_address}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Company Details Card */}
+            <View style={styles.detailsCard}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderIcon}>
+                  <Icon name="business-outline" size={24} color={Colors.primaryPink} />
+                </View>
+                <Text style={styles.sectionTitle}>Company Details</Text>
+              </View>
+              
+              <View style={styles.detailItem}>
+                <View style={styles.detailIconWrapper}>
+                  <Icon name="business-outline" size={20} color={Colors.primaryPink} />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Company Name</Text>
+                  <Text style={styles.detailValue}>
+                    {restaurantName || 'N/A'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Company Logo */}
+              {companyLogo && (
+                <View style={styles.logoPreviewCard}>
+                  <Text style={styles.logoLabel}>Company Logo</Text>
+                  <Image
+                    source={{ uri: companyLogo }}
+                    style={styles.logoPreview}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
+
+              {/* Order Date */}
+              <View style={styles.detailItem}>
+                <View style={styles.detailIconWrapper}>
+                  <Icon name="calendar-outline" size={20} color={Colors.primaryPink} />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Order Date</Text>
+                  <Text style={styles.detailValue}>
+                    {formatDate(order.orderDateRaw || order.order_date)}
+                  </Text>
+                </View>
+              </View> 
+
+              {/* Delivery Day Date */}
+              {order.delivery_day_date && (
+                <View style={styles.detailItem}>
+                  <View style={styles.detailIconWrapper}>
+                    <Icon name="flash-outline" size={20} color={Colors.success} />
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>Delivery Timeline</Text>
+                    <View style={[styles.badgeContainer, styles.successBadge]}>
+                      <Text style={[styles.badgeText, styles.successBadgeText]}>
+                        {order.delivery_day_date}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
           </View>
         </BottomSheetScrollView>
       </BottomSheet>
@@ -1076,49 +1509,125 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.backgroundGray,
+  },
+  celebrationGradient: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
   },
   celebrationContent: {
     alignItems: 'center',
     paddingHorizontal: 32,
-    paddingTop: 40,
+    width: '100%',
+    position: 'relative',
+  },
+  celebrationIconWrapper: {
+    position: 'relative',
+    marginBottom: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  celebrationIconRing: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 90,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(76, 175, 80, 0.2)',
+  },
+  celebrationIconRingOuter: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 100,
+    backgroundColor: 'rgba(76, 175, 80, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(76, 175, 80, 0.1)',
   },
   celebrationIconContainer: {
-    marginBottom: 24,
-    backgroundColor: '#E8F5E9',
-    borderRadius: 60,
-    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 80,
+    padding: 12,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+    zIndex: 10,
+  },
+  celebrationTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  celebrationEmoji: {
+    fontSize: 22,
   },
   celebrationTitle: {
-    fontSize: 26,
+    fontSize: 32,
     fontFamily: fontFamilyHeading,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: Colors.textPrimary,
-    marginBottom: 16,
     textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  celebrationMessageContainer: {
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 12,
+    marginBottom: 10,
   },
   celebrationMessage: {
-    fontSize: 20,
+    fontSize: 22,
     fontFamily: fontFamilyBody,
     fontWeight: '600',
     color: '#4CAF50',
-    marginBottom: 8,
     textAlign: 'center',
+    marginBottom: 10,
+    lineHeight: 32,
+  },
+  celebrationDivider: {
+    width: 60,
+    height: 3,
+    backgroundColor: '#4CAF50',
+    borderRadius: 2,
+    marginVertical: 10,
+    opacity: 0.6,
   },
   celebrationSubMessage: {
     fontSize: 16,
     fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 32,
+    lineHeight: 24,
+    paddingHorizontal: 20,
+  },
+  celebrationDecorations: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    top: 0,
+    left: 0,
+    pointerEvents: 'none',
+  },
+  decorationDot: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4CAF50',
+    opacity: 0.3,
   },
   completedOrderCard: {
     flex: 1,
     width: '100%',
     backgroundColor: Colors.cardBackground,
     borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    marginTop: 20,
+    borderTopRightRadius: 30, 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -1161,7 +1670,7 @@ const styles = StyleSheet.create({
   },
   driverAvatarText: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
   },
@@ -1184,6 +1693,153 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  orderDetailsSection: {
+    marginTop: 1,
+    paddingBottom: 20,
+  },
+  detailsCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F5F5F5',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  cardHeaderIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.primaryPink + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    letterSpacing: 0.3,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    alignItems: 'flex-start',
+  },
+  detailIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: Colors.primaryPink + '10',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    marginTop: 2,
+  },
+  detailContent: {
+    flex: 1,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailValue: {
+    fontSize: 15,
+    fontFamily: fontFamilyBody,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  badgeContainer: {
+    backgroundColor: Colors.primaryPink + '15',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontFamily: fontFamilyBody,
+    fontWeight: '700',
+    color: Colors.primaryPink,
+  },
+  successBadge: {
+    backgroundColor: Colors.success + '15',
+  },
+  successBadgeText: {
+    color: Colors.success,
+  },
+  logoPreviewCard: {
+    marginTop: 12,
+    marginBottom: 8,
+    backgroundColor: Colors.backgroundGray,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  logoLabel: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  logoPreview: {
+    width: '100%',
+    height: 140,
+    borderRadius: 8,
+    backgroundColor: Colors.cardBackground,
+  },
+  notesContainer: {
+    backgroundColor: Colors.backgroundGray,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  notesText: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.textPrimary,
+    lineHeight: 22,
+  },
+  addressContainer: {
+    backgroundColor: Colors.backgroundGray,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  addressText: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.textPrimary,
+    lineHeight: 22,
   },
 });
 

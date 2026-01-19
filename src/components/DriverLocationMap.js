@@ -140,8 +140,7 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containe
         .select('latitude, longitude, updated_at')
         .eq('driver_id', driverId)
         .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
 
       console.log('📍 [DriverLocationMap] Supabase query result:');
       console.log('📍 [DriverLocationMap] Data:', data);
@@ -156,11 +155,20 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containe
         return;
       }
 
-      if (data?.latitude && data?.longitude) {
+      // Check if data exists and has at least one row
+      if (!data || data.length === 0) {
+        console.warn('⚠️ [DriverLocationMap] No driver location data found');
+        setError('Driver location not available');
+        setLoading(false);
+        return;
+      }
+
+      const locationData = data[0];
+      if (locationData?.latitude && locationData?.longitude) {
         const location = {
-          latitude: parseFloat(data.latitude),
-          longitude: parseFloat(data.longitude),
-          updatedAt: data.updated_at,
+          latitude: parseFloat(locationData.latitude),
+          longitude: parseFloat(locationData.longitude),
+          updatedAt: locationData.updated_at,
         };
         console.log('✅ [DriverLocationMap] Driver location fetched:');
         console.log('✅ [DriverLocationMap] Latitude:', location.latitude);
@@ -175,8 +183,8 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containe
         }
       } else {
         console.warn('⚠️ [DriverLocationMap] Driver location data missing:');
-        console.warn('⚠️ [DriverLocationMap] Latitude:', data?.latitude);
-        console.warn('⚠️ [DriverLocationMap] Longitude:', data?.longitude);
+        console.warn('⚠️ [DriverLocationMap] Latitude:', locationData?.latitude);
+        console.warn('⚠️ [DriverLocationMap] Longitude:', locationData?.longitude);
         setError('Driver location not available');
       }
     } catch (err) {
@@ -217,8 +225,7 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containe
           .select('latitude, longitude, updated_at')
           .eq('driver_id', driverId)
           .order('updated_at', { ascending: false })
-          .limit(1)
-          .single();
+          .limit(1);
 
         if (error) {
           console.error('❌ [DriverLocationMap] Polling error:', error);
@@ -227,10 +234,17 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containe
         
         console.log('🔄 [DriverLocationMap] Polling data received:', data);
         
-        const location = data?.latitude && data?.longitude ? {
-          latitude: parseFloat(data.latitude),
-          longitude: parseFloat(data.longitude),
-          updatedAt: data.updated_at,
+        // Check if data exists and has at least one row
+        if (!data || data.length === 0) {
+          console.warn('⚠️ [DriverLocationMap] No driver location data in polling response');
+          return;
+        }
+        
+        const locationData = data[0];
+        const location = locationData?.latitude && locationData?.longitude ? {
+          latitude: parseFloat(locationData.latitude),
+          longitude: parseFloat(locationData.longitude),
+          updatedAt: locationData.updated_at,
         } : null;
 
         if (!location) {
@@ -376,19 +390,7 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containe
     }
   };
 
-  if (!isDriverAssigned()) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.noDriverContainer}>
-          <Icon name="car-outline" size={48} color={Colors.textSecondary} />
-          <Text style={styles.noDriverText}>No driver assigned yet</Text>
-          <Text style={styles.noDriverSubtext}>
-            Driver location will appear here once assigned
-          </Text>
-        </View>
-      </View>
-    );
-  }
+ 
 
   if (loading) {
     return (
@@ -412,16 +414,7 @@ const DriverLocationMap = ({ orderId, deliveryAddress, driverId = null, containe
     );
   }
 
-  if (!driverLocation) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.noLocationContainer}>
-          <Icon name="location-outline" size={48} color={Colors.textSecondary} />
-          <Text style={styles.noLocationText}>Driver location not available</Text>
-        </View>
-      </View>
-    );
-  }
+ 
 
   // Default region if not set
   const defaultRegion = region || (driverLocation ? {
