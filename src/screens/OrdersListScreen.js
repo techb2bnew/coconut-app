@@ -725,14 +725,14 @@ const OrdersListScreen = ({ navigation }) => {
                   {order.delivery_day_date ? (
                 <View style={styles.deliveryDateRow}>
                   <Icon name="calendar-outline" size={18} color={Colors.primaryBlue} /> 
-                    <Text style={[styles.deliveryDateText, { color: Colors.success, marginTop: 4, fontWeight: '600' }]}>
+                    <Text style={[styles.deliveryDateText, { color: Colors.success,   fontWeight: '600' }]}>
                       Delivery: {order.delivery_day_date}
                     </Text>
                     </View>
                   ) : (
                 <View style={styles.deliveryDateRow}>
                   <Icon name="calendar-outline" size={18} color={Colors.primaryBlue} /> 
-                    <Text style={[styles.deliveryDateText, { color: Colors.textSecondary, marginTop: 4,  }]}>
+                    <Text style={[styles.deliveryDateText, { color: Colors.textSecondary,   }]}>
                       Delivery updates will be sent to your email soon.
                     </Text>
                     </View>

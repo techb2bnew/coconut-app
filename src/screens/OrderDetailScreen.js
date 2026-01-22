@@ -827,20 +827,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
                     </View>
                   </View>
 
-                  {/* Delivery Date */}
-                  {(order.deliveryDateRaw || order.delivery_date) && (
-                    <View style={styles.detailItem}>
-                      <View style={styles.detailIconWrapper}>
-                        <Icon name="time-outline" size={20} color={Colors.primaryPink} />
-                      </View>
-                      <View style={styles.detailContent}>
-                        <Text style={styles.detailLabel}>Delivery Date</Text>
-                        <Text style={styles.detailValue}>
-                          {formatDate(order.deliveryDateRaw || order.delivery_date)}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
+                  
 
                   {/* Delivery Day Date */}
                   {order.delivery_day_date && (
