@@ -36,7 +36,9 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>This app uses your location to show accurate delivery tracking on the map.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app may access your photo library so you can upload logos or images for your coconut orders.</string>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>This app needs notification permission to send you important updates and alerts.</string>
 	<key>RCTNewArchEnabled</key>
@@ -69,7 +71,6 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
-		<string>processing</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>

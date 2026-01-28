@@ -15,7 +15,6 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import Logo from '../components/Logo';
@@ -123,16 +122,12 @@ const ResetPasswordScreen = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}>
         {/* Back Button Header */}
-        <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.header}>
+        <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <BackArrowIcon size={24} style={styles.backIconStyle} />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
-        </LinearGradient>
+        </View>
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -201,6 +196,7 @@ const styles = StyleSheet.create({
   header: {
     paddingVertical: 12,
     paddingHorizontal: 16,
+    backgroundColor: Colors.primaryBlue,
   },
   backButton: {
     flexDirection: 'row',
@@ -217,7 +213,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingVertical: 20,
+    paddingVertical: 10,
   },
   contentContainer: {
     paddingHorizontal: 20,
