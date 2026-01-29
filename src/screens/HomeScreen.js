@@ -521,7 +521,7 @@ const HomeScreen = ({ navigation }) => {
             {franchiseLogo ? (
               <Image 
                 source={{ uri: franchiseLogo }} 
-                style={[styles.logo, { width: 70, height: 70 }]}
+                style={[styles.logo, { width: 70, height: 70, borderRadius: 10 }]}
                 resizeMode="contain"
                 onError={(error) => {
                   console.error('Error loading franchise logo:', error);
