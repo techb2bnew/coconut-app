@@ -401,7 +401,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
 
   if (!order) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <View style={styles.backIconContainer}>
@@ -513,7 +513,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
   // If order is completed, show celebration screen
   if (isCompleted) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
@@ -917,7 +917,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
@@ -1263,12 +1263,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.backgroundGray,
+    paddingTop: HEADER_HEIGHT,
   },
   header: {
+    position: 'absolute', 
+    paddingTop: Platform.OS === 'ios' ? 55 : 10,
+    left: 0,
+    right: 0,
     backgroundColor: Colors.backgroundGray,
     paddingVertical: 12,
     paddingHorizontal: 16,
     zIndex: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   backButton: {
     flexDirection: 'row',
