@@ -38,7 +38,7 @@ const OrdersListScreen = ({ navigation }) => {
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
   const [markedDates, setMarkedDates] = useState({}); // For calendar marked dates
   const bottomSheetRef = useRef(null);
-  const snapPoints = useMemo(() => ['75%'], []);
+  const snapPoints = useMemo(() => ['90%'], []);
   const [stats, setStats] = useState({
     active: 0,
     pending: 0,
@@ -306,9 +306,16 @@ const OrdersListScreen = ({ navigation }) => {
           // Additional fields for reorder
           order_notes: order.order_notes || order.notes || '',
           special_event: order.special_event || false,
-          opener_kit: order.opener_kit || false,
+          opener_kit: order.opener_kit || order.openerKit || false,
+          openerKit: order.opener_kit || order.openerKit || false, // Include both field names for compatibility
+          // Debug: Log openerKit value
+          // console.log('Order openerKit:', order.id, { opener_kit: order.opener_kit, openerKit: order.openerKit }),
           special_event_logo: order.special_event_logo || null,
           customer_details: order.customer_details || null,
+          // Include all order fields for OrderDetailScreen
+          product_type: order.product_type || null,
+          quantity: order.quantity || null,
+          special_instructions: order.special_instructions || null,
         };
       });
 
@@ -797,7 +804,8 @@ const OrdersListScreen = ({ navigation }) => {
               handleIndicatorStyle={styles.bottomSheetIndicator}>
               <BottomSheetScrollView
                 contentContainerStyle={styles.bottomSheetContent}
-                showsVerticalScrollIndicator={false}>
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}>
                 <View style={styles.datePickerHeader}>
                   <Text style={styles.datePickerTitle}>Select Dates</Text>
                   <TouchableOpacity
@@ -1326,13 +1334,13 @@ const styles = StyleSheet.create({
   },
   bottomSheetContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 100, // Increased padding to ensure buttons are visible
   },
   datePickerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 10,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
@@ -1347,7 +1355,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   datePickerContainer: {
-    marginBottom: 24,
+    marginBottom: 10,
   },
   datePickerLabel: {
     fontSize: 16,
@@ -1365,25 +1373,24 @@ const styles = StyleSheet.create({
   calendar: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
-    marginBottom: 16,
+    borderColor: Colors.borderLight, 
     paddingBottom: 10,
+    overflow: 'hidden', // Prevent calendar from expanding too much
   },
   selectedDatesListContainer: {
-    marginBottom: 24,
+    marginBottom: 10,
   },
   selectedDatesListTitle: {
     fontSize: 14,
     fontFamily: fontFamilyBody,
     fontWeight: '600',
-    color: Colors.textPrimary,
-    marginBottom: 12,
+    color: Colors.textPrimary, 
   },
   selectedDatesList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 2,
   },
   selectedDateItem: {
     flexDirection: 'row',
@@ -1416,7 +1423,7 @@ const styles = StyleSheet.create({
   },
   applyDatesButton: {
     backgroundColor: Colors.primaryBlue,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',

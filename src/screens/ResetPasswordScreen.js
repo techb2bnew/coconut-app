@@ -97,7 +97,9 @@ const ResetPasswordScreen = ({ navigation }) => {
             text: 'OK',
             onPress: () => {
               if (navigation) {
-                navigation.navigate('Login');
+                // Replace reset password screen with login screen
+                // This prevents user from going back to reset password screen
+                navigation.replace('Login');
               }
             },
           },
@@ -113,7 +115,9 @@ const ResetPasswordScreen = ({ navigation }) => {
 
   const handleBack = () => {
     if (navigation) {
-      navigation.goBack();
+      // Navigate to Login screen instead of going back to OTP screen
+      // This prevents user from going back to OTP screen after reaching reset password
+      navigation.navigate('Login');
     }
   };
 

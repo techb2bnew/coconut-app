@@ -20,22 +20,22 @@ import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 const TermsAndConditionsScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
+      {/* Sticky Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}>
+          <Icon name="arrow-back" size={20} color={Colors.cardBackground} />
+          <Text style={styles.backText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         {/* Main Card Container */}
         <View style={styles.cardContainer}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}>
-              <Icon name="arrow-back" size={20} color={Colors.cardBackground} />
-              <Text style={styles.backText}>Back</Text>
-            </TouchableOpacity>
-          </View>
-
           {/* Content */}
           <View style={styles.content}>
             <Text style={styles.title}>Terms & Conditions</Text> 
@@ -212,6 +212,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingTop: 60, // Add padding to account for sticky header
     paddingBottom: 40,
   },
   cardContainer: {
@@ -225,6 +226,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    elevation: 5, // For Android shadow
+    shadowColor: '#000', // For iOS shadow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   backButton: {
     flexDirection: 'row',

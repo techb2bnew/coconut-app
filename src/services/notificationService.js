@@ -35,6 +35,37 @@ export const getCustomerId = async () => {
 };
 
 /**
+ * Fetch customer ID and account creation date from logged in user
+ */
+export const getCustomerIdAndCreatedAt = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !user.email) {
+      return { customerId: null, createdAt: null };
+    }
+
+    const { data: customer, error } = await supabase
+      .from('customers')
+      .select('id, created_at')
+      .eq('email', user.email)
+      .single();
+
+    if (error) {
+      console.error('Error fetching customer:', error);
+      return { customerId: null, createdAt: null };
+    }
+
+    return {
+      customerId: customer?.id || null,
+      createdAt: customer?.created_at || null,
+    };
+  } catch (error) {
+    console.error('Error in getCustomerIdAndCreatedAt:', error);
+    return { customerId: null, createdAt: null };
+  }
+};
+
+/**
  * Format date to readable string
  */
 export const formatNotificationDate = (dateString) => {
@@ -92,7 +123,9 @@ export const getNotificationIcon = (notificationType) => {
 /**
  * Fetch notifications for current customer
  * FIX: Only fetch sent notifications (status = 'sent' AND sent_at IS NOT NULL)
+ * FIX: Only show notifications created after user's account creation
  * This prevents scheduled notifications from showing immediately
+ * This prevents old notifications from showing to new users
  */
 export const fetchNotifications = async (customerId) => {
   if (!customerId) {
@@ -100,19 +133,53 @@ export const fetchNotifications = async (customerId) => {
   }
 
   try {
+    // Get customer's account creation date to filter out old notifications
+    const { data: customer, error: customerError } = await supabase
+      .from('customers')
+      .select('created_at')
+      .eq('id', customerId)
+      .single();
+
+    if (customerError) {
+      console.error('Error fetching customer created_at:', customerError);
+      // If we can't get the date, don't filter (fallback behavior)
+    }
+
+    const customerCreatedAt = customer?.created_at || null;
+    console.log('📅 Customer account created at:', customerCreatedAt);
+
+    // If customer has a creation date, only show notifications sent after that date
+    // If no creation date, show all (fallback for existing users)
     // ✅ FIX: Use mobile_app_notifications view (if created) OR filter by status = 'sent'
     // Option 1: Use view (recommended - after running SQL script)
     let notificationsFromView = [];
     try {
-      const { data: viewData, error: viewError } = await supabase
+      let viewQuery = supabase
         .from('mobile_app_notifications')  // ✅ View use karein
         .select('*')
         .or(`recipient_type.eq.all_customers,recipient_ids.cs.{${customerId}}`)
         .order('sent_at', { ascending: false })
         .limit(50);
 
+      // ✅ FIX: Filter by customer creation date if available
+      if (customerCreatedAt) {
+        // Only show notifications sent after customer account creation
+        viewQuery = viewQuery.gte('sent_at', customerCreatedAt);
+      }
+
+      const { data: viewData, error: viewError } = await viewQuery;
+
       if (!viewError && viewData) {
-        notificationsFromView = viewData.map((notification) => {
+        // Additional client-side filter for safety (in case view doesn't filter properly)
+        const filteredViewData = customerCreatedAt
+          ? viewData.filter((notification) => {
+              const notificationDate = notification.sent_at || notification.created_at;
+              if (!notificationDate) return false;
+              return new Date(notificationDate) >= new Date(customerCreatedAt);
+            })
+          : viewData;
+
+        notificationsFromView = filteredViewData.map((notification) => {
           const iconData = getNotificationIcon(notification.title);
               return {
                 id: notification.id,
@@ -148,7 +215,7 @@ export const fetchNotifications = async (customerId) => {
           const notificationIds = recipients.map((r) => r.notification_id);
 
           // ✅ FIX: Fetch only sent notifications
-          const { data: notifications, error: notificationsError } = await supabase
+          let notificationsQuery = supabase
             .from('notifications')
             .select('*')
             .in('notification_id', notificationIds)
@@ -156,8 +223,24 @@ export const fetchNotifications = async (customerId) => {
             .not('sent_at', 'is', null)  // ✅ CRITICAL: Must have sent_at
             .order('sent_at', { ascending: false });
 
+          // ✅ FIX: Filter by customer creation date if available
+          if (customerCreatedAt) {
+            notificationsQuery = notificationsQuery.gte('sent_at', customerCreatedAt);
+          }
+
+          const { data: notifications, error: notificationsError } = await notificationsQuery;
+
           if (!notificationsError && notifications) {
-            notificationsFromRecipients = notifications.map((notification) => {
+            // Additional client-side filter for safety
+            const filteredNotifications = customerCreatedAt
+              ? notifications.filter((notification) => {
+                  const notificationDate = notification.sent_at || notification.created_at;
+                  if (!notificationDate) return false;
+                  return new Date(notificationDate) >= new Date(customerCreatedAt);
+                })
+              : notifications;
+
+            notificationsFromRecipients = filteredNotifications.map((notification) => {
               const recipient = recipients.find((r) => r.notification_id === notification.notification_id);
               const iconData = getNotificationIcon(notification.title);
 
@@ -185,7 +268,7 @@ export const fetchNotifications = async (customerId) => {
       let notificationsFromIds = [];
       try {
         // ✅ FIX: Only fetch sent notifications
-        const { data: allNotifications, error: allError } = await supabase
+        let allNotificationsQuery = supabase
           .from('notifications')
           .select('*')
           .eq('status', 'sent')  // ✅ CRITICAL: Only sent notifications
@@ -193,9 +276,25 @@ export const fetchNotifications = async (customerId) => {
           .order('sent_at', { ascending: false })
           .limit(100); // Limit to recent notifications
 
+        // ✅ FIX: Filter by customer creation date if available
+        if (customerCreatedAt) {
+          allNotificationsQuery = allNotificationsQuery.gte('sent_at', customerCreatedAt);
+        }
+
+        const { data: allNotifications, error: allError } = await allNotificationsQuery;
+
         if (!allError && allNotifications) {
           notificationsFromIds = allNotifications
             .filter((notification) => {
+              // ✅ FIX: Additional filter for customer creation date (client-side safety check)
+              if (customerCreatedAt) {
+                const notificationDate = notification.sent_at || notification.created_at;
+                if (!notificationDate) return false;
+                if (new Date(notificationDate) < new Date(customerCreatedAt)) {
+                  return false; // Skip notifications sent before user account creation
+                }
+              }
+
               // Check if notification is for all customers
               if (notification.recipient_type === 'all_customers') {
                 return true;

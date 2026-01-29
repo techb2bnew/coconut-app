@@ -20,6 +20,7 @@ import {
   Animated,
   Dimensions,
   Modal,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -66,6 +67,8 @@ const CreateOrderScreen = ({ navigation, route }) => {
   
   // Bottom sheet ref and snap points
   const bottomSheetRef = useRef(null);
+  const scrollViewRef = useRef(null);
+  const notesInputRef = useRef(null);
   const snapPoints = useMemo(() => ['50%', '80%'], []);
   
   // Handle sheet position changes to ensure it doesn't go beyond 80%
@@ -78,6 +81,54 @@ const CreateOrderScreen = ({ navigation, route }) => {
   
   // Animation for banner
   const bannerAnim = useRef(new Animated.Value(0)).current;
+
+  // Handle keyboard events
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        // When keyboard shows, ensure the notes field is visible
+        if (notesInputRef.current) {
+          setTimeout(() => {
+            notesInputRef.current?.measureLayout(
+              scrollViewRef.current?.getInnerViewNode?.() || scrollViewRef.current,
+              (x, y, width, height) => {
+                scrollViewRef.current?.scrollTo({
+                  y: y - 100, // Scroll to show input with some padding
+                  animated: true,
+                });
+              },
+              () => {
+                // Fallback: scroll to end if measureLayout fails
+                setTimeout(() => {
+                  scrollViewRef.current?.scrollToEnd({ animated: true });
+                }, 100);
+              }
+            );
+          }, 100);
+        }
+      }
+    );
+
+    const keyboardDidHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        // Re-enable scrolling after keyboard closes
+        // Small delay to ensure keyboard is fully closed
+        setTimeout(() => {
+          if (scrollViewRef.current) {
+            // Force scroll view to be scrollable again
+            scrollViewRef.current.setNativeProps({ scrollEnabled: true });
+          }
+        }, 100);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   // Product type options
   const productTypeOptions = [
@@ -551,19 +602,19 @@ const CreateOrderScreen = ({ navigation, route }) => {
         
         // If no franchise, show default Same Day
         if (!franchiseId) {
-          const today = new Date();
-          const deliveryDate = new Date(today);
+      const today = new Date();
+      const deliveryDate = new Date(today);
           deliveryDate.setHours(0, 0, 0, 0);
-          
-          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          
-          const dayName = days[deliveryDate.getDay()];
-          const monthName = months[deliveryDate.getMonth()];
-          const day = deliveryDate.getDate();
-          const year = deliveryDate.getFullYear();
-          
-          setEstimatedDeliveryDate(`${dayName}, ${monthName} ${day}, ${year}`);
+      
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      const dayName = days[deliveryDate.getDay()];
+      const monthName = months[deliveryDate.getMonth()];
+      const day = deliveryDate.getDate();
+      const year = deliveryDate.getFullYear();
+      
+      setEstimatedDeliveryDate(`${dayName}, ${monthName} ${day}, ${year}`);
           setDeliveryDayText('Same Day');
           return;
         }
@@ -603,9 +654,9 @@ const CreateOrderScreen = ({ navigation, route }) => {
         } else {
           console.log(`⚠️ [Call ${callId}] No delivery date returned from fetchDeliveryRulesAndCalculate`);
         }
-      };
+    };
 
-      calculateDeliveryDate();
+    calculateDeliveryDate();
     }, 500); // 500ms debounce delay
 
     // Cleanup: Clear timeout on unmount or when dependencies change
@@ -969,7 +1020,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
       if (!deliveryDate || !(deliveryDate instanceof Date) || isNaN(deliveryDate.getTime())) {
         console.warn('Invalid deliveryDate from calculation, using fallback');
         deliveryDate = new Date();
-        deliveryDate.setHours(0, 0, 0, 0);
+      deliveryDate.setHours(0, 0, 0, 0);
         deliveryDayText = null; // Blank for fallback
       }
       
@@ -990,6 +1041,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
         special_instructions: orderNotes.trim() || null,
         special_event_logo: logoUrl || null,
         special_event_amount: specialEvent ? 150 : null,
+        openerKit: openerKit || false,
         order_date: new Date().toISOString(),
         delivery_date: deliveryDate.toISOString(),
         delivery_day_date: deliveryDayText || null, // Text value: "Same Day", "1 day", "2 days", or null for fallback
@@ -1166,8 +1218,12 @@ const CreateOrderScreen = ({ navigation, route }) => {
         handleIndicatorStyle={styles.handleIndicator}
         animateOnMount={true}>
         <BottomSheetScrollView
+          ref={scrollViewRef}
           contentContainerStyle={styles.bottomSheetContent}
-          showsVerticalScrollIndicator={false}> 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          nestedScrollEnabled={true}> 
 
           {/* Product Type */}
           <View style={styles.formCard}>
@@ -1337,7 +1393,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
 
         </BottomSheetScrollView>
         
-        {/* Footer Buttons */}
+        {/* Footer Buttons - Fixed at bottom */}
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.cancelButton}
@@ -1438,7 +1494,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.backgroundGray, 
+    backgroundColor: Colors.backgroundGray,
   },
   bannerContainer: {
     height: BANNER_HEIGHT,
@@ -1475,7 +1531,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 2,
   },
-  bannerContent: { 
+  bannerContent: {
     textAlign: 'center',
     alignItems: 'center',
     marginTop: 20,
@@ -1692,43 +1748,48 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   footer: {
-    backgroundColor: Colors.primaryPink,
+    backgroundColor: Colors.cardBackground,
     flexDirection: 'row',
-    paddingVertical: 16,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 12 : 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.backgroundGray,
   },
   cancelButtonText: {
     fontSize: 16,
     fontFamily: fontFamilyBody,
     fontWeight: '600',
-    color: Colors.cardBackground,
+    color: Colors.textPrimary,
   },
   confirmButton: {
     flex: 1,
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    paddingVertical: 14,
+    backgroundColor: Colors.primaryPink,
+    borderRadius: 8,
+    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: 8,
   },
   confirmButtonText: {
     fontSize: 16,
     fontFamily: fontFamilyBody,
     fontWeight: '600',
-    color: Colors.primaryPink,
+    color: Colors.cardBackground,
   },
   bottomSheetBackground: {
     backgroundColor: Colors.cardBackground,
@@ -1744,7 +1805,10 @@ const styles = StyleSheet.create({
   bottomSheetContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 20,
+    paddingBottom: 80, // Extra padding to account for fixed footer
+  },
+  scrollView: {
+    flex: 1,
   },
   modalOverlay: {
     flex: 1,

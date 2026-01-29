@@ -32,6 +32,12 @@ const MAX_MAP_HEIGHT = height * 0.85; // Maximum map height (85%)
 const OrderDetailScreen = ({ navigation, route }) => {
   const { order } = route.params || {};
   console.log('order', order);
+  console.log('openerKit check:', {
+    opener_kit: order?.opener_kit,
+    openerKit: order?.openerKit,
+    opener_kit_type: typeof order?.opener_kit,
+    openerKit_type: typeof order?.openerKit,
+  });
   
   // Bottom sheet ref
   const bottomSheetRef = useRef(null);
@@ -56,18 +62,42 @@ const OrderDetailScreen = ({ navigation, route }) => {
       if (!order?.customer_id) return;
       
       try {
-        const { data: customer, error } = await supabase
+        // First, fetch customer data including company_id
+        const { data: customer, error: customerError } = await supabase
           .from('customers')
-          .select('company_name, companyLogo')
+          .select('company_name, company_id')
           .eq('id', order.customer_id)
           .single();
         
-        if (!error && customer) {
+        if (customerError) {
+          console.error('Error fetching customer data:', customerError);
+          return;
+        }
+        
+        if (customer) {
+          // Set company name from customer table
           if (customer.company_name) {
             setRestaurantName(customer.company_name);
           }
-          if (customer.companyLogo) {
-            setCompanyLogo(customer.companyLogo);
+          
+          // If company_id exists, fetch logo from company table
+          if (customer.company_id) {
+            try {
+              const { data: company, error: companyError } = await supabase
+                .from('company')
+                .select('companyLogo')
+                .eq('id', customer.company_id)
+                .single();
+              
+              if (!companyError && company && company.companyLogo) {
+                setCompanyLogo(company.companyLogo);
+                console.log('Company logo fetched from company table:', company.companyLogo);
+              } else if (companyError) {
+                console.error('Error fetching company logo:', companyError);
+              }
+            } catch (err) {
+              console.error('Error fetching company data:', err);
+            }
           }
         }
       } catch (err) {
@@ -691,7 +721,9 @@ const OrderDetailScreen = ({ navigation, route }) => {
                   </View>
 
                   {/* Opener Kit */}
-                  {(order.opener_kit || order.openerKit) && (
+                  {((order.opener_kit === true || order.openerKit === true || order.opener_kit === 1 || order.openerKit === 1 || 
+                     order.opener_kit === 'true' || order.openerKit === 'true' || 
+                     String(order.opener_kit).toLowerCase() === 'true' || String(order.openerKit).toLowerCase() === 'true')) && (
                     <View style={styles.detailItem}>
                       <View style={styles.detailIconWrapper}>
                         <Icon name="gift-outline" size={20} color={Colors.primaryPink} />
@@ -1032,7 +1064,9 @@ const OrderDetailScreen = ({ navigation, route }) => {
               </View>
 
               {/* Opener Kit */}
-              {(order.opener_kit || order.openerKit) && (
+              {((order.opener_kit === true || order.openerKit === true || order.opener_kit === 1 || order.openerKit === 1 || 
+                 order.opener_kit === 'true' || order.openerKit === 'true' || 
+                 String(order.opener_kit).toLowerCase() === 'true' || String(order.openerKit).toLowerCase() === 'true')) && (
                 <View style={styles.detailItem}>
                   <View style={styles.detailIconWrapper}>
                     <Icon name="gift-outline" size={20} color={Colors.primaryPink} />
@@ -1827,6 +1861,24 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     lineHeight: 22,
+  },
+  orderSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  orderSummaryLabel: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  orderSummaryValue: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.textPrimary,
+    fontWeight: '600',
   },
 });
 

@@ -45,6 +45,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
           setTimeout(() => reject(new Error('Request timeout')), 15000);
         });
 
+        // Use signInWithOtp for password reset (OTP-based)
         const otpPromise = supabase.auth.signInWithOtp({
           email: email.trim(),
           options: {
@@ -101,16 +102,25 @@ const ForgotPasswordScreen = ({ navigation }) => {
       const { data, error } = await sendOTPWithRetry(2, 2000);
 
       if (error) {
-        console.error('Send OTP error:', error);
+        // Don't log "Signups not allowed" error to console
+        if (
+          !error.message?.includes('Signups not allowed') &&
+          !error.message?.includes('signups not allowed')
+        ) {
+          console.error('Send OTP error:', error);
+        }
 
-        if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
-          setError('Too many requests. Please wait a few minutes and try again.');
-        } else if (
+        // Handle "Signups not allowed for otp" error - this means user doesn't exist
+        if (
+          error.message?.includes('Signups not allowed') ||
+          error.message?.includes('signups not allowed') ||
           error.message?.includes('not found') ||
           error.message?.includes('user') ||
           error.message?.includes('email')
         ) {
           setError('No account found with this email address.');
+        } else if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
+          setError('Too many requests. Please wait a few minutes and try again.');
         } else if (
           error.message?.includes('504') ||
           error.message?.includes('timeout') ||

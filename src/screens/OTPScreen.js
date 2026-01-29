@@ -121,7 +121,18 @@ const OTPScreen = ({ navigation }) => {
       });
 
       if (error) {
-        setError(error.message || 'Invalid OTP. Please try again.');
+        // Check if error is related to invalid/expired token/OTP
+        const errorMessage = error.message || '';
+        if (
+          errorMessage.includes('token') ||
+          errorMessage.includes('expired') ||
+          errorMessage.includes('invalid') ||
+          errorMessage.includes('OTP')
+        ) {
+          setError('Invalid OTP. Please try again.');
+        } else {
+          setError(errorMessage || 'Invalid OTP. Please try again.');
+        }
         setLoading(false);
         return;
       }

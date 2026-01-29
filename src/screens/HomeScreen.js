@@ -257,7 +257,9 @@ const HomeScreen = ({ navigation }) => {
           id: order.id,
           customer_id: order.customer_id, // Include customer_id for OrderDetailScreen
           orderName: order.order_name || `ORD-${order.id}`,
+          order_name: order.order_name || `ORD-${order.id}`, // Include both field names
           cases: order.total_cases || order.cases || order.quantity || 0,
+          quantity: order.quantity || order.total_cases || order.cases || 0, // Include quantity field
           deliveryDate: formatDate(order.delivery_date),
           status: status,
           statusColor: statusColor,
@@ -265,7 +267,8 @@ const HomeScreen = ({ navigation }) => {
           orderDateRaw: order.order_date,
           deliveryDateRaw: order.delivery_date,
           delivery_day_date: order.delivery_day_date || null, // Text value: "Same Day", "1 day", "2 days", or null
-          poNumber: order.po_number,
+          poNumber: order.po_number || '',
+          po_number: order.po_number || '', // Include both field names
           deliveryStatus: order.delivery_status || order.deliveryStatus || null,
           driverId: order.driver_id || order.driverId || null,
           delivery_address,
@@ -276,6 +279,15 @@ const HomeScreen = ({ navigation }) => {
           driverCity: order.driver_city || order.driverCity || null,
           driverState: order.driver_state || order.driverState || null,
           driverZip: order.driver_zip || order.driverZip || null,
+          // Additional fields for OrderDetailScreen
+          product_type: order.product_type || null,
+          opener_kit: order.opener_kit || order.openerKit || false,
+          openerKit: order.opener_kit || order.openerKit || false, // Include both field names
+          special_event_logo: order.special_event_logo || null,
+          specialEventLogo: order.special_event_logo || null, // Include both field names
+          special_instructions: order.special_instructions || null,
+          orderNotes: order.special_instructions || order.order_notes || null,
+          order_notes: order.order_notes || order.special_instructions || null,
         };
       });
 
