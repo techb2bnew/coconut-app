@@ -10,6 +10,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -176,7 +177,8 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: Colors.primaryBlue,
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 20, 
+    paddingTop: Platform.OS === 'ios' ? 55 : 20,
     flexDirection: 'row',
     alignItems: 'center',
     position: 'absolute',

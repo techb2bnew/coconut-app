@@ -885,7 +885,7 @@ const ProfileScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primaryPink} />
         </View>
@@ -894,7 +894,7 @@ const ProfileScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -1393,7 +1393,7 @@ const styles = StyleSheet.create({
   profileHeader: {
     backgroundColor: Colors.primaryBlue,
     paddingTop: Platform.OS === 'ios' ? 55 : 40,
-    paddingBottom: 60,
+    paddingBottom: 60, 
     paddingHorizontal: 20,
     alignItems: 'center',  
   },
