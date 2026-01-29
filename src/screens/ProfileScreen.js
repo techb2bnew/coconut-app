@@ -1301,7 +1301,7 @@ const ProfileScreen = ({ navigation }) => {
 
         {/* Contact Section */}
         <View style={styles.contactCard}>
-          <Text style={styles.sectionTitle}>NEED TO MODIFY OR CANCEL AN ORDER?</Text>
+          <Text style={styles.sectionTitle}>Need to modify or cancel an order?</Text>
           <Text style={styles.contactSubtitle}>Call us if you want to modify or cancel your order</Text>
           <TouchableOpacity 
             style={styles.phoneButton}
@@ -1392,10 +1392,10 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     backgroundColor: Colors.primaryBlue,
-    paddingTop: Platform.OS === 'ios' ? 40 : 50,
+    paddingTop: Platform.OS === 'ios' ? 55 : 40,
     paddingBottom: 60,
     paddingHorizontal: 20,
-    alignItems: 'center', 
+    alignItems: 'center',  
   },
   avatarContainer: {
     position: 'relative',
@@ -1500,7 +1500,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '600',
     fontFamily: fontFamilyHeading,
     color: Colors.textPrimary,

@@ -1501,6 +1501,7 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
     overflow: 'hidden',
+    
   },
   bannerImageBackground: {
     position: 'absolute',
@@ -1514,6 +1515,7 @@ const styles = StyleSheet.create({
   bannerBackgroundImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
   bannerOverlay: {
     position: 'absolute',

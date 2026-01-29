@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: Colors.primaryBlue,
-    paddingTop: 20,
+    paddingTop: Platform.OS === 'ios' ? 55 : 20,
     paddingBottom: 40,
     paddingHorizontal: 20,
     alignItems: 'center',

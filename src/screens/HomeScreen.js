@@ -707,8 +707,7 @@ const HomeScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* Bottom spacing for navigation */}
-        <View style={styles.bottomSpacing} />
+        {/* Bottom spacing for navigation */} 
       </ScrollView>
       )}
 
@@ -861,7 +860,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -964,7 +963,7 @@ const styles = StyleSheet.create({
   },
   sectionContainer: {
     paddingHorizontal: 16,
-    paddingTop: 24,
+    paddingTop: 14,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -973,7 +972,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: fontFamilyHeading,
     fontWeight: '600',
     color: Colors.textPrimary,
@@ -1010,9 +1009,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.primaryBlue,
   },
   timeFilterButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: fontFamilyBody,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.textPrimary,
     textAlign: 'center',
   },
@@ -1162,9 +1161,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primaryBlue,
   },
-  bottomSpacing: {
-    height: 50, // Space for bottom navigation
-  },
+ 
 });
 
 export default HomeScreen;

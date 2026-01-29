@@ -1035,11 +1035,10 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   timeFilterLabel: {
-    fontSize: 14,
-    fontFamily: fontFamilyBody,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 12,
+    fontSize: 20,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '500',
+    color: Colors.textPrimary, 
   },
   timeFilterButtons: {
     flexDirection: 'row',
