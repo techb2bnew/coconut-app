@@ -20,7 +20,7 @@ import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 
 const PrivacyPolicyScreen = ({ navigation }) => {
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Sticky Header */}
       <View style={styles.header}>
         <TouchableOpacity

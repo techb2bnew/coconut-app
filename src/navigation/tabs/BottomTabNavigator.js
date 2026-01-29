@@ -1,7 +1,8 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
-import { StyleSheet, View, Text } from "react-native";
+import { StyleSheet, View, Text, Platform } from "react-native";
 import { useState, useEffect } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/Ionicons";
 import Colors from "../../theme/colors";
 import { fontFamilyBody } from "../../theme/fonts";
@@ -14,24 +15,26 @@ import { getCustomerId, fetchNotifications } from "../../services/notificationSe
 
 const Tab = createBottomTabNavigator();
 
-// Default tab bar style
-const defaultTabBarStyle = {
+// Base tab bar style (height/padding updated with safe area in component)
+const getTabBarStyle = (insets) => ({
   backgroundColor: Colors.cardBackground,
   borderTopLeftRadius: 20,
   borderTopRightRadius: 20,
   paddingTop: 8,
-  paddingBottom: 8,
-  height: 70,
+  paddingBottom: Math.max(8, (Platform.OS === 'ios' ? insets?.bottom ?? 0 : 0) + 8),
+  height: 70 + (Platform.OS === 'ios' ? insets?.bottom ?? 0 : 0),
   shadowColor: '#000',
   shadowOffset: { width: 0, height: -2 },
   shadowOpacity: 0.1,
   shadowRadius: 4,
   elevation: 8,
   overflow: 'visible',
-};
+});
 
 export default function BottomTabNavigator() {
+  const insets = useSafeAreaInsets();
   const [unreadCount, setUnreadCount] = useState(0);
+  const tabBarStyle = getTabBarStyle(insets);
 
   // Fetch unread notification count
   useEffect(() => {
@@ -79,7 +82,7 @@ export default function BottomTabNavigator() {
         headerShown: false,
         tabBarActiveTintColor: Colors.primaryBlue,
         tabBarInactiveTintColor: '#9E9E9E',
-        tabBarStyle: defaultTabBarStyle,
+        tabBarStyle,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
@@ -96,7 +99,7 @@ export default function BottomTabNavigator() {
             tabBarIcon: ({ color, size }) => (
               <Icon name="home" size={size || 24} color={color} />
             ),
-            tabBarStyle: (routeName === 'OrderDetail' || routeName === 'OrdersList') ? { display: 'none' } : defaultTabBarStyle,
+            tabBarStyle: (routeName === 'OrderDetail' || routeName === 'OrdersList') ? { display: 'none' } : tabBarStyle,
           };
         }}
       />
@@ -110,7 +113,7 @@ export default function BottomTabNavigator() {
             tabBarIcon: ({ color, size }) => (
               <Icon name="list-outline" size={size || 24} color={color} />
             ),
-            tabBarStyle: routeName === 'OrderDetail' ? { display: 'none' } : defaultTabBarStyle,
+            tabBarStyle: routeName === 'OrderDetail' ? { display: 'none' } : tabBarStyle,
           };
         }}
       />
@@ -124,7 +127,7 @@ export default function BottomTabNavigator() {
             tabBarIcon: ({ color, size }) => (
               <Icon name="add" size={size || 24} color={color} />
             ),
-            tabBarStyle: routeName === 'CreateOrder' ? { display: 'none' } : defaultTabBarStyle,
+            tabBarStyle: routeName === 'CreateOrder' ? { display: 'none' } : tabBarStyle,
           };
         }}
       />
