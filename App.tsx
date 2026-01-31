@@ -17,6 +17,9 @@ import {
   getLastBackgroundNotification,
   clearLastBackgroundNotification,
 } from './src/services/firebaseMessaging';
+import { checkCustomerAndLogoutIfNeeded, subscribeToCustomerRealtime, performLogoutAndNavigateToLogin } from './src/services/customerAuthCheck';
+// @ts-ignore - JS module, no types
+const supabase = require('./src/config/supabase').default;
 
 // Set default font family for all Text components globally (Quicksand for body text)
 // Create a default style that includes the font family
@@ -37,6 +40,39 @@ TextComponent.defaultProps.style = defaultTextStyle.default;
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
+
+  // Real-time: when admin deletes or deactivates customer, auto logout without refresh
+  useEffect(() => {
+    let customerUnsubscribe: (() => void) | null = null;
+
+    const startCustomerRealtime = async (email: string) => {
+      try {
+        const { data } = await supabase.from('customers').select('id').eq('email', email).maybeSingle();
+        if (data?.id) {
+          customerUnsubscribe?.();
+          customerUnsubscribe = subscribeToCustomerRealtime(data.id, performLogoutAndNavigateToLogin);
+        }
+      } catch (_) {}
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+      if (session?.user?.email) {
+        startCustomerRealtime(session.user.email);
+      } else {
+        customerUnsubscribe?.();
+        customerUnsubscribe = null;
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }: any) => {
+      if (session?.user?.email) startCustomerRealtime(session.user.email);
+    });
+
+    return () => {
+      customerUnsubscribe?.();
+      subscription?.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     // Initialize Firebase Cloud Messaging
@@ -163,7 +199,10 @@ function App() {
             
             // Small delay to ensure everything is ready
             setTimeout(async () => {
-              try { 
+              try {
+                // Check if customer was deleted or set inactive by admin → auto logout
+                await checkCustomerAndLogoutIfNeeded();
+                
                 await clearLastBackgroundNotification();
                  
                 // Method 1: Check getInitialNotification (for quit state)

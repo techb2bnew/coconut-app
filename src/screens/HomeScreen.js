@@ -25,6 +25,8 @@ import TextStyles from '../theme/textStyles';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import Logo from '../components/Logo';
 import supabase from '../config/supabase';
+import { performLogoutAndNavigateToLogin } from '../services/customerAuthCheck';
+import { subscribeToOrdersRealtime } from '../services/realtimeOrdersService';
 
 const { width } = Dimensions.get('window');
 
@@ -120,15 +122,28 @@ const HomeScreen = ({ navigation }) => {
         return null;
       }
 
-      // Get customer ID and franchise_id from customers table using email
+      // Get customer ID, franchise_id, status from customers table using email
       const { data: customer, error } = await supabase
         .from('customers')
-        .select('id, franchise_id')
+        .select('id, franchise_id, status')
         .eq('email', user.email)
         .single();
 
       if (error) {
+        // Customer deleted by admin (no row) → auto logout (expected, not an error)
+        if (error.code === 'PGRST116') {
+          await performLogoutAndNavigateToLogin();
+          return null;
+        }
         console.error('Error fetching customer:', error);
+        return null;
+      }
+
+      // Customer set inactive by admin → auto logout
+      const status = (customer?.status || '').trim().toLowerCase();
+      const isInactive = status === 'inactive' || status === 'disabled' || status === 'deactivated';
+      if (isInactive) {
+        await performLogoutAndNavigateToLogin();
         return null;
       }
 
@@ -428,6 +443,15 @@ const HomeScreen = ({ navigation }) => {
 
     loadData();
   }, []);
+
+  // Real-time orders: refetch when admin adds/updates/deletes orders (no refresh needed)
+  useEffect(() => {
+    if (!customerId) return;
+    const unsub = subscribeToOrdersRealtime(customerId, () => {
+      fetchOrders(customerId);
+    });
+    return () => unsub();
+  }, [customerId]);
 
   // Update filtered orders when recentOrders changes
   useEffect(() => {

@@ -17,6 +17,7 @@ import Logo from '../components/Logo';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import supabase from '../config/supabase';
+import { checkCustomerAndLogoutIfNeeded } from '../services/customerAuthCheck';
 
 const { width, height } = Dimensions.get('window');
 
@@ -153,8 +154,12 @@ const SplashScreen = ({ navigation }) => {
         }
 
         if (session && session.access_token) {
+          // Check if customer still exists and is active (not deleted/inactive by admin)
+          const wasLoggedOut = await checkCustomerAndLogoutIfNeeded();
+          if (wasLoggedOut) {
+            return; // Already signed out and navigated to Login
+          }
           console.log('✅ User is already logged in, navigating to MainTabs');
-          // User is logged in, navigate to MainTabs
           navigation.replace('MainTabs');
         } else {
           console.log('ℹ️ No active session found, navigating to Login');

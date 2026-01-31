@@ -23,6 +23,7 @@ import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import Logo from '../components/Logo';
 import supabase from '../config/supabase';
+import { performLogoutAndNavigateToLogin } from '../services/customerAuthCheck';
 
 const AllAboutCoconutsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
@@ -46,13 +47,25 @@ const AllAboutCoconutsScreen = ({ navigation }) => {
       // Fetch customer data to get franchise_id
       const { data: customer, error: customerError } = await supabase
         .from('customers')
-        .select('id, franchise_id')
+        .select('id, franchise_id, status, is_active')
         .eq('email', user.email)
         .single();
 
       if (customerError) {
-        console.error('Error fetching customer:', customerError);
         setLoading(false);
+        if (customerError.code === 'PGRST116') {
+          await performLogoutAndNavigateToLogin();
+          return;
+        }
+        console.error('Error fetching customer:', customerError);
+        return;
+      }
+
+      const status = (customer?.status || '').trim().toLowerCase();
+      const isInactive = status === 'inactive' || status === 'disabled' || status === 'deactivated';
+      if (isInactive) {
+        setLoading(false);
+        await performLogoutAndNavigateToLogin();
         return;
       }
 

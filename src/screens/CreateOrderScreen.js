@@ -32,6 +32,7 @@ import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import supabase from '../config/supabase';
+import { performLogoutAndNavigateToLogin } from '../services/customerAuthCheck';
 import Dropdown from '../components/Dropdown';
 
 const { width, height } = Dimensions.get('window');
@@ -247,12 +248,23 @@ const CreateOrderScreen = ({ navigation, route }) => {
 
       const { data: customer, error } = await supabase
         .from('customers')
-        .select('id, delivery_address, franchise_id, delivery_zone, zoneCity')
+        .select('id, delivery_address, franchise_id, delivery_zone, zoneCity, status, is_active')
         .eq('email', user.email)
         .single();
 
       if (error) {
+        if (error.code === 'PGRST116') {
+          await performLogoutAndNavigateToLogin();
+          return { customerId: null, deliveryAddresses: [], selectedAddress: null, franchiseId: null, deliveryZone: null, zoneCity: null };
+        }
         console.error('Error fetching customer:', error);
+        return { customerId: null, deliveryAddresses: [], selectedAddress: null, franchiseId: null, deliveryZone: null, zoneCity: null };
+      }
+
+      const status = (customer?.status || '').trim().toLowerCase();
+      const isInactive = status === 'inactive' || status === 'disabled' || status === 'deactivated';
+      if (isInactive) {
+        await performLogoutAndNavigateToLogin();
         return { customerId: null, deliveryAddresses: [], selectedAddress: null, franchiseId: null, deliveryZone: null, zoneCity: null };
       }
 

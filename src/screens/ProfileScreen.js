@@ -29,6 +29,7 @@ import Input from '../components/Input';
 import Button from '../components/Button';
 import { validateRequired, validatePassword, validatePasswordMatch } from '../utils/validation';
 import supabase from '../config/supabase';
+import { performLogoutAndNavigateToLogin } from '../services/customerAuthCheck';
 
 const ProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
@@ -103,9 +104,24 @@ const ProfileScreen = ({ navigation }) => {
         .single();
 
       if (customerError) {
-        console.error('Error fetching customer:', customerError);
         setLoading(false);
         setRefreshing(false);
+        // Customer deleted by admin (no row) → auto logout (expected, not an error)
+        if (customerError.code === 'PGRST116' || !customer) {
+          await performLogoutAndNavigateToLogin();
+          return;
+        }
+        console.error('Error fetching customer:', customerError);
+        return;
+      }
+
+      // Customer set inactive by admin → auto logout
+      const status = (customer?.status || '').trim().toLowerCase();
+      const isInactive = status === 'inactive' || status === 'disabled' || status === 'deactivated';
+      if (isInactive) {
+        setLoading(false);
+        setRefreshing(false);
+        await performLogoutAndNavigateToLogin();
         return;
       }
 

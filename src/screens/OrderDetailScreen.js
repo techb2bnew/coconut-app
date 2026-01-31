@@ -23,6 +23,7 @@ import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import DriverLocationMap from '../components/DriverLocationMap';
 import supabase from '../config/supabase';
+import { subscribeToOrderRealtime } from '../services/realtimeOrdersService';
 
 const { width, height } = Dimensions.get('window');
 const HEADER_HEIGHT = 60;
@@ -30,15 +31,34 @@ const MIN_MAP_HEIGHT = height * 0.25; // Minimum map height
 const MAX_MAP_HEIGHT = height * 0.85; // Maximum map height (85%)
 
 const OrderDetailScreen = ({ navigation, route }) => {
-  const { order } = route.params || {};
-  console.log('order', order);
-  console.log('openerKit check:', {
-    opener_kit: order?.opener_kit,
-    openerKit: order?.openerKit,
-    opener_kit_type: typeof order?.opener_kit,
-    openerKit_type: typeof order?.openerKit,
-  });
-  
+  const orderParam = route.params?.order;
+  const [order, setOrder] = useState(orderParam ?? null);
+
+  // Sync from route when navigating to a different order
+  useEffect(() => {
+    setOrder(route.params?.order ?? null);
+  }, [route.params?.order]);
+
+  // Real-time: when admin updates order (e.g. status), update UI without refresh
+  useEffect(() => {
+    if (!order?.id) return;
+    const unsub = subscribeToOrderRealtime(order.id, (newRow) => {
+      setOrder((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          ...newRow,
+          status: newRow.status ?? prev.status,
+          delivery_status: newRow.delivery_status ?? prev.delivery_status,
+          deliveryStatus: newRow.delivery_status ?? newRow.deliveryStatus ?? prev.deliveryStatus,
+          order_name: newRow.order_name ?? prev.order_name,
+          orderName: newRow.order_name ?? prev.orderName,
+        };
+      });
+    });
+    return () => unsub();
+  }, [order?.id]);
+
   // Bottom sheet ref
   const bottomSheetRef = useRef(null);
   

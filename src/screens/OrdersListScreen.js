@@ -25,6 +25,8 @@ import { Calendar } from 'react-native-calendars';
 import Colors from '../theme/colors';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import supabase from '../config/supabase';
+import { performLogoutAndNavigateToLogin } from '../services/customerAuthCheck';
+import { subscribeToOrdersRealtime } from '../services/realtimeOrdersService';
 
 const OrdersListScreen = ({ navigation }) => {
   const [orders, setOrders] = useState([]);
@@ -101,12 +103,23 @@ const OrdersListScreen = ({ navigation }) => {
 
       const { data: customer, error } = await supabase
         .from('customers')
-        .select('id')
+        .select('id, status')
         .eq('email', user.email)
         .single();
 
       if (error) {
+        if (error.code === 'PGRST116') {
+          await performLogoutAndNavigateToLogin();
+          return null;
+        }
         console.error('Error fetching customer:', error);
+        return null;
+      }
+
+      const status = (customer?.status || '').trim().toLowerCase();
+      const isInactive = status === 'inactive' || status === 'disabled' || status === 'deactivated';
+      if (isInactive) {
+        await performLogoutAndNavigateToLogin();
         return null;
       }
 
@@ -363,6 +376,15 @@ const OrdersListScreen = ({ navigation }) => {
 
     loadData();
   }, []);
+
+  // Real-time orders: refetch when admin adds/updates/deletes orders (no refresh needed)
+  useEffect(() => {
+    if (!customerId) return;
+    const unsub = subscribeToOrdersRealtime(customerId, () => {
+      fetchOrders(customerId);
+    });
+    return () => unsub();
+  }, [customerId]);
 
   // Re-fetch orders whenever screen comes into focus (after create, back navigation, etc.)
   useFocusEffect(
