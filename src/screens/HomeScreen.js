@@ -704,7 +704,9 @@ const HomeScreen = ({ navigation }) => {
                   </View>
                 </View>
                 <View style={styles.deliveryDateRow}>
-                  <Text style={styles.deliveryDate}>Delivery: {order.deliveryDate}</Text>
+                  <Text style={styles.deliveryDate}>
+                    Delivery: {order.delivery_day_date || order.deliveryDate || 'Updates will be sent to your email soon.'}
+                  </Text>
                   <Icon name="chevron-forward" size={20} color={Colors.primaryBlue} />
                 </View>
               </TouchableOpacity>

@@ -248,7 +248,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
 
       const { data: customer, error } = await supabase
         .from('customers')
-        .select('id, delivery_address, franchise_id, delivery_zone, zoneCity, status, is_active')
+        .select('id, delivery_address, franchise_id, delivery_zone, zoneCity, status')
         .eq('email', user.email)
         .single();
 

@@ -47,7 +47,7 @@ const AllAboutCoconutsScreen = ({ navigation }) => {
       // Fetch customer data to get franchise_id
       const { data: customer, error: customerError } = await supabase
         .from('customers')
-        .select('id, franchise_id, status, is_active')
+        .select('id, franchise_id, status')
         .eq('email', user.email)
         .single();
 
