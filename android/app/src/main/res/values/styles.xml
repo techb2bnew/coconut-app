@@ -1,9 +1,15 @@
 <resources>
 
+    <!-- Splash blue - same as app splash screen, no white screen on launch -->
+    <color name="splashBackground">#4fa3e3</color>
+
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <!-- Splash drawable (blue + logo circle) so native screen matches React splash -->
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:windowNoTitle">true</item>
     </style>
 
 </resources>

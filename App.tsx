@@ -306,12 +306,14 @@ function App() {
     initFCM();
   }, []);
 
+  // Splash gradient start – same as SplashScreen so no white flash before first screen
+  const splashBg = '#4fa3e3';
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <StatusBar 
-          barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-          backgroundColor="#eff6ff"
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: splashBg }}>
+      <SafeAreaProvider style={{ flex: 1, backgroundColor: splashBg }}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={splashBg}
           translucent={false}
         />
         <AppNavigator />
