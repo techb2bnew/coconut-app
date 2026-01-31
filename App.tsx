@@ -41,9 +41,11 @@ TextComponent.defaultProps.style = defaultTextStyle.default;
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
-  // Real-time: when admin deletes or deactivates customer, auto logout without refresh
+  // When admin deletes or deactivates customer: realtime + periodic check for auto logout
   useEffect(() => {
     let customerUnsubscribe: (() => void) | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    const POLL_INTERVAL_MS = 2500; // Check every 25 seconds (works even if Realtime is off)
 
     const startCustomerRealtime = async (email: string) => {
       try {
@@ -55,21 +57,48 @@ function App() {
       } catch (_) {}
     };
 
+    const startPeriodicCheck = () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+      pollInterval = setInterval(async () => {
+        const didLogout = await checkCustomerAndLogoutIfNeeded();
+        if (didLogout && pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      }, POLL_INTERVAL_MS);
+    };
+
+    const stopPeriodicCheck = () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (session?.user?.email) {
         startCustomerRealtime(session.user.email);
+        startPeriodicCheck();
       } else {
         customerUnsubscribe?.();
         customerUnsubscribe = null;
+        stopPeriodicCheck();
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }: any) => {
-      if (session?.user?.email) startCustomerRealtime(session.user.email);
+      if (session?.user?.email) {
+        startCustomerRealtime(session.user.email);
+        startPeriodicCheck();
+      }
     });
 
     return () => {
       customerUnsubscribe?.();
+      stopPeriodicCheck();
       subscription?.unsubscribe();
     };
   }, []);

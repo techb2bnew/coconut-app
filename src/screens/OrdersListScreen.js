@@ -940,7 +940,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyHeading,
     fontWeight: '600',
     color: Colors.cardBackground,
-    marginTop: Platform.OS === 'ios' ? 4 : 0,
+    marginTop: Platform.OS === 'ios' ? 1 : 0,
   },
   headerSubtitle: {
     fontSize: 14,

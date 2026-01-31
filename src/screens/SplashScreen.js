@@ -218,21 +218,7 @@ const SplashScreen = ({ navigation }) => {
           <View style={styles.logoCircle}>
             <Logo size={160} />
           </View>
-        </Animated.View>
-
-        {/* Main Title */}
-        <Animated.Text
-          style={[
-            styles.mainTitle,
-            {
-              opacity: titleOpacity,
-            },
-          ]}
-        >
-          Brand in a Nut
-        </Animated.Text>
-
-     
+        </Animated.View> 
 
         {/* Navigation Dots */}
         <Animated.View

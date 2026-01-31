@@ -139,8 +139,7 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.cardContainer}>
             {/* Logo Section */}
             <View style={styles.logoSection}>
-              <Logo size={100} />
-                <Text  style={[TextStyles.link, styles.logoText]}>Brand in a Nut</Text>
+              <Logo size={100} /> 
             </View>
 
             {/* Welcome Section */}
