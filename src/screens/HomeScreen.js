@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 55 : 55,
+    paddingTop: Platform.OS === 'ios' ? 55 : 20,
     paddingBottom: 16, 
   },
   

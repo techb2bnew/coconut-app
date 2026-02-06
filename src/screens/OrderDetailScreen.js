@@ -3,7 +3,13 @@
  * Simple design: Map at top (fixed), Order details and timeline in scrollable card below
  */
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from 'react';
 import {
   View,
   Text,
@@ -14,6 +20,7 @@ import {
   Animated,
   ScrollView,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -42,15 +49,18 @@ const OrderDetailScreen = ({ navigation, route }) => {
   // Real-time: when admin updates order (e.g. status), update UI without refresh
   useEffect(() => {
     if (!order?.id) return;
-    const unsub = subscribeToOrderRealtime(order.id, (newRow) => {
-      setOrder((prev) => {
+    const unsub = subscribeToOrderRealtime(order.id, newRow => {
+      setOrder(prev => {
         if (!prev) return prev;
         return {
           ...prev,
           ...newRow,
           status: newRow.status ?? prev.status,
           delivery_status: newRow.delivery_status ?? prev.delivery_status,
-          deliveryStatus: newRow.delivery_status ?? newRow.deliveryStatus ?? prev.deliveryStatus,
+          deliveryStatus:
+            newRow.delivery_status ??
+            newRow.deliveryStatus ??
+            prev.deliveryStatus,
           order_name: newRow.order_name ?? prev.order_name,
           orderName: newRow.order_name ?? prev.orderName,
         };
@@ -61,17 +71,18 @@ const OrderDetailScreen = ({ navigation, route }) => {
 
   // Bottom sheet ref
   const bottomSheetRef = useRef(null);
-  
+
   // Snap points for bottom sheet
   const snapPoints = useMemo(() => ['26%', '85%'], []);
-  
+
   // State
   const [restaurantName, setRestaurantName] = useState('Restaurant Name');
   const [companyLogo, setCompanyLogo] = useState(null);
   const [orderLogo, setOrderLogo] = useState(null);
-  
+  const [isCompanyCollapsed, setIsCompanyCollapsed] = useState(true);
+
   // Handle sheet position changes - Map is now fixed, no height changes
-  const handleSheetChange = useCallback((index) => {
+  const handleSheetChange = useCallback(index => {
     // Map height is fixed at 85%, no changes needed
     // This callback is kept for potential future use
   }, []);
@@ -80,7 +91,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
   useEffect(() => {
     const fetchCustomerData = async () => {
       if (!order?.customer_id) return;
-      
+
       try {
         // First, fetch customer data including company_id
         const { data: customer, error: customerError } = await supabase
@@ -88,18 +99,18 @@ const OrderDetailScreen = ({ navigation, route }) => {
           .select('company_name, company_id')
           .eq('id', order.customer_id)
           .single();
-        
+
         if (customerError) {
           console.error('Error fetching customer data:', customerError);
           return;
         }
-        
+
         if (customer) {
           // Set company name from customer table
           if (customer.company_name) {
             setRestaurantName(customer.company_name);
           }
-          
+
           // If company_id exists, fetch logo from company table
           if (customer.company_id) {
             try {
@@ -108,10 +119,13 @@ const OrderDetailScreen = ({ navigation, route }) => {
                 .select('companyLogo')
                 .eq('id', customer.company_id)
                 .single();
-              
+
               if (!companyError && company && company.companyLogo) {
                 setCompanyLogo(company.companyLogo);
-                console.log('Company logo fetched from company table:', company.companyLogo);
+                console.log(
+                  'Company logo fetched from company table:',
+                  company.companyLogo,
+                );
               } else if (companyError) {
                 console.error('Error fetching company logo:', companyError);
               }
@@ -124,18 +138,17 @@ const OrderDetailScreen = ({ navigation, route }) => {
         console.error('Error fetching customer data:', err);
       }
     };
-    
+
     fetchCustomerData();
-    
+
     // Get order logo if available
     if (order?.special_event_logo) {
       setOrderLogo(order.special_event_logo);
     }
   }, [order]);
 
-
   // Helper function to format date
-  const formatDate = (dateString) => {
+  const formatDate = dateString => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -145,7 +158,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
   };
 
   // Helper function to format date and time
-  const formatDateTime = (dateString) => {
+  const formatDateTime = dateString => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -159,10 +172,23 @@ const OrderDetailScreen = ({ navigation, route }) => {
   };
 
   // Helper function to format estimated delivery date
-  const formatEstDelivery = (dateString) => {
+  const formatEstDelivery = dateString => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     const month = months[date.getMonth()];
     const day = date.getDate();
     const hours = date.getHours();
@@ -173,10 +199,23 @@ const OrderDetailScreen = ({ navigation, route }) => {
   };
 
   // Helper function to format date only (without time)
-  const formatDateOnly = (dateString) => {
+  const formatDateOnly = dateString => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     const month = months[date.getMonth()];
     const day = date.getDate();
     const year = date.getFullYear();
@@ -184,10 +223,10 @@ const OrderDetailScreen = ({ navigation, route }) => {
   };
 
   // Helper function to get status color (original colors)
-  const getStatusColor = (status) => {
+  const getStatusColor = status => {
     if (!status) return '#9E9E9E';
     const statusLower = status.trim().toLowerCase();
-    
+
     if (statusLower === 'completed') return '#4CAF50';
     if (statusLower === 'processing') return '#FFE082';
     if (statusLower.includes('completed')) return '#4CAF50';
@@ -213,13 +252,25 @@ const OrderDetailScreen = ({ navigation, route }) => {
 
     // Determine current status stage
     let currentStage = 'new';
-    if (statusLower.includes('completed') || statusLower.includes('delivered')) {
+    if (
+      statusLower.includes('completed') ||
+      statusLower.includes('delivered')
+    ) {
       currentStage = 'delivered';
-    } else if (statusLower.includes('delivery') || statusLower.includes('out for delivery')) {
+    } else if (
+      statusLower.includes('delivery') ||
+      statusLower.includes('out for delivery')
+    ) {
       currentStage = 'out_for_delivery';
-    } else if (statusLower.includes('processing') || statusLower.includes('in progress')) {
+    } else if (
+      statusLower.includes('processing') ||
+      statusLower.includes('in progress')
+    ) {
       currentStage = 'in_progress';
-    } else if (statusLower.includes('pending') || statusLower.includes('received')) {
+    } else if (
+      statusLower.includes('pending') ||
+      statusLower.includes('received')
+    ) {
       currentStage = 'pending';
     } else if (orderDate) {
       currentStage = 'pending';
@@ -227,7 +278,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
 
     // Helper function to get stage colors (original colors)
     const getStageColors = (stageId, isCurrent) => {
-      const isBeforeCurrent = 
+      const isBeforeCurrent =
         (currentStage === 'in_progress' && stageId <= 2) ||
         (currentStage === 'out_for_delivery' && stageId <= 3) ||
         (currentStage === 'delivered' && stageId <= 4);
@@ -312,7 +363,8 @@ const OrderDetailScreen = ({ navigation, route }) => {
         titleColor: preparingColors.titleColor,
         time: formatDateTime(progressDate),
         description: 'Branding and preparation',
-        isCompleted: currentStage === 'delivered' || currentStage === 'out_for_delivery',
+        isCompleted:
+          currentStage === 'delivered' || currentStage === 'out_for_delivery',
         isCurrent: currentStage === 'in_progress',
       });
     }
@@ -321,7 +373,10 @@ const OrderDetailScreen = ({ navigation, route }) => {
     if (deliveryDate) {
       const deliveryDateObj = new Date(deliveryDate);
       deliveryDateObj.setHours(8, 0, 0);
-      const pickedUpColors = getStageColors(4, currentStage === 'out_for_delivery');
+      const pickedUpColors = getStageColors(
+        4,
+        currentStage === 'out_for_delivery',
+      );
       timeline.push({
         id: '4',
         title: 'Out for Delivery',
@@ -337,7 +392,10 @@ const OrderDetailScreen = ({ navigation, route }) => {
     }
 
     // Delivered / Completed
-    if (statusLower.includes('completed') || statusLower.includes('delivered')) {
+    if (
+      statusLower.includes('completed') ||
+      statusLower.includes('delivered')
+    ) {
       const deliveredTime = deliveryDate
         ? new Date(deliveryDate)
         : orderDate
@@ -368,17 +426,22 @@ const OrderDetailScreen = ({ navigation, route }) => {
   // Get driver name (first letter for avatar)
   const getDriverName = () => {
     // Try multiple possible fields for driver name
-    const driverName = order?.driver_name || 
-                      order?.driverName || 
-                      order?.driver?.name ||
-                      order?.driver?.first_name ||
-                      'Driver';
+    const driverName =
+      order?.driver_name ||
+      order?.driverName ||
+      order?.driver?.name ||
+      order?.driver?.first_name ||
+      'Driver';
     return driverName;
   };
 
   // Get order ID for display
   const getOrderId = () => {
-    return order?.orderName || order?.order_name || `ORD-${order?.id || order?.order_id || ''}`;
+    return (
+      order?.orderName ||
+      order?.order_name ||
+      `ORD-${order?.id || order?.order_id || ''}`
+    );
   };
 
   // Get first letter of order name for logo placeholder
@@ -406,6 +469,76 @@ const OrderDetailScreen = ({ navigation, route }) => {
     }
   };
 
+  // Calculate total price
+  const calculateTotalPrice = () => {
+    const quantity = order?.quantity || order?.cases || 0;
+    const pricePerCase = 48.75; // Base price per case (you can adjust this)
+    let total = quantity * pricePerCase;
+
+    // Add opener kit
+    if (
+      order?.opener_kit === true ||
+      order?.openerKit === true ||
+      order?.opener_kit === 1 ||
+      order?.openerKit === 1 ||
+      order?.opener_kit === 'true' ||
+      order?.openerKit === 'true' ||
+      String(order?.opener_kit).toLowerCase() === 'true' ||
+      String(order?.openerKit).toLowerCase() === 'true'
+    ) {
+      total += 15.0;
+    }
+
+    // Add special event
+    if (order?.special_event_logo || order?.specialEventLogo) {
+      total += 150.0;
+    }
+
+    return total.toFixed(2);
+  };
+
+  // Format ETA from delivery_day_date or calculate from delivery_date
+  const getETA = () => {
+    if (order?.delivery_day_date) {
+      // If delivery_day_date is "Same Day", "1 day", "2 days"
+      if (order.delivery_day_date.toLowerCase().includes('same')) {
+        return '02:32'; // Default ETA for same day
+      } else if (order.delivery_day_date.includes('1 day')) {
+        return '24:00';
+      } else if (order.delivery_day_date.includes('2 days')) {
+        return '48:00';
+      }
+      return '02:32'; // Default fallback
+    }
+
+    // Calculate from delivery_date if available
+    if (order?.delivery_date || order?.deliveryDateRaw) {
+      const deliveryDate = new Date(
+        order.delivery_date || order.deliveryDateRaw,
+      );
+      const now = new Date();
+      const diffMs = deliveryDate.getTime() - now.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (diffHours > 0) {
+        return `${String(diffHours).padStart(2, '0')}:${String(
+          diffMinutes,
+        ).padStart(2, '0')}`;
+      } else {
+        return `00:${String(diffMinutes).padStart(2, '0')}`;
+      }
+    }
+
+    return '02:32'; // Default ETA
+  };
+
+  // Handle Need Help button - open dialer
+  const handleNeedHelp = () => {
+    const helpPhoneNumber = '+1 (555) 123-4567'; // Static number for design
+    Linking.openURL(`tel:${helpPhoneNumber}`);
+  };
+
   // Get driver first letter for avatar
   const getDriverFirstLetter = () => {
     const driverName = getDriverName();
@@ -417,7 +550,6 @@ const OrderDetailScreen = ({ navigation, route }) => {
       navigation.goBack();
     }
   };
-
 
   if (!order) {
     return (
@@ -438,22 +570,24 @@ const OrderDetailScreen = ({ navigation, route }) => {
   }
 
   // Check if order is completed - strict check
-  const isCompleted = order && (() => {
-    const deliveryStatus = order.deliveryStatus?.toLowerCase().trim() || '';
-    const status = order.status?.toLowerCase().trim() || '';
-    
-    // Check for exact matches or statuses that start with completed/delivered
-    const completedStatuses = ['completed', 'delivered'];
-    const isDeliveryStatusCompleted = completedStatuses.some(s => 
-      deliveryStatus === s || deliveryStatus.startsWith(s + ' ')
-    );
-    const isStatusCompleted = completedStatuses.some(s => 
-      status === s || status.startsWith(s + ' ')
-    );
-    
-    return isDeliveryStatusCompleted || isStatusCompleted;
-  })();
-  
+  const isCompleted =
+    order &&
+    (() => {
+      const deliveryStatus = order.deliveryStatus?.toLowerCase().trim() || '';
+      const status = order.status?.toLowerCase().trim() || '';
+
+      // Check for exact matches or statuses that start with completed/delivered
+      const completedStatuses = ['completed', 'delivered'];
+      const isDeliveryStatusCompleted = completedStatuses.some(
+        s => deliveryStatus === s || deliveryStatus.startsWith(s + ' '),
+      );
+      const isStatusCompleted = completedStatuses.some(
+        s => status === s || status.startsWith(s + ' '),
+      );
+
+      return isDeliveryStatusCompleted || isStatusCompleted;
+    })();
+
   // Debug log
   if (order) {
     console.log('Order Status Check:', {
@@ -464,11 +598,12 @@ const OrderDetailScreen = ({ navigation, route }) => {
   }
 
   // Check if driver is assigned
-  const hasDriver = order && !isCompleted && (
-    order.deliveryStatus?.toLowerCase().includes('driver assigned') || 
-    order.deliveryStatus?.toLowerCase().includes('in transit') ||
-    order.deliveryStatus?.toLowerCase().includes('out for delivery')
-  );
+  const hasDriver =
+    order &&
+    !isCompleted &&
+    (order.deliveryStatus?.toLowerCase().includes('driver assigned') ||
+      order.deliveryStatus?.toLowerCase().includes('in transit') ||
+      order.deliveryStatus?.toLowerCase().includes('out for delivery'));
 
   // Get logo to display (order logo first, then company logo)
   const displayLogo = orderLogo || companyLogo;
@@ -480,7 +615,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
       translateX: new Animated.Value(0),
       rotate: new Animated.Value(0),
       opacity: new Animated.Value(1),
-    }))
+    })),
   ).current;
 
   // Start celebration animation when order is completed
@@ -491,7 +626,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
         const delay = index * 20;
         const randomX = (Math.random() - 0.5) * width * 2;
         const randomRotate = Math.random() * 720;
-        
+
         Animated.parallel([
           Animated.timing(anim.translateY, {
             toValue: height + 100,
@@ -547,11 +682,20 @@ const OrderDetailScreen = ({ navigation, route }) => {
         {/* Confetti Animation */}
         <View style={styles.confettiContainer} pointerEvents="none">
           {confettiAnimations.map((anim, index) => {
-            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE'];
+            const colors = [
+              '#FFD700',
+              '#FF6B6B',
+              '#4ECDC4',
+              '#45B7D1',
+              '#FFA07A',
+              '#98D8C8',
+              '#F7DC6F',
+              '#BB8FCE',
+            ];
             const color = colors[index % colors.length];
             const size = 8 + Math.random() * 12;
             const startX = (index % 10) * (width / 10) + Math.random() * 20;
-            
+
             return (
               <Animated.View
                 key={index}
@@ -565,10 +709,12 @@ const OrderDetailScreen = ({ navigation, route }) => {
                     transform: [
                       { translateY: anim.translateY },
                       { translateX: anim.translateX },
-                      { rotate: anim.rotate.interpolate({
+                      {
+                        rotate: anim.rotate.interpolate({
                           inputRange: [0, 360],
                           outputRange: ['0deg', '360deg'],
-                        })},
+                        }),
+                      },
                     ],
                     opacity: anim.opacity,
                   },
@@ -583,13 +729,15 @@ const OrderDetailScreen = ({ navigation, route }) => {
           style={styles.completedScrollView}
           contentContainerStyle={styles.completedScrollContent}
           showsVerticalScrollIndicator={false}
-          bounces={true}>
+          bounces={true}
+        >
           {/* Celebration Content */}
           <LinearGradient
             colors={['#E8F5E9', '#FFFFFF', '#E3F2FD']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.celebrationGradient}>
+            style={styles.celebrationGradient}
+          >
             <Animated.View style={styles.celebrationContent}>
               {/* Success Icon with Animated Ring */}
               <View style={styles.celebrationIconWrapper}>
@@ -599,7 +747,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
                 </View>
                 <View style={styles.celebrationIconRingOuter} />
               </View>
-              
+
               {/* Title Section */}
               <View style={styles.celebrationTitleContainer}>
                 <Text style={styles.celebrationEmoji}>🎉</Text>
@@ -608,7 +756,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
                 </View>
                 <Text style={styles.celebrationEmoji}>🎉</Text>
               </View>
-              
+
               {/* Message Section */}
               <View style={styles.celebrationMessageContainer}>
                 <Text style={styles.celebrationMessage}>
@@ -619,13 +767,24 @@ const OrderDetailScreen = ({ navigation, route }) => {
                   Thank you for choosing us. We appreciate your business!
                 </Text>
               </View>
-              
+
               {/* Decorative Elements */}
               <View style={styles.celebrationDecorations}>
-                <View style={[styles.decorationDot, { left: '10%', top: '20%' }]} />
-                <View style={[styles.decorationDot, { right: '10%', top: '30%' }]} />
-                <View style={[styles.decorationDot, { left: '15%', bottom: '25%' }]} />
-                <View style={[styles.decorationDot, { right: '15%', bottom: '20%' }]} />
+                <View
+                  style={[styles.decorationDot, { left: '10%', top: '20%' }]}
+                />
+                <View
+                  style={[styles.decorationDot, { right: '10%', top: '30%' }]}
+                />
+                <View
+                  style={[styles.decorationDot, { left: '15%', bottom: '25%' }]}
+                />
+                <View
+                  style={[
+                    styles.decorationDot,
+                    { right: '15%', bottom: '20%' },
+                  ]}
+                />
               </View>
             </Animated.View>
           </LinearGradient>
@@ -634,27 +793,52 @@ const OrderDetailScreen = ({ navigation, route }) => {
           <View style={styles.completedOrderCard}>
             <View style={styles.bottomSheetContent}>
               {/* Order Info */}
-              <View style={styles.restaurantSection}> 
+              <View style={styles.restaurantSection}>
                 <View style={styles.restaurantInfo}>
                   <Text style={styles.restaurantName}>{getOrderId()}</Text>
-                  <Text style={styles.orderDate}>{formatDateOnly(order.deliveryDateRaw || order.delivery_date || order.orderDateRaw || order.order_date)}</Text>
+                  <Text style={styles.orderDate}>
+                    {formatDateOnly(
+                      order.deliveryDateRaw ||
+                        order.delivery_date ||
+                        order.orderDateRaw ||
+                        order.order_date,
+                    )}
+                  </Text>
                   {order.delivery_day_date ? (
-                    <Text style={[styles.orderDate, { color: Colors.success, marginTop: 4, fontWeight: '600' }]}>
+                    <Text
+                      style={[
+                        styles.orderDate,
+                        {
+                          color: Colors.success,
+                          marginTop: 4,
+                          fontWeight: '600',
+                        },
+                      ]}
+                    >
                       Delivery: {order.delivery_day_date}
                     </Text>
                   ) : (
-                    <Text style={[styles.orderDate, { color: Colors.textSecondary, marginTop: 4 }]}>
+                    <Text
+                      style={[
+                        styles.orderDate,
+                        { color: Colors.textSecondary, marginTop: 4 },
+                      ]}
+                    >
                       Delivery updates will be sent to your email soon.
                     </Text>
                   )}
-                  <Text style={styles.orderItems}>{order.cases || 0} Cases</Text>
+                  <Text style={styles.orderItems}>
+                    {order.cases || 0} Cases
+                  </Text>
                 </View>
                 {/* Order Status Badge */}
                 <View style={styles.statusSection}>
-                  <View style={[styles.statusBadge, { backgroundColor: '#4CAF50' }]}>
+                  <View
+                    style={[styles.statusBadge, { backgroundColor: '#4CAF50' }]}
+                  >
                     <Text style={styles.statusText}>Completed</Text>
                   </View>
-                </View> 
+                </View>
               </View>
 
               {/* Timeline */}
@@ -668,7 +852,8 @@ const OrderDetailScreen = ({ navigation, route }) => {
                           {
                             backgroundColor: item.iconBgColor || '#E0E0E0',
                           },
-                        ]}>
+                        ]}
+                      >
                         <Icon
                           name={item.icon}
                           size={18}
@@ -680,7 +865,11 @@ const OrderDetailScreen = ({ navigation, route }) => {
                           style={[
                             styles.timelineLine,
                             {
-                              backgroundColor: timeline[index + 1]?.isCompleted || timeline[index + 1]?.isCurrent ? '#4CAF50' : '#E0E0E0',
+                              backgroundColor:
+                                timeline[index + 1]?.isCompleted ||
+                                timeline[index + 1]?.isCurrent
+                                  ? '#4CAF50'
+                                  : '#E0E0E0',
                             },
                           ]}
                         />
@@ -693,12 +882,15 @@ const OrderDetailScreen = ({ navigation, route }) => {
                           {
                             color: item.titleColor || Colors.textSecondary,
                           },
-                        ]}>
+                        ]}
+                      >
                         {item.title}
                       </Text>
-                      
+
                       {item.description && (
-                        <Text style={styles.timelineDescription}>{item.description}</Text>
+                        <Text style={styles.timelineDescription}>
+                          {item.description}
+                        </Text>
                       )}
                     </View>
                   </View>
@@ -707,196 +899,280 @@ const OrderDetailScreen = ({ navigation, route }) => {
 
               {/* Order Details Section */}
               <View style={styles.orderDetailsSection}>
-                {/* Order Details Card */}
-                <View style={styles.detailsCard}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderIcon}>
-                      <Icon name="receipt-outline" size={24} color={Colors.primaryPink} />
+                {/* Order Overview Card - Reference Design */}
+                <View style={styles.orderOverviewCard}>
+                  {/* Header with Order Detail and ETA */}
+                  <View style={styles.orderOverviewHeader}>
+                    <View style={styles.orderDetailHeaderLeft}>
+                      <Icon
+                        name="receipt-outline"
+                        size={20}
+                        color={Colors.textPrimary}
+                      />
+                      <Text style={styles.orderDetailHeaderText}>
+                        Order Detail
+                      </Text>
                     </View>
-                    <Text style={styles.sectionTitle}>Order Details</Text>
+                    <View style={styles.etaContainer}>
+                      <Text style={styles.etaLabel}>ETA</Text>
+                      <Text style={styles.etaValue}>{getETA()}</Text>
+                    </View>
                   </View>
-                  
-                  {/* Product Type */}
-                  <View style={styles.detailItem}>
-                    <View style={styles.detailIconWrapper}>
-                      <Icon name="cube-outline" size={20} color={Colors.primaryPink} />
-                    </View>
-                    <View style={styles.detailContent}>
-                      <Text style={styles.detailLabel}>Product Type</Text>
-                      <Text style={styles.detailValue}>
+
+                  {/* Additional Details Section */}
+                  <View>
+                    {/* Product Type */}
+                    <View style={styles.additionalDetailRow}>
+                      <Text style={styles.additionalDetailLabel}>
+                        Product Type:
+                      </Text>
+                      <Text style={styles.additionalDetailValue}>
                         {order.product_type || 'Case (9 pieces or 9 units)'}
                       </Text>
                     </View>
-                  </View>
 
-                  {/* Quantity */}
-                  <View style={styles.detailItem}>
-                    <View style={styles.detailIconWrapper}>
-                      <Icon name="layers-outline" size={20} color={Colors.primaryPink} />
-                    </View>
-                    <View style={styles.detailContent}>
-                      <Text style={styles.detailLabel}>Quantity</Text>
-                      <Text style={styles.detailValue}>
+                    {/* Quantity */}
+                    <View style={styles.additionalDetailRow}>
+                      <Text style={styles.additionalDetailLabel}>
+                        Quantity:
+                      </Text>
+                      <Text style={styles.additionalDetailValue}>
                         {order.quantity || order.cases || 0} Cases
                       </Text>
                     </View>
+
+                    {/* Opener Kit */}
+                    {(order.opener_kit === true ||
+                      order.openerKit === true ||
+                      order.opener_kit === 1 ||
+                      order.openerKit === 1 ||
+                      order.opener_kit === 'true' ||
+                      order.openerKit === 'true' ||
+                      String(order.opener_kit).toLowerCase() === 'true' ||
+                      String(order.openerKit).toLowerCase() === 'true') && (
+                      <View style={styles.additionalDetailRow}>
+                        <Text style={styles.additionalDetailLabel}>
+                          Opener Kit:
+                        </Text>
+                        <Text style={styles.additionalDetailValue}>
+                          Yes (+$15.00)
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Special Event */}
+                    {(order.special_event_logo || order.specialEventLogo) && (
+                      <View style={styles.additionalDetailRow}>
+                        <Text style={styles.additionalDetailLabel}>
+                          Special Event:
+                        </Text>
+                        <Text style={styles.additionalDetailValue}>
+                          New Logo (+$150.00)
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* PO Number */}
+                    {(order.po_number || order.poNumber) && (
+                      <View style={styles.additionalDetailRow}>
+                        <Text style={styles.additionalDetailLabel}>
+                          PO Number:
+                        </Text>
+                        <Text style={styles.additionalDetailValue}>
+                          {order.po_number || order.poNumber}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Delivery Timeline */}
+                    {order.delivery_day_date && (
+                      <View style={styles.additionalDetailRow}>
+                        <Text style={styles.additionalDetailLabel}>
+                          Delivery Timeline:
+                        </Text>
+                        <Text
+                          style={[
+                            styles.additionalDetailValue,
+                            { color: Colors.success },
+                          ]}
+                        >
+                          {order.delivery_day_date}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Delivery Address */}
+                    {order.delivery_address && (
+                      <View style={styles.additionalDetailRow}>
+                        <Text style={styles.additionalDetailLabel}>
+                          Delivery Address:
+                        </Text>
+                        <Text style={styles.additionalDetailValue}>
+                          {order.delivery_address}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Order Notes */}
+                    {(order.special_instructions ||
+                      order.orderNotes ||
+                      order.order_notes) && (
+                      <View style={styles.additionalDetailRow}>
+                        <Text style={styles.additionalDetailLabel}>
+                          Order Notes:
+                        </Text>
+                        <Text style={styles.additionalDetailValue}>
+                          {order.special_instructions ||
+                            order.orderNotes ||
+                            order.order_notes}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-
-                  {/* Opener Kit */}
-                  {((order.opener_kit === true || order.openerKit === true || order.opener_kit === 1 || order.openerKit === 1 || 
-                     order.opener_kit === 'true' || order.openerKit === 'true' || 
-                     String(order.opener_kit).toLowerCase() === 'true' || String(order.openerKit).toLowerCase() === 'true')) && (
-                    <View style={styles.detailItem}>
-                      <View style={styles.detailIconWrapper}>
-                        <Icon name="gift-outline" size={20} color={Colors.primaryPink} />
-                      </View>
-                      <View style={styles.detailContent}>
-                        <Text style={styles.detailLabel}>Coconut Opener Kit</Text>
-                        <View style={styles.badgeContainer}>
-                          <Text style={styles.badgeText}>Yes (+$15.00)</Text>
-                        </View>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Special Event Logo */}
-                  {(order.special_event_logo || order.specialEventLogo) && (
-                    <View style={styles.detailItem}>
-                      <View style={styles.detailIconWrapper}>
-                        <Icon name="image-outline" size={20} color={Colors.primaryPink} />
-                      </View>
-                      <View style={styles.detailContent}>
-                        <Text style={styles.detailLabel}>Special Event Logo</Text>
-                        <View style={styles.badgeContainer}>
-                          <Text style={styles.badgeText}>Yes (+$150.00)</Text>
-                        </View>
-                      </View>
-                    </View>
-                  )}
 
                   {/* Special Event Logo Preview */}
                   {(order.special_event_logo || order.specialEventLogo) && (
                     <View style={styles.logoPreviewCard}>
+                      <Text
+                        style={[
+                          styles.additionalDetailLabel,
+                          { marginBottom: 10 },
+                        ]}
+                      >
+                        Special Event Logo
+                      </Text>
+
                       <Image
-                        source={{ uri: order.special_event_logo || order.specialEventLogo }}
+                        source={{
+                          uri:
+                            order.special_event_logo || order.specialEventLogo,
+                        }}
                         style={styles.logoPreview}
                         resizeMode="contain"
                       />
                     </View>
                   )}
 
-                  {/* PO Number */}
-                  {(order.po_number || order.poNumber) && (
-                    <View style={styles.detailItem}>
-                      <View style={styles.detailIconWrapper}>
-                        <Icon name="document-text-outline" size={20} color={Colors.primaryPink} />
-                      </View>
-                      <View style={styles.detailContent}>
-                        <Text style={styles.detailLabel}>PO Number</Text>
-                        <Text style={styles.detailValue}>
-                          {order.po_number || order.poNumber}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Order Notes */}
-                  {(order.special_instructions || order.orderNotes || order.order_notes) && (
-                    <View style={styles.detailItem}>
-                      <View style={styles.detailIconWrapper}>
-                        <Icon name="chatbubble-outline" size={20} color={Colors.primaryPink} />
-                      </View>
-                      <View style={styles.detailContent}>
-                        <Text style={styles.detailLabel}>Order Notes</Text>
-                        <View style={styles.notesContainer}>
-                          <Text style={styles.notesText}>
-                            {order.special_instructions || order.orderNotes || order.order_notes}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Delivery Address */}
-                  {order.delivery_address && (
-                    <View style={styles.detailItem}>
-                      <View style={styles.detailIconWrapper}>
-                        <Icon name="location-outline" size={20} color={Colors.primaryPink} />
-                      </View>
-                      <View style={styles.detailContent}>
-                        <Text style={styles.detailLabel}>Delivery Address</Text>
-                        <View style={styles.addressContainer}>
-                          <Text style={styles.addressText}>
-                            {order.delivery_address}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  )}
+                  {/* Need Help Button */}
+                  <TouchableOpacity
+                    style={styles.needHelpButton}
+                    onPress={handleNeedHelp}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={['#FF9800', '#FF6B00']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={styles.needHelpGradient}
+                    >
+                      <Text style={styles.needHelpButtonText}>Need Help?</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
                 </View>
 
-                {/* Company Details Card */}
+                {/* Company Details Card - collapsible */}
                 <View style={styles.detailsCard}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderIcon}>
-                      <Icon name="business-outline" size={24} color={Colors.primaryPink} />
-                    </View>
-                    <Text style={styles.sectionTitle}>Company Details</Text>
-                  </View>
-                  
-                  <View style={styles.detailItem}>
-                    <View style={styles.detailIconWrapper}>
-                      <Icon name="business-outline" size={20} color={Colors.primaryPink} />
-                    </View>
-                    <View style={styles.detailContent}>
-                      <Text style={styles.detailLabel}>Company Name</Text>
-                      <Text style={styles.detailValue}>
-                        {restaurantName || 'N/A'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Company Logo */}
-                  {companyLogo && (
-                    <View style={styles.logoPreviewCard}>
-                      <Text style={styles.logoLabel}>Company Logo</Text>
-                      <Image
-                        source={{ uri: companyLogo }}
-                        style={styles.logoPreview}
-                        resizeMode="contain"
-                      />
-                    </View>
-                  )}
-
-                  {/* Order Date */}
-                  <View style={styles.detailItem}>
-                    <View style={styles.detailIconWrapper}>
-                      <Icon name="calendar-outline" size={20} color={Colors.primaryPink} />
-                    </View>
-                    <View style={styles.detailContent}>
-                      <Text style={styles.detailLabel}>Order Date</Text>
-                      <Text style={styles.detailValue}>
-                        {formatDate(order.orderDateRaw || order.order_date)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  
-
-                  {/* Delivery Day Date */}
-                  {order.delivery_day_date && (
-                    <View style={styles.detailItem}>
-                      <View style={styles.detailIconWrapper}>
-                        <Icon name="flash-outline" size={20} color={Colors.success} />
+                  <TouchableOpacity
+                    style={styles.collapseHeader}
+                    activeOpacity={0.8}
+                    onPress={() => setIsCompanyCollapsed(prev => !prev)}
+                  >
+                    <View style={styles.cardHeaderLeft}>
+                      <View style={styles.cardHeaderIcon}>
+                        <Icon
+                          name="business-outline"
+                          size={24}
+                          color={Colors.primaryPink}
+                        />
                       </View>
-                      <View style={styles.detailContent}>
-                        <Text style={styles.detailLabel}>Delivery Timeline</Text>
-                        <View style={[styles.badgeContainer, styles.successBadge]}>
-                          <Text style={[styles.badgeText, styles.successBadgeText]}>
-                            {order.delivery_day_date}
+                      <Text style={styles.sectionTitle}>Company Details</Text>
+                    </View>
+                    <Icon
+                      name={isCompanyCollapsed ? 'chevron-down' : 'chevron-up'}
+                      size={22}
+                      color={Colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+
+                  {!isCompanyCollapsed && (
+                    <View style={styles.companyBody}>
+                      <View style={styles.detailItem}>
+                        <View style={styles.detailIconWrapper}>
+                          <Icon
+                            name="business-outline"
+                            size={20}
+                            color={Colors.primaryPink}
+                          />
+                        </View>
+                        <View style={styles.detailContent}>
+                          <Text style={styles.detailLabel}>Company Name</Text>
+                          <Text style={styles.detailValue}>
+                            {restaurantName || 'N/A'}
                           </Text>
                         </View>
                       </View>
+
+                      {/* Company Logo */}
+                      {companyLogo && (
+                        <View style={styles.logoPreviewCard}>
+                          <Text style={styles.logoLabel}>Company Logo</Text>
+                          <Image
+                            source={{ uri: companyLogo }}
+                            style={styles.logoPreview}
+                            resizeMode="contain"
+                          />
+                        </View>
+                      )}
+
+                      {/* Order Date */}
+                      <View style={styles.detailItem}>
+                        <View style={styles.detailIconWrapper}>
+                          <Icon
+                            name="calendar-outline"
+                            size={20}
+                            color={Colors.primaryPink}
+                          />
+                        </View>
+                        <View style={styles.detailContent}>
+                          <Text style={styles.detailLabel}>Order Date</Text>
+                          <Text style={styles.detailValue}>
+                            {formatDate(order.orderDateRaw || order.order_date)}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Delivery Day Date */}
+                      {order.delivery_day_date && (
+                        <View style={styles.detailItem}>
+                          <View style={styles.detailIconWrapper}>
+                            <Icon
+                              name="flash-outline"
+                              size={20}
+                              color={Colors.success}
+                            />
+                          </View>
+                          <View style={styles.detailContent}>
+                            <Text style={styles.detailLabel}>
+                              Delivery Timeline
+                            </Text>
+                            <View
+                              style={[
+                                styles.badgeContainer,
+                                styles.successBadge,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.badgeText,
+                                  styles.successBadgeText,
+                                ]}
+                              >
+                                {order.delivery_day_date}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      )}
                     </View>
                   )}
                 </View>
@@ -910,7 +1186,9 @@ const OrderDetailScreen = ({ navigation, route }) => {
           <View style={styles.driverFooter}>
             <View style={styles.driverInfo}>
               <View style={styles.driverAvatar}>
-                <Text style={styles.driverAvatarText}>{getDriverFirstLetter()}</Text>
+                <Text style={styles.driverAvatarText}>
+                  {getDriverFirstLetter()}
+                </Text>
               </View>
               <Text style={styles.driverName}>{getDriverName()}</Text>
             </View>
@@ -919,16 +1197,9 @@ const OrderDetailScreen = ({ navigation, route }) => {
                 <TouchableOpacity
                   style={styles.driverActionButton}
                   onPress={handleCallDriver}
-                  activeOpacity={0.7}>
-                  <Icon name="call" size={22} color={Colors.primaryPink} />
-                </TouchableOpacity>
-              )}
-              {(order?.driver_email || order?.driverEmail) && (
-                <TouchableOpacity
-                  style={styles.driverActionButton}
-                  onPress={handleEmailDriver}
-                  activeOpacity={0.7}>
-                  <Icon name="mail" size={22} color={Colors.primaryPink} />
+                  activeOpacity={0.7}
+                >
+                  <Icon name="call" size={22} color={Colors.cardBackground} />
                 </TouchableOpacity>
               )}
             </View>
@@ -939,7 +1210,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}  >
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
@@ -978,15 +1249,25 @@ const OrderDetailScreen = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
         >
           {/* Order Info */}
-          <View style={styles.restaurantSection}> 
+          <View style={styles.restaurantSection}>
             <View style={styles.restaurantInfo}>
-              <Text style={styles.restaurantName}>{getOrderId()}</Text> 
+              <Text style={styles.restaurantName}>{getOrderId()}</Text>
               {order.delivery_day_date ? (
-                <Text style={[styles.orderDate, { color: Colors.success, marginTop: 4, fontWeight: '600' }]}>
+                <Text
+                  style={[
+                    styles.orderDate,
+                    { color: Colors.success, marginTop: 4, fontWeight: '600' },
+                  ]}
+                >
                   Delivery: {order.delivery_day_date}
                 </Text>
               ) : (
-                <Text style={[styles.orderDate, { color: Colors.textSecondary, marginTop: 4 }]}>
+                <Text
+                  style={[
+                    styles.orderDate,
+                    { color: Colors.textSecondary, marginTop: 4 },
+                  ]}
+                >
                   Delivery updates will be sent to your email soon.
                 </Text>
               )}
@@ -994,10 +1275,14 @@ const OrderDetailScreen = ({ navigation, route }) => {
             </View>
             {/* Order Status Badge */}
             <View style={styles.statusSection}>
-              <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-                <Text style={styles.statusText}>{order.deliveryStatus || order.status || 'Pending'}</Text>
+              <View
+                style={[styles.statusBadge, { backgroundColor: statusColor }]}
+              >
+                <Text style={styles.statusText}>
+                  {order.deliveryStatus || order.status || 'Pending'}
+                </Text>
               </View>
-            </View> 
+            </View>
           </View>
 
           {/* Timeline */}
@@ -1011,7 +1296,8 @@ const OrderDetailScreen = ({ navigation, route }) => {
                       {
                         backgroundColor: item.iconBgColor || '#E0E0E0',
                       },
-                    ]}>
+                    ]}
+                  >
                     <Icon
                       name={item.icon}
                       size={18}
@@ -1023,7 +1309,11 @@ const OrderDetailScreen = ({ navigation, route }) => {
                       style={[
                         styles.timelineLine,
                         {
-                          backgroundColor: timeline[index + 1]?.isCompleted || timeline[index + 1]?.isCurrent ? '#4CAF50' : '#E0E0E0',
+                          backgroundColor:
+                            timeline[index + 1]?.isCompleted ||
+                            timeline[index + 1]?.isCurrent
+                              ? '#4CAF50'
+                              : '#E0E0E0',
                         },
                       ]}
                     />
@@ -1036,12 +1326,15 @@ const OrderDetailScreen = ({ navigation, route }) => {
                       {
                         color: item.titleColor || Colors.textSecondary,
                       },
-                    ]}>
+                    ]}
+                  >
                     {item.title}
                   </Text>
-                 
+
                   {item.description && (
-                    <Text style={styles.timelineDescription}>{item.description}</Text>
+                    <Text style={styles.timelineDescription}>
+                      {item.description}
+                    </Text>
                   )}
                 </View>
               </View>
@@ -1050,194 +1343,253 @@ const OrderDetailScreen = ({ navigation, route }) => {
 
           {/* Order Details Section */}
           <View style={styles.orderDetailsSection}>
-            {/* Order Details Card */}
-            <View style={styles.detailsCard}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardHeaderIcon}>
-                  <Icon name="receipt-outline" size={24} color={Colors.primaryPink} />
+            {/* Order Overview Card - Reference Design */}
+            <View style={styles.orderOverviewCard}>
+              {/* Header with Order Detail and ETA */}
+              <View style={styles.orderOverviewHeader}>
+                <View style={styles.orderDetailHeaderLeft}>
+                  <Icon
+                    name="receipt-outline"
+                    size={20}
+                    color={Colors.textPrimary}
+                  />
+                  <Text style={styles.orderDetailHeaderText}>Order Detail</Text>
                 </View>
-                <Text style={styles.sectionTitle}>Order Details</Text>
               </View>
-              
-              {/* Product Type */}
-              <View style={styles.detailItem}>
-                <View style={styles.detailIconWrapper}>
-                  <Icon name="cube-outline" size={20} color={Colors.primaryPink} />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Product Type</Text>
-                  <Text style={styles.detailValue}>
+
+              {/* Additional Details Section */}
+              <View>
+                {/* Product Type */}
+                <View style={styles.additionalDetailRow}>
+                  <Text style={styles.additionalDetailLabel}>
+                    Product Type:
+                  </Text>
+                  <Text style={styles.additionalDetailValue}>
                     {order.product_type || 'Case (9 pieces or 9 units)'}
                   </Text>
                 </View>
-              </View>
 
-              {/* Quantity */}
-              <View style={styles.detailItem}>
-                <View style={styles.detailIconWrapper}>
-                  <Icon name="layers-outline" size={20} color={Colors.primaryPink} />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Quantity</Text>
-                  <Text style={styles.detailValue}>
+                {/* Quantity */}
+                <View style={styles.additionalDetailRow}>
+                  <Text style={styles.additionalDetailLabel}>Quantity:</Text>
+                  <Text style={styles.additionalDetailValue}>
                     {order.quantity || order.cases || 0} Cases
                   </Text>
                 </View>
+
+                {/* Opener Kit */}
+                {(order.opener_kit === true ||
+                  order.openerKit === true ||
+                  order.opener_kit === 1 ||
+                  order.openerKit === 1 ||
+                  order.opener_kit === 'true' ||
+                  order.openerKit === 'true' ||
+                  String(order.opener_kit).toLowerCase() === 'true' ||
+                  String(order.openerKit).toLowerCase() === 'true') && (
+                  <View style={styles.additionalDetailRow}>
+                    <Text style={styles.additionalDetailLabel}>
+                      Opener Kit:
+                    </Text>
+                    <Text style={styles.additionalDetailValue}>
+                      Yes (+$15.00)
+                    </Text>
+                  </View>
+                )}
+
+                {/* Special Event */}
+                {(order.special_event_logo || order.specialEventLogo) && (
+                  <View style={styles.additionalDetailRow}>
+                    <Text style={styles.additionalDetailLabel}>
+                      Special Event:
+                    </Text>
+                    <Text style={styles.additionalDetailValue}>
+                      New Logo (+$150.00)
+                    </Text>
+                  </View>
+                )}
+
+                {/* PO Number */}
+                {(order.po_number || order.poNumber) && (
+                  <View style={styles.additionalDetailRow}>
+                    <Text style={styles.additionalDetailLabel}>PO Number:</Text>
+                    <Text style={styles.additionalDetailValue}>
+                      {order.po_number || order.poNumber}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Delivery Timeline */}
+                {order.delivery_day_date && (
+                  <View style={styles.additionalDetailRow}>
+                    <Text style={styles.additionalDetailLabel}>
+                      Delivery Timeline:
+                    </Text>
+                    <Text
+                      style={[
+                        styles.additionalDetailValue,
+                        { color: Colors.success },
+                      ]}
+                    >
+                      {order.delivery_day_date}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Delivery Address */}
+                {order.delivery_address && (
+                  <View style={styles.additionalDetailRow}>
+                    <Text style={styles.additionalDetailLabel}>
+                      Delivery Address:
+                    </Text>
+                    <Text style={styles.additionalDetailValue}>
+                      {order.delivery_address}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Order Notes */}
+                {(order.special_instructions ||
+                  order.orderNotes ||
+                  order.order_notes) && (
+                  <View style={styles.additionalDetailRow}>
+                    <Text style={styles.additionalDetailLabel}>
+                      Order Notes:
+                    </Text>
+                    <Text style={styles.additionalDetailValue}>
+                      {order.special_instructions ||
+                        order.orderNotes ||
+                        order.order_notes}
+                    </Text>
+                  </View>
+                )}
               </View>
-
-              {/* Opener Kit */}
-              {((order.opener_kit === true || order.openerKit === true || order.opener_kit === 1 || order.openerKit === 1 || 
-                 order.opener_kit === 'true' || order.openerKit === 'true' || 
-                 String(order.opener_kit).toLowerCase() === 'true' || String(order.openerKit).toLowerCase() === 'true')) && (
-                <View style={styles.detailItem}>
-                  <View style={styles.detailIconWrapper}>
-                    <Icon name="gift-outline" size={20} color={Colors.primaryPink} />
-                  </View>
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Coconut Opener Kit</Text>
-                    <View style={styles.badgeContainer}>
-                      <Text style={styles.badgeText}>Yes (+$15.00)</Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* Special Event Logo */}
-              {(order.special_event_logo || order.specialEventLogo) && (
-                <View style={styles.detailItem}>
-                  <View style={styles.detailIconWrapper}>
-                    <Icon name="image-outline" size={20} color={Colors.primaryPink} />
-                  </View>
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Special Event Logo</Text>
-                    <View style={styles.badgeContainer}>
-                      <Text style={styles.badgeText}>Yes (+$150.00)</Text>
-                    </View>
-                  </View>
-                </View>
-              )}
 
               {/* Special Event Logo Preview */}
               {(order.special_event_logo || order.specialEventLogo) && (
                 <View style={styles.logoPreviewCard}>
+                  <Text
+                    style={[styles.additionalDetailLabel, { marginBottom: 10 }]}
+                  >
+                    Special Event Logo
+                  </Text>
+
                   <Image
-                    source={{ uri: order.special_event_logo || order.specialEventLogo }}
+                    source={{
+                      uri: order.special_event_logo || order.specialEventLogo,
+                    }}
                     style={styles.logoPreview}
                     resizeMode="contain"
                   />
                 </View>
               )}
 
-              {/* PO Number */}
-              {(order.po_number || order.poNumber) && (
-                <View style={styles.detailItem}>
-                  <View style={styles.detailIconWrapper}>
-                    <Icon name="document-text-outline" size={20} color={Colors.primaryPink} />
-                  </View>
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>PO Number</Text>
-                    <Text style={styles.detailValue}>
-                      {order.po_number || order.poNumber}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Order Notes */}
-              {(order.special_instructions || order.orderNotes || order.order_notes) && (
-                <View style={styles.detailItem}>
-                  <View style={styles.detailIconWrapper}>
-                    <Icon name="chatbubble-outline" size={20} color={Colors.primaryPink} />
-                  </View>
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Order Notes</Text>
-                    <View style={styles.notesContainer}>
-                      <Text style={styles.notesText}>
-                        {order.special_instructions || order.orderNotes || order.order_notes}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* Delivery Address */}
-              {order.delivery_address && (
-                <View style={styles.detailItem}>
-                  <View style={styles.detailIconWrapper}>
-                    <Icon name="location-outline" size={20} color={Colors.primaryPink} />
-                  </View>
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Delivery Address</Text>
-                    <View style={styles.addressContainer}>
-                      <Text style={styles.addressText}>
-                        {order.delivery_address}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
+              {/* Need Help Button */}
+              <TouchableOpacity
+                style={styles.needHelpButton}
+                onPress={handleNeedHelp}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.needHelpButtonText}>Need Help?</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Company Details Card */}
+            {/* Company Details Card - collapsible */}
             <View style={styles.detailsCard}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardHeaderIcon}>
-                  <Icon name="business-outline" size={24} color={Colors.primaryPink} />
-                </View>
-                <Text style={styles.sectionTitle}>Company Details</Text>
-              </View>
-              
-              <View style={styles.detailItem}>
-                <View style={styles.detailIconWrapper}>
-                  <Icon name="business-outline" size={20} color={Colors.primaryPink} />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Company Name</Text>
-                  <Text style={styles.detailValue}>
-                    {restaurantName || 'N/A'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Company Logo */}
-              {companyLogo && (
-                <View style={styles.logoPreviewCard}>
-                  <Text style={styles.logoLabel}>Company Logo</Text>
-                  <Image
-                    source={{ uri: companyLogo }}
-                    style={styles.logoPreview}
-                    resizeMode="contain"
-                  />
-                </View>
-              )}
-
-              {/* Order Date */}
-              <View style={styles.detailItem}>
-                <View style={styles.detailIconWrapper}>
-                  <Icon name="calendar-outline" size={20} color={Colors.primaryPink} />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Order Date</Text>
-                  <Text style={styles.detailValue}>
-                    {formatDate(order.orderDateRaw || order.order_date)}
-                  </Text>
-                </View>
-              </View> 
-
-              {/* Delivery Day Date */}
-              {order.delivery_day_date && (
-                <View style={styles.detailItem}>
-                  <View style={styles.detailIconWrapper}>
-                    <Icon name="flash-outline" size={20} color={Colors.success} />
+              <TouchableOpacity
+                style={styles.collapseHeader}
+                activeOpacity={0.8}
+                onPress={() => setIsCompanyCollapsed(prev => !prev)}
+              >
+                <View style={styles.cardHeaderLeft}>
+                  <View style={styles.cardHeaderIcon}>
+                    <Icon
+                      name="business-outline"
+                      size={24}
+                      color={Colors.primaryPink}
+                    />
                   </View>
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Delivery Timeline</Text>
-                    <View style={[styles.badgeContainer, styles.successBadge]}>
-                      <Text style={[styles.badgeText, styles.successBadgeText]}>
-                        {order.delivery_day_date}
+                  <Text style={styles.sectionTitle}>Company Details</Text>
+                </View>
+                <Icon
+                  name={isCompanyCollapsed ? 'chevron-down' : 'chevron-up'}
+                  size={22}
+                  color={Colors.textSecondary}
+                />
+              </TouchableOpacity>
+
+              {!isCompanyCollapsed && (
+                <View style={styles.companyBody}>
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconWrapper}>
+                      <Icon
+                        name="business-outline"
+                        size={20}
+                        color={Colors.primaryPink}
+                      />
+                    </View>
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Company Name</Text>
+                      <Text style={styles.detailValue}>
+                        {restaurantName || 'N/A'}
                       </Text>
                     </View>
                   </View>
+
+                  {/* Company Logo */}
+                  {companyLogo && (
+                    <View style={styles.logoPreviewCard}>
+                      <Text style={styles.logoLabel}>Company Logo</Text>
+                      <Image
+                        source={{ uri: companyLogo }}
+                        style={styles.logoPreview}
+                        resizeMode="contain"
+                      />
+                    </View>
+                  )}
+
+                  {/* Order Date */}
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconWrapper}>
+                      <Icon
+                        name="calendar-outline"
+                        size={20}
+                        color={Colors.primaryPink}
+                      />
+                    </View>
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Order Date</Text>
+                      <Text style={styles.detailValue}>
+                        {formatDate(order.orderDateRaw || order.order_date)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Delivery Day Date */}
+                  {order.delivery_day_date && (
+                    <View style={styles.detailItem}>
+                      <View style={styles.detailIconWrapper}>
+                        <Icon
+                          name="flash-outline"
+                          size={20}
+                          color={Colors.success}
+                        />
+                      </View>
+                      <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>
+                          Delivery Timeline
+                        </Text>
+                        <View
+                          style={[styles.badgeContainer, styles.successBadge]}
+                        >
+                          <Text
+                            style={[styles.badgeText, styles.successBadgeText]}
+                          >
+                            {order.delivery_day_date}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
                 </View>
               )}
             </View>
@@ -1250,10 +1602,12 @@ const OrderDetailScreen = ({ navigation, route }) => {
         <View style={styles.driverFooter}>
           <View style={styles.driverInfo}>
             <View style={styles.driverAvatar}>
-              <Text style={styles.driverAvatarText}>{getDriverFirstLetter()}</Text>
+              <Text style={styles.driverAvatarText}>
+                {getDriverFirstLetter()}
+              </Text>
             </View>
             <View style={styles.driverDetails}>
-              <Text style={styles.driverLabel}>Driver</Text> 
+              <Text style={styles.driverLabel}>Driver</Text>
               <Text style={styles.driverName}>{getDriverName()}</Text>
             </View>
           </View>
@@ -1262,16 +1616,9 @@ const OrderDetailScreen = ({ navigation, route }) => {
               <TouchableOpacity
                 style={styles.driverActionButton}
                 onPress={handleCallDriver}
-                activeOpacity={0.7}>
-                <Icon name="call" size={22} color={Colors.primaryPink} />
-              </TouchableOpacity>
-            )}
-            {(order?.driver_email || order?.driverEmail) && (
-              <TouchableOpacity
-                style={styles.driverActionButton}
-                onPress={handleEmailDriver}
-                activeOpacity={0.7}>
-                <Icon name="mail" size={22} color={Colors.primaryPink} />
+                activeOpacity={0.7}
+              >
+                <Icon name="call" size={22} color={Colors.cardBackground} />
               </TouchableOpacity>
             )}
           </View>
@@ -1288,8 +1635,8 @@ const styles = StyleSheet.create({
     paddingTop: HEADER_HEIGHT,
   },
   header: {
-    position: 'absolute', 
-    paddingTop: Platform.OS === 'ios' ? 55 : 55,
+    position: 'absolute',
+    paddingTop: Platform.OS === 'ios' ? 55 : 20,
     left: 0,
     right: 0,
     backgroundColor: Colors.primaryBlue,
@@ -1513,13 +1860,6 @@ const styles = StyleSheet.create({
   driverDetails: {
     flex: 1,
   },
-  driverName: {
-    fontSize: 16,
-    fontFamily: fontFamilyHeading,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginBottom: 2,
-  },
   driverLabel: {
     fontSize: 12,
     fontFamily: fontFamilyBody,
@@ -1529,7 +1869,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FF9800',
+    backgroundColor: Colors.primaryPink,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1560,7 +1900,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   completedScrollContent: {
-    flexGrow: 1, 
+    flexGrow: 1,
   },
   celebrationContainer: {
     justifyContent: 'center',
@@ -1682,12 +2022,12 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: Colors.cardBackground,
     borderTopLeftRadius: 30,
-    borderTopRightRadius: 30, 
+    borderTopRightRadius: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 10,  
+    elevation: 10,
   },
   driverFooter: {
     position: 'absolute',
@@ -1709,20 +2049,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 8,
   },
-  driverInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  driverAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primaryPink,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
   driverAvatarText: {
     fontSize: 18,
     fontWeight: '600',
@@ -1732,22 +2058,16 @@ const styles = StyleSheet.create({
   driverName: {
     fontSize: 16,
     fontWeight: '600',
+    marginBottom: 2,
     fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
+    textTransform: 'capitalize',
     flex: 1,
   },
   driverActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  driverActionButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   orderDetailsSection: {
     marginTop: 1,
@@ -1757,14 +2077,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardBackground,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#F5F5F5',
+    marginBottom: 20,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -1773,6 +2086,11 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+  },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   cardHeaderIcon: {
     width: 40,
@@ -1813,8 +2131,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     fontWeight: '500',
-    marginBottom: 6,
-    textTransform: 'uppercase',
+    marginBottom: 6, 
     letterSpacing: 0.5,
   },
   detailValue: {
@@ -1858,8 +2175,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     fontWeight: '500',
-    marginBottom: 8,
-    textTransform: 'uppercase',
+    marginBottom: 8, 
     letterSpacing: 0.5,
   },
   logoPreview: {
@@ -1896,12 +2212,6 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     lineHeight: 22,
   },
-  orderSummaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
   orderSummaryLabel: {
     fontSize: 14,
     fontFamily: fontFamilyBody,
@@ -1913,6 +2223,164 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     color: Colors.textPrimary,
     fontWeight: '600',
+  },
+  horizontalDetailsRow: {
+    paddingVertical: 4,
+    paddingRight: 8,
+  },
+  detailChip: {
+    width: 150,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: Colors.backgroundGray,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  detailChipIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.cardBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  detailChipLabel: {
+    fontSize: 11,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  detailChipValue: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+  collapseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  companyBody: {
+    paddingTop: 4,
+  },
+  orderOverviewCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F5F5F5',
+  },
+  orderOverviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  orderDetailHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  orderDetailHeaderText: {
+    fontSize: 16,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginLeft: 8,
+  },
+  etaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  etaLabel: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    marginRight: 6,
+  },
+  etaValue: {
+    fontSize: 16,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  orderSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  orderSummaryItem: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  orderSummaryValueLarge: {
+    fontSize: 18,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginTop: 4,
+  },
+
+  additionalDetailRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    alignItems: 'flex-start',
+  },
+  additionalDetailLabel: {
+    fontSize: 13,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    marginRight: 8,
+    minWidth: 120,
+  },
+  additionalDetailValue: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+    flex: 1,
+  },
+  needHelpButton: {
+    backgroundColor: Colors.primaryPink,
+    alignContent: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.primaryPink,
+  },
+  needHelpGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  needHelpButtonText: {
+    fontSize: 18,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
 });
 

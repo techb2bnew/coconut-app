@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: Colors.primaryBlue,
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 55 : 55,
+    paddingTop: Platform.OS === 'ios' ? 55 : 20,
     paddingBottom: 16, 
   },
   headerRow: {

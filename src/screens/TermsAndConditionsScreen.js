@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryBlue,
     paddingVertical: 16,
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 55 : 55, 
+    paddingTop: Platform.OS === 'ios' ? 55 : 20, 
     flexDirection: 'row',
     alignItems: 'center',
     position: 'absolute',

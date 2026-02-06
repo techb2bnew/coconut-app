@@ -486,14 +486,14 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: Colors.primaryBlue,
-    paddingTop: Platform.OS === 'ios' ? 55 : 55,
+    paddingTop: Platform.OS === 'ios' ? 55 : 20,
     paddingBottom: 40,
     paddingHorizontal: 20,
     alignItems: 'center',
   },
   backButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 55 : 55,
+    top: Platform.OS === 'ios' ? 55 : 20,
     left: 20,
     padding: 8,
     zIndex: 10,

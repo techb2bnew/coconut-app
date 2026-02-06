@@ -849,7 +849,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryBlue,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 55 : 55,
+    paddingTop: Platform.OS === 'ios' ? 55 : 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

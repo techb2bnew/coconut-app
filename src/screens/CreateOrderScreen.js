@@ -1129,7 +1129,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
   }));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <>
       {/* Banner Section with Animation */}
       <Animated.View
         style={[
@@ -1499,7 +1499,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </>
   );
 };
 
@@ -1539,7 +1539,7 @@ const styles = StyleSheet.create({
   },
   bannerContentWrapper: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 55 : 55,
+    paddingTop: Platform.OS === 'ios' ? 55 : 20,
     paddingHorizontal: 20,
     paddingBottom: 20,
     position: 'relative',

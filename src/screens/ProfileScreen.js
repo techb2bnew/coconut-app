@@ -1025,7 +1025,7 @@ const ProfileScreen = ({ navigation }) => {
                 <Icon name="person-outline" size={16} color={Colors.textSecondary} />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Customer Name</Text>
-                  <Text style={styles.infoValue}>
+                  <Text style={[styles.infoValue, { textTransform: 'capitalize' }]}>
                     {customerData ? `${customerData.first_name || ''} ${customerData.last_name || ''}`.trim() : 'John Doe'}
                   </Text>
                 </View>
@@ -1427,7 +1427,7 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     backgroundColor: Colors.primaryBlue,
-    paddingTop: Platform.OS === 'ios' ? 55 : 40,
+    paddingTop: Platform.OS === 'ios' ? 55 : 20,
     paddingBottom: 60, 
     paddingHorizontal: 20,
     alignItems: 'center',  
@@ -1462,6 +1462,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
+    textTransform: 'capitalize',
     marginBottom: 8,
   },
   companyRow: {
@@ -1504,7 +1505,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   summaryValue: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '700',
     fontFamily: fontFamilyHeading,
     color: Colors.textPrimary,
@@ -1664,7 +1665,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     fontFamily: fontFamilyBody,
-    color: Colors.textPrimary,
+    color: Colors.textPrimary, 
   },
   addressRow: {
     flexDirection: 'row',
