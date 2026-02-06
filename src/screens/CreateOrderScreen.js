@@ -16,18 +16,16 @@ import {
   Alert,
   PermissionsAndroid,
   Platform,
-  KeyboardAvoidingView,
   Animated,
   Dimensions,
   Modal,
-  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Toast from 'react-native-toast-message';
-import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
@@ -78,9 +76,8 @@ const CreateOrderScreen = ({ navigation, route }) => {
   const quantityCardRef = useRef(null);
   const poNumberCardRef = useRef(null);
   const notesCardRef = useRef(null);
-  const activeInputYPosition = useRef(null); // Track Y position of focused input (relative to scroll content)
   const snapPoints = useMemo(() => ['50%', '80%'], []);
-  
+
   // Handle sheet position changes to ensure it doesn't go beyond 80%
   const handleSheetChange = useCallback((index) => {
     // Ensure sheet doesn't go beyond 80% snap point
@@ -91,52 +88,6 @@ const CreateOrderScreen = ({ navigation, route }) => {
   
   // Animation for banner
   const bannerAnim = useRef(new Animated.Value(0)).current;
-
-  // Handle keyboard events - scroll to focused input
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        // Get the Y position of the currently focused input
-        const inputY = activeInputYPosition.current;
-        
-        if (inputY !== null && scrollViewRef.current) {
-          // Expand bottom sheet to 80% to give more space for keyboard
-          bottomSheetRef.current?.snapToIndex(1);
-          
-          setTimeout(() => {
-            // Scroll to show input with padding from top
-            const scrollOffset = Math.max(0, inputY - 120); // 120px padding from top
-            
-            scrollViewRef.current?.scrollTo({
-              y: scrollOffset,
-              animated: true,
-            });
-          }, Platform.OS === 'ios' ? 150 : 250);
-        }
-      }
-    );
-
-    const keyboardDidHideListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        // Clear active input Y position
-        activeInputYPosition.current = null;
-        
-        // Re-enable scrolling after keyboard closes
-        setTimeout(() => {
-          if (scrollViewRef.current) {
-            scrollViewRef.current.setNativeProps({ scrollEnabled: true });
-          }
-        }, 100);
-      }
-    );
-
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, []);
 
   // Product type options
   const productTypeOptions = [
@@ -1178,7 +1129,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
   }));
 
   return (
-    <>
+    <SafeAreaView style={styles.container}>
       {/* Banner Section with Animation */}
       <Animated.View
         style={[
@@ -1235,7 +1186,10 @@ const CreateOrderScreen = ({ navigation, route }) => {
         onChange={handleSheetChange}
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.handleIndicator}
-        animateOnMount={true}>
+        animateOnMount={true}
+        keyboardBehavior="extend"
+        keyboardBlurBehavior="restore"
+      >
         <BottomSheetScrollView
           ref={scrollViewRef}
           contentContainerStyle={styles.bottomSheetContent}
@@ -1270,7 +1224,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
             <View 
               ref={quantityContainerRef}
               style={styles.inputContainer}>
-              <TextInput
+              <BottomSheetTextInput
                 ref={quantityInputRef}
                 style={styles.input}
                 placeholder="Enter quantity"
@@ -1278,14 +1232,6 @@ const CreateOrderScreen = ({ navigation, route }) => {
                 value={quantity}
                 onChangeText={setQuantity}
                 keyboardType="numeric"
-                onFocus={() => {
-                  if (quantityCardRef.current?._yPosition !== undefined) {
-                    activeInputYPosition.current = quantityCardRef.current._yPosition;
-                  }
-                }}
-                onBlur={() => {
-                  activeInputYPosition.current = null;
-                }}
               />
             </View>
             {errors.quantity && (
@@ -1409,21 +1355,13 @@ const CreateOrderScreen = ({ navigation, route }) => {
             <View 
               ref={poNumberContainerRef}
               style={styles.inputContainer}>
-              <TextInput
+              <BottomSheetTextInput
                 ref={poNumberInputRef}
                 style={styles.input}
                 placeholder="Enter PO number"
                 placeholderTextColor={Colors.textSecondary}
                 value={poNumber}
                 onChangeText={setPoNumber}
-                onFocus={() => {
-                  if (poNumberCardRef.current?._yPosition !== undefined) {
-                    activeInputYPosition.current = poNumberCardRef.current._yPosition;
-                  }
-                }}
-                onBlur={() => {
-                  activeInputYPosition.current = null;
-                }}
               />
             </View>
           </View>
@@ -1440,7 +1378,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
             <View 
               ref={notesContainerRef}
               style={[styles.inputContainer, styles.textAreaContainer]}>
-              <TextInput
+              <BottomSheetTextInput
                 ref={notesInputRef}
                 style={[styles.input, styles.textArea]}
                 placeholder="Add any special instructions or notes for this order..."
@@ -1451,12 +1389,15 @@ const CreateOrderScreen = ({ navigation, route }) => {
                 numberOfLines={4}
                 textAlignVertical="top"
                 onFocus={() => {
-                  if (notesCardRef.current?._yPosition !== undefined) {
-                    activeInputYPosition.current = notesCardRef.current._yPosition;
+                  // iOS: ensure sheet is expanded and scroll to bottom so notes field stays above keyboard
+                  bottomSheetRef.current?.snapToIndex(1);
+                  if (Platform.OS === 'ios') {
+                    setTimeout(() => {
+                      if (scrollViewRef.current) {
+                        scrollViewRef.current.scrollToEnd({ animated: true });
+                      }
+                    }, 250);
                   }
-                }}
-                onBlur={() => {
-                  activeInputYPosition.current = null;
                 }}
               />
             </View>
@@ -1558,7 +1499,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
           </View>
         </View>
       </Modal>
-    </ >
+    </SafeAreaView>
   );
 };
 
