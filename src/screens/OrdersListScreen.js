@@ -15,6 +15,7 @@ import {
   RefreshControl,
   Platform,
   Modal,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -36,9 +37,10 @@ const OrdersListScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [customerId, setCustomerId] = useState(null);
   const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'today', 'week', 'month'
-  const [selectedDates, setSelectedDates] = useState([]); // Array of selected dates in YYYY-MM-DD format
+  const [dateRangeStart, setDateRangeStart] = useState(null); // YYYY-MM-DD
+  const [dateRangeEnd, setDateRangeEnd] = useState(null); // YYYY-MM-DD
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
-  const [markedDates, setMarkedDates] = useState({}); // For calendar marked dates
+  const [markedDates, setMarkedDates] = useState({}); // For calendar period marking
   const bottomSheetRef = useRef(null);
   const snapPoints = useMemo(() => ['90%'], []);
   const [stats, setStats] = useState({
@@ -176,8 +178,23 @@ const OrdersListScreen = ({ navigation }) => {
     return `${year}-${month}-${day}`;
   };
 
-  // Apply filters based on search, time period, and selected dates
-  const applyFilters = (ordersList, query, timePeriod, dates) => {
+  // Get all dates between start and end (inclusive), YYYY-MM-DD
+  const getDatesInRange = (startStr, endStr) => {
+    if (!startStr || !endStr) return [];
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return [];
+    const dates = [];
+    const d = new Date(start);
+    while (d <= end) {
+      dates.push(d.toISOString().slice(0, 10));
+      d.setDate(d.getDate() + 1);
+    }
+    return dates;
+  };
+
+  // Apply filters based on search, time period, and date range
+  const applyFilters = (ordersList, query, timePeriod, rangeStart, rangeEnd) => {
     let filtered = [...ordersList];
 
     // Apply search filter
@@ -190,18 +207,14 @@ const OrdersListScreen = ({ navigation }) => {
       );
     }
 
-    // Apply selected dates filter if dates are selected
-    if (dates && dates.length > 0) {
+    // Apply date range filter if range is selected
+    if (rangeStart && rangeEnd) {
       filtered = filtered.filter((order) => {
         const createdDate = order.createdAt || order.created_at || order.orderDateRaw;
         if (!createdDate) return false;
-        
-        // Normalize order date to YYYY-MM-DD format
         const orderDateNormalized = normalizeDateToString(createdDate);
         if (!orderDateNormalized) return false;
-        
-        // Check if order's normalized date matches any selected date (already in YYYY-MM-DD format)
-        return dates.includes(orderDateNormalized);
+        return orderDateNormalized >= rangeStart && orderDateNormalized <= rangeEnd;
       });
     } else {
       // Apply time period filter based on created_at date (only if no dates selected)
@@ -350,7 +363,7 @@ const OrdersListScreen = ({ navigation }) => {
       });
 
       setOrders(processedOrders);
-      applyFilters(processedOrders, searchQuery, timeFilter, selectedDates);
+      applyFilters(processedOrders, searchQuery, timeFilter, dateRangeStart, dateRangeEnd);
     } catch (error) {
       console.error('❌ Error in fetchOrders:', error);
     } finally {
@@ -401,13 +414,13 @@ const OrdersListScreen = ({ navigation }) => {
 
   // Search filter
   useEffect(() => {
-    applyFilters(orders, searchQuery, timeFilter, selectedDates);
-  }, [searchQuery, orders, timeFilter, selectedDates]);
+    applyFilters(orders, searchQuery, timeFilter, dateRangeStart, dateRangeEnd);
+  }, [searchQuery, orders, timeFilter, dateRangeStart, dateRangeEnd]);
 
-  // Update marked dates when selectedDates changes
+  // Update marked dates when date range changes
   useEffect(() => {
-    updateMarkedDates(selectedDates);
-  }, [selectedDates]);
+    updateMarkedDates(dateRangeStart, dateRangeEnd);
+  }, [dateRangeStart, dateRangeEnd]);
 
   // Refresh handler
   const onRefresh = async () => {
@@ -462,9 +475,9 @@ const OrdersListScreen = ({ navigation }) => {
   // Handle time filter change
   const handleTimeFilterChange = (filter) => {
     setTimeFilter(filter);
-    // Clear selected dates when changing time filter
     if (filter !== 'all') {
-      setSelectedDates([]);
+      setDateRangeStart(null);
+      setDateRangeEnd(null);
     }
   };
 
@@ -472,48 +485,64 @@ const OrdersListScreen = ({ navigation }) => {
   const handleOpenDatePicker = () => {
     setShowDatePickerModal(true);
     bottomSheetRef.current?.expand();
-    // Update marked dates when opening
-    updateMarkedDates(selectedDates);
+    updateMarkedDates(dateRangeStart, dateRangeEnd);
   };
 
-  // Update marked dates for calendar display
-  const updateMarkedDates = (dates) => {
+  // Update marked dates for calendar (period/range marking)
+  const updateMarkedDates = (start, end) => {
+    if (!start || !end) {
+      const marked = {};
+      if (start) {
+        marked[start] = {
+          startingDay: true,
+          endingDay: true,
+          color: Colors.primaryBlue,
+          textColor: Colors.cardBackground,
+        };
+      }
+      setMarkedDates(marked);
+      return;
+    }
+    const dates = getDatesInRange(start, end);
     const marked = {};
-    dates.forEach((date) => {
+    dates.forEach((date, index) => {
       marked[date] = {
-        selected: true,
-        selectedColor: Colors.primaryBlue,
-        selectedTextColor: Colors.cardBackground,
+        ...(index === 0 && { startingDay: true }),
+        ...(index === dates.length - 1 && { endingDay: true }),
+        color: Colors.primaryBlue,
+        textColor: Colors.cardBackground,
       };
     });
     setMarkedDates(marked);
   };
 
-  // Handle date selection from calendar
+  // Handle date selection for range: first tap = start, second tap = end (swap if reversed)
   const handleDayPress = (day) => {
-    const dateStr = day.dateString; // Already in YYYY-MM-DD format
-    let newSelectedDates;
-    
-    if (selectedDates.includes(dateStr)) {
-      // Remove date if already selected
-      newSelectedDates = selectedDates.filter((d) => d !== dateStr);
-    } else {
-      // Add date if not selected
-      newSelectedDates = [...selectedDates, dateStr];
+    const dateStr = day.dateString;
+    if (!dateRangeStart) {
+      setDateRangeStart(dateStr);
+      setDateRangeEnd(null);
+      return;
     }
-    
-    setSelectedDates(newSelectedDates);
-    updateMarkedDates(newSelectedDates);
+    if (!dateRangeEnd) {
+      if (dateStr < dateRangeStart) {
+        setDateRangeStart(dateStr);
+        setDateRangeEnd(dateRangeStart);
+      } else {
+        setDateRangeEnd(dateStr);
+      }
+      return;
+    }
+    // both set: new range with this day as start
+    setDateRangeStart(dateStr);
+    setDateRangeEnd(null);
   };
 
-  // Remove date from selected dates
-  const handleRemoveDate = (dateToRemove) => {
-    setSelectedDates(selectedDates.filter(date => date !== dateToRemove));
-  };
-
-  // Clear all selected dates
+  // Clear date range
   const handleClearDates = () => {
-    setSelectedDates([]);
+    setDateRangeStart(null);
+    setDateRangeEnd(null);
+    setMarkedDates({});
   };
 
   // Apply selected dates and close bottom sheet
@@ -521,7 +550,27 @@ const OrdersListScreen = ({ navigation }) => {
     bottomSheetRef.current?.close();
     setShowDatePickerModal(false);
   };
-
+  const handlePhoneCall = async () => {
+    // Phone number from button: +1 (555) 123-4567
+    // Remove spaces, parentheses, and dashes for tel: protocol
+    const phoneNumber = '+15551234567';
+    const phoneUrl = `tel:${phoneNumber}`;
+    
+    try {
+      // Directly open phone dialer - tel: protocol is standard
+      await Linking.openURL(phoneUrl);
+    } catch (error) {
+      console.error('Error opening phone dialer:', error);
+      // Only show error if it actually fails
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Unable to open phone dialer. Please try again.',
+        position: 'top',
+        visibilityTime: 2500,
+      });
+    }
+  };
   // Format date for display
   const formatDateDisplay = (dateStr) => {
     const date = new Date(dateStr);
@@ -571,7 +620,7 @@ const OrdersListScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -662,34 +711,19 @@ const OrdersListScreen = ({ navigation }) => {
               <Icon name="filter-outline" size={16} color={'#ffffff'} />
             </TouchableOpacity>
           </View>
-          {selectedDates.length > 0 && (
+          {dateRangeStart && dateRangeEnd && (
             <View style={styles.selectedDatesContainer}>
               <View style={styles.selectedDatesHeader}>
-                <Text style={styles.selectedDatesLabel}>Selected Dates:</Text>
+                <Text style={styles.selectedDatesLabel}>
+                  Range: {formatDateDisplay(dateRangeStart)} – {formatDateDisplay(dateRangeEnd)}
+                </Text>
                 <TouchableOpacity
                   onPress={handleClearDates}
                   style={styles.clearAllButton}>
                   <Icon name="close-circle" size={18} color={Colors.textSecondary} />
-                  <Text style={styles.clearAllText}>Clear All</Text>
+                  <Text style={styles.clearAllText}>Clear</Text>
                 </TouchableOpacity>
               </View>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.selectedDatesScrollContent}>
-                {selectedDates.map((date, index) => (
-                  <View key={index} style={styles.selectedDateChip}>
-                    <Icon name="calendar" size={14} color={Colors.primaryBlue} style={styles.dateChipIcon} />
-                    <Text style={styles.selectedDateText}>{formatDateDisplay(date)}</Text>
-                    <TouchableOpacity
-                      onPress={() => handleRemoveDate(date)}
-                      style={styles.removeDateButton}
-                      activeOpacity={0.7}> 
-                      <Icon name="close" size={14} color={Colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </ScrollView>
             </View>
           )}
           <View style={styles.timeFilterButtons}>
@@ -805,7 +839,16 @@ const OrdersListScreen = ({ navigation }) => {
             </View>
           ))
         )}
-
+         <View style={styles.contactCard}>
+          <Text style={styles.sectionTitle}>Need to modify or cancel an order?</Text>
+          <Text style={styles.contactSubtitle}>Call us if you want to modify or cancel your order</Text>
+          <TouchableOpacity 
+            style={styles.phoneButton}
+            onPress={handlePhoneCall}>
+            <Icon name="call-outline" size={20} color={Colors.cardBackground} />
+            <Text style={styles.phoneButtonText}>+1 (555) 123-4567</Text>
+          </TouchableOpacity>
+        </View>
         {/* Date Picker Bottom Sheet */}
         <Modal
           visible={showDatePickerModal}
@@ -829,7 +872,7 @@ const OrdersListScreen = ({ navigation }) => {
                 showsVerticalScrollIndicator={false}
                 nestedScrollEnabled={true}>
                 <View style={styles.datePickerHeader}>
-                  <Text style={styles.datePickerTitle}>Select Dates</Text>
+                  <Text style={styles.datePickerTitle}>Select Date Range</Text>
                   <TouchableOpacity
                     onPress={() => {
                       bottomSheetRef.current?.close();
@@ -841,14 +884,14 @@ const OrdersListScreen = ({ navigation }) => {
                 </View>
 
                 <View style={styles.datePickerContainer}>
-                  <Text style={styles.datePickerLabel}>Select Multiple Dates</Text>
+                  <Text style={styles.datePickerLabel}>Select start and end date</Text>
                   <Text style={styles.datePickerSubLabel}>
-                    Tap dates to select/deselect
+                    Tap first date, then second date. Tap again to pick a new range.
                   </Text>
                   <Calendar
                     onDayPress={handleDayPress}
                     markedDates={markedDates}
-                    markingType="simple"
+                    markingType="period"
                     theme={{
                       backgroundColor: Colors.cardBackground,
                       calendarBackground: Colors.cardBackground,
@@ -873,25 +916,19 @@ const OrdersListScreen = ({ navigation }) => {
                   />
                 </View>
 
-                {selectedDates.length > 0 && (
+                {(dateRangeStart || dateRangeEnd) && (
                   <View style={styles.selectedDatesListContainer}>
-                    <Text style={styles.selectedDatesListTitle}>Selected Dates:</Text>
-                    <View style={styles.selectedDatesList}>
-                      {selectedDates.map((date, index) => (
-                        <View key={index} style={styles.selectedDateItem}>
-                          <Text style={styles.selectedDateItemText}>{formatDateDisplay(date)}</Text>
-                          <TouchableOpacity
-                            onPress={() => handleRemoveDate(date)}
-                            style={styles.removeDateItemButton}>
-                            <Icon name="close" size={18} color={Colors.textSecondary} />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </View>
+                    <Text style={styles.selectedDatesListTitle}>
+                      {dateRangeStart && dateRangeEnd
+                        ? `From ${formatDateDisplay(dateRangeStart)} – To ${formatDateDisplay(dateRangeEnd)}`
+                        : dateRangeStart
+                          ? `From ${formatDateDisplay(dateRangeStart)} (tap end date)`
+                          : 'Select start date'}
+                    </Text>
                     <TouchableOpacity
                       onPress={handleClearDates}
                       style={styles.clearAllDatesButton}>
-                      <Text style={styles.clearAllDatesText}>Clear All Dates</Text>
+                      <Text style={styles.clearAllDatesText}>Clear Range</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -1406,6 +1443,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     fontWeight: '600',
     color: Colors.textPrimary, 
+    marginBottom: 10,
   },
   selectedDatesList: {
     flexDirection: 'row',
@@ -1453,6 +1491,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: fontFamilyBody,
     fontWeight: '600',
+    color: Colors.cardBackground,
+  },
+  contactCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  contactTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: fontFamilyBody,
+    color: Colors.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  contactSubtitle: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  phoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primaryPink,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  phoneButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: fontFamilyBody,
     color: Colors.cardBackground,
   },
 });

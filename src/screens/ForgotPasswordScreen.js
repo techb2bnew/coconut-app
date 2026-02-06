@@ -24,6 +24,8 @@ import Button from '../components/Button';
 import BackArrowIcon from '../components/BackArrowIcon';
 import { validateEmail } from '../utils/validation';
 import supabase from '../config/supabase';
+import Icon from 'react-native-vector-icons/Ionicons';
+
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -221,7 +223,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                 autoCapitalize="none"
                 errorMessage={error}
                 icon={
-                  <Text style={styles.envelopeIcon}>📧</Text>
+                  <Icon name="mail-outline" size={20} color={Colors.textSecondary} />
                 }
                 iconPosition="right"
               />

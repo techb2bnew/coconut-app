@@ -2,9 +2,5 @@
 <!-- Splash look-alike: blue + logo circle so native screen matches React splash -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/splashBackground"/>
-    <item android:gravity="center" android:width="120dp" android:height="120dp">
-        <shape android:shape="oval">
-            <solid android:color="#40FFFFFF"/>
-        </shape>
-    </item>
+  
 </layer-list>

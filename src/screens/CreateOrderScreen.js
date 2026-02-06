@@ -70,6 +70,15 @@ const CreateOrderScreen = ({ navigation, route }) => {
   const bottomSheetRef = useRef(null);
   const scrollViewRef = useRef(null);
   const notesInputRef = useRef(null);
+  const notesContainerRef = useRef(null);
+  const quantityInputRef = useRef(null);
+  const quantityContainerRef = useRef(null);
+  const poNumberInputRef = useRef(null);
+  const poNumberContainerRef = useRef(null);
+  const quantityCardRef = useRef(null);
+  const poNumberCardRef = useRef(null);
+  const notesCardRef = useRef(null);
+  const activeInputYPosition = useRef(null); // Track Y position of focused input (relative to scroll content)
   const snapPoints = useMemo(() => ['50%', '80%'], []);
   
   // Handle sheet position changes to ensure it doesn't go beyond 80%
@@ -83,30 +92,27 @@ const CreateOrderScreen = ({ navigation, route }) => {
   // Animation for banner
   const bannerAnim = useRef(new Animated.Value(0)).current;
 
-  // Handle keyboard events
+  // Handle keyboard events - scroll to focused input
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => {
-        // When keyboard shows, ensure the notes field is visible
-        if (notesInputRef.current) {
+        // Get the Y position of the currently focused input
+        const inputY = activeInputYPosition.current;
+        
+        if (inputY !== null && scrollViewRef.current) {
+          // Expand bottom sheet to 80% to give more space for keyboard
+          bottomSheetRef.current?.snapToIndex(1);
+          
           setTimeout(() => {
-            notesInputRef.current?.measureLayout(
-              scrollViewRef.current?.getInnerViewNode?.() || scrollViewRef.current,
-              (x, y, width, height) => {
-                scrollViewRef.current?.scrollTo({
-                  y: y - 100, // Scroll to show input with some padding
-                  animated: true,
-                });
-              },
-              () => {
-                // Fallback: scroll to end if measureLayout fails
-                setTimeout(() => {
-                  scrollViewRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-              }
-            );
-          }, 100);
+            // Scroll to show input with padding from top
+            const scrollOffset = Math.max(0, inputY - 120); // 120px padding from top
+            
+            scrollViewRef.current?.scrollTo({
+              y: scrollOffset,
+              animated: true,
+            });
+          }, Platform.OS === 'ios' ? 150 : 250);
         }
       }
     );
@@ -114,11 +120,12 @@ const CreateOrderScreen = ({ navigation, route }) => {
     const keyboardDidHideListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => {
+        // Clear active input Y position
+        activeInputYPosition.current = null;
+        
         // Re-enable scrolling after keyboard closes
-        // Small delay to ensure keyboard is fully closed
         setTimeout(() => {
           if (scrollViewRef.current) {
-            // Force scroll view to be scrollable again
             scrollViewRef.current.setNativeProps({ scrollEnabled: true });
           }
         }, 100);
@@ -1251,16 +1258,34 @@ const CreateOrderScreen = ({ navigation, route }) => {
           </View>
 
           {/* Quantity */}
-          <View style={styles.formCard}>
+          <View 
+            ref={quantityCardRef}
+            onLayout={(event) => {
+              const { y } = event.nativeEvent.layout;
+              // Store Y position relative to scroll content
+              quantityCardRef.current._yPosition = y;
+            }}
+            style={styles.formCard}>
             <Text style={styles.label}>Quantity</Text>
-            <View style={styles.inputContainer}>
+            <View 
+              ref={quantityContainerRef}
+              style={styles.inputContainer}>
               <TextInput
+                ref={quantityInputRef}
                 style={styles.input}
                 placeholder="Enter quantity"
                 placeholderTextColor={Colors.textSecondary}
                 value={quantity}
                 onChangeText={setQuantity}
                 keyboardType="numeric"
+                onFocus={() => {
+                  if (quantityCardRef.current?._yPosition !== undefined) {
+                    activeInputYPosition.current = quantityCardRef.current._yPosition;
+                  }
+                }}
+                onBlur={() => {
+                  activeInputYPosition.current = null;
+                }}
               />
             </View>
             {errors.quantity && (
@@ -1373,24 +1398,50 @@ const CreateOrderScreen = ({ navigation, route }) => {
           )}
 
           {/* PO Number */}
-          <View style={styles.formCard}>
+          <View 
+            ref={poNumberCardRef}
+            onLayout={(event) => {
+              const { y } = event.nativeEvent.layout;
+              poNumberCardRef.current._yPosition = y;
+            }}
+            style={styles.formCard}>
             <Text style={styles.label}>PO Number (Optional)</Text>
-            <View style={styles.inputContainer}>
+            <View 
+              ref={poNumberContainerRef}
+              style={styles.inputContainer}>
               <TextInput
+                ref={poNumberInputRef}
                 style={styles.input}
                 placeholder="Enter PO number"
                 placeholderTextColor={Colors.textSecondary}
                 value={poNumber}
                 onChangeText={setPoNumber}
+                onFocus={() => {
+                  if (poNumberCardRef.current?._yPosition !== undefined) {
+                    activeInputYPosition.current = poNumberCardRef.current._yPosition;
+                  }
+                }}
+                onBlur={() => {
+                  activeInputYPosition.current = null;
+                }}
               />
             </View>
           </View>
 
           {/* Order Notes */}
-          <View style={styles.formCard}>
+          <View 
+            ref={notesCardRef}
+            onLayout={(event) => {
+              const { y } = event.nativeEvent.layout;
+              notesCardRef.current._yPosition = y;
+            }}
+            style={styles.formCard}>
             <Text style={styles.label}>Order Notes (Optional)</Text>
-            <View style={[styles.inputContainer, styles.textAreaContainer]}>
+            <View 
+              ref={notesContainerRef}
+              style={[styles.inputContainer, styles.textAreaContainer]}>
               <TextInput
+                ref={notesInputRef}
                 style={[styles.input, styles.textArea]}
                 placeholder="Add any special instructions or notes for this order..."
                 placeholderTextColor={Colors.textSecondary}
@@ -1399,6 +1450,14 @@ const CreateOrderScreen = ({ navigation, route }) => {
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
+                onFocus={() => {
+                  if (notesCardRef.current?._yPosition !== undefined) {
+                    activeInputYPosition.current = notesCardRef.current._yPosition;
+                  }
+                }}
+                onBlur={() => {
+                  activeInputYPosition.current = null;
+                }}
               />
             </View>
           </View>

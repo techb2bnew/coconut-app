@@ -1031,6 +1031,13 @@ const ProfileScreen = ({ navigation }) => {
                 </View>
               </View>
               <View style={styles.infoRow}>
+                <Icon name="mail-outline" size={16} color={Colors.textSecondary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Email</Text>
+                  <Text style={styles.infoValue}>{customerData?.email || 'N/A'}</Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
                 <Icon name="business-outline" size={16} color={Colors.textSecondary} />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Company Name</Text>
@@ -1048,6 +1055,7 @@ const ProfileScreen = ({ navigation }) => {
           ) : (
             // Edit Mode
             <>
+          
               <View style={styles.rowInputs}>
                 <View style={styles.halfInput}>
                   <Input
@@ -1074,6 +1082,17 @@ const ProfileScreen = ({ navigation }) => {
                     }}
                     errorMessage={accountErrors.lastName}
                     required
+                    inputStyle={styles.editInputField}
+                  />
+                </View>
+              </View>
+              <View style={styles.rowInputs}>
+                <View style={styles.halfInput}>
+                  <Input
+                    label="Email"
+                    placeholder="Email"
+                    value={customerData?.email || ''}
+                    editable={false}
                     inputStyle={styles.editInputField}
                   />
                 </View>
@@ -1870,7 +1889,6 @@ const styles = StyleSheet.create({
   rowInputs: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
   },
   halfInput: {
     flex: 1,
