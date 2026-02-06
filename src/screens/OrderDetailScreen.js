@@ -939,7 +939,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container}  >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
@@ -1289,10 +1289,10 @@ const styles = StyleSheet.create({
   },
   header: {
     position: 'absolute', 
-    paddingTop: Platform.OS === 'ios' ? 55 : 10,
+    paddingTop: Platform.OS === 'ios' ? 55 : 55,
     left: 0,
     right: 0,
-    backgroundColor: Colors.backgroundGray,
+    backgroundColor: Colors.primaryBlue,
     paddingVertical: 12,
     paddingHorizontal: 16,
     zIndex: 10,
@@ -1313,7 +1313,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   backText: {
-    color: Colors.primaryPink,
+    color: Colors.cardBackground,
     fontSize: 18,
     fontFamily: fontFamilyBody,
     fontWeight: 'bold',

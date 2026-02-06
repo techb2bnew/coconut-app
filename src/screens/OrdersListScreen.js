@@ -619,8 +619,7 @@ const OrdersListScreen = ({ navigation }) => {
     </LinearGradient>
   );
 
-  return (
-    <SafeAreaView style={styles.container}>
+  return ( 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -943,8 +942,7 @@ const OrdersListScreen = ({ navigation }) => {
             </BottomSheet>
           </View>
         </Modal>
-      </ScrollView>
-    </SafeAreaView>
+      </ScrollView> 
   );
 };
 
@@ -956,7 +954,7 @@ const styles = StyleSheet.create({
   header: {
     width: '100%',
     backgroundColor: Colors.primaryBlue,
-    paddingTop: Platform.OS === 'ios' ? 55 : 10,
+    paddingTop: Platform.OS === 'ios' ? 55 : 55,
     paddingBottom: Platform.OS === 'ios' ? 70 : 70,
     paddingHorizontal: 20,
   },

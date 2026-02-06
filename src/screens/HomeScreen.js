@@ -16,6 +16,7 @@ import {
   Dimensions,
   Animated,
   FlatList,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -526,7 +527,7 @@ const HomeScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <>
       {loading && recentOrders.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primaryBlue} />
@@ -737,7 +738,7 @@ const HomeScreen = ({ navigation }) => {
       </ScrollView>
       )}
 
-    </SafeAreaView>
+    </>
   );
 };
 
@@ -745,7 +746,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.backgroundGray,
-  },
+  }, 
   scrollView: {
     flex: 1,
   },
@@ -768,7 +769,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: Platform.OS === 'ios' ? 55 : 55,
     paddingBottom: 16, 
   },
   

@@ -313,8 +313,7 @@ const AllAboutCoconutsScreen = ({ navigation }) => {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+  return ( 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -465,9 +464,7 @@ const AllAboutCoconutsScreen = ({ navigation }) => {
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
-
-      {/* Bottom Navigation Bar */}
-    </SafeAreaView>
+ 
   );
 };
 
@@ -489,14 +486,14 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: Colors.primaryBlue,
-    paddingTop: Platform.OS === 'ios' ? 55 : 20,
+    paddingTop: Platform.OS === 'ios' ? 55 : 55,
     paddingBottom: 40,
     paddingHorizontal: 20,
     alignItems: 'center',
   },
   backButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 55 : 0,
+    top: Platform.OS === 'ios' ? 55 : 55,
     left: 20,
     padding: 8,
     zIndex: 10,

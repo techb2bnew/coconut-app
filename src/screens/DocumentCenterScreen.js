@@ -567,7 +567,7 @@ const DocumentCenterScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
@@ -830,8 +830,8 @@ const DocumentCenterScreen = ({ navigation }) => {
             Note: Documents uploaded here are shared at the company level and can be accessed by both users and administrators. Logo files will be used for custom branding on your coconuts.
           </Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </ScrollView> 
+      </>
   );
 };
 
@@ -849,6 +849,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryBlue,
     paddingVertical: 12,
     paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 55 : 55,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

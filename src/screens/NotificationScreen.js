@@ -274,7 +274,7 @@ const NotificationScreen = ({ navigation }) => {
   }, [subscription]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
@@ -351,7 +351,7 @@ const NotificationScreen = ({ navigation }) => {
       )}
 
       {/* Bottom Navigation Bar */}
-    </SafeAreaView>
+    </>
   );
 };
 
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: Colors.primaryBlue,
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 16 : 20,
+    paddingTop: Platform.OS === 'ios' ? 55 : 55,
     paddingBottom: 16, 
   },
   headerRow: {
