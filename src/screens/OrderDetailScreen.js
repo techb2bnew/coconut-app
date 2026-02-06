@@ -578,8 +578,13 @@ const OrderDetailScreen = ({ navigation, route }) => {
           })}
         </View>
 
-        {/* Celebration Content */}
-        <View style={styles.celebrationContainer}>
+        {/* Scrollable Content */}
+        <ScrollView
+          style={styles.completedScrollView}
+          contentContainerStyle={styles.completedScrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={true}>
+          {/* Celebration Content */}
           <LinearGradient
             colors={['#E8F5E9', '#FFFFFF', '#E3F2FD']}
             start={{ x: 0, y: 0 }}
@@ -627,10 +632,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
 
           {/* Order Details Card */}
           <View style={styles.completedOrderCard}>
-            <ScrollView
-              contentContainerStyle={styles.bottomSheetContent}
-              showsVerticalScrollIndicator={false}
-            >
+            <View style={styles.bottomSheetContent}>
               {/* Order Info */}
               <View style={styles.restaurantSection}> 
                 <View style={styles.restaurantInfo}>
@@ -899,9 +901,9 @@ const OrderDetailScreen = ({ navigation, route }) => {
                   )}
                 </View>
               </View>
-            </ScrollView>
+            </View>
           </View>
-        </View>
+        </ScrollView>
 
         {/* Sticky Driver Footer for Completed Orders */}
         {hasDriver && (order?.driver_name || order?.driverName) && (
@@ -1553,17 +1555,23 @@ const styles = StyleSheet.create({
     position: 'absolute',
     borderRadius: 4,
   },
-  celebrationContainer: {
+  completedScrollView: {
     flex: 1,
+    width: '100%',
+  },
+  completedScrollContent: {
+    flexGrow: 1, 
+  },
+  celebrationContainer: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   celebrationGradient: {
-    flex: 1,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 40,
+    minHeight: height * 0.5, // Minimum height for celebration section
   },
   celebrationContent: {
     alignItems: 'center',
@@ -1671,7 +1679,6 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   completedOrderCard: {
-    flex: 1,
     width: '100%',
     backgroundColor: Colors.cardBackground,
     borderTopLeftRadius: 30,
@@ -1680,7 +1687,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 10,
+    elevation: 10,  
   },
   driverFooter: {
     position: 'absolute',

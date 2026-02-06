@@ -76,28 +76,121 @@ const LoginScreen = ({ navigation }) => {
       if (error) {
         Alert.alert('Login Error', error.message || 'Failed to login. Please try again.');
         console.error('Login error:', error);
+        setLoading(false);
+        return;
       } else if (data) {
-        // Login successful
+        // Login successful - now verify user is a customer
         console.log('Login successful:', data);
 
-        // Save FCM token after login
-        const { saveFCMTokenAfterLogin } = require('../services/firebaseMessaging');
-        saveFCMTokenAfterLogin().catch(err => {
-          console.error('Error saving FCM token after login:', err);
-        });
+        // Check if user is a customer (not a driver or admin)
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user || !user.email) {
+            await supabase.auth.signOut();
+            Toast.show({
+              type: 'error',
+              text1: 'Access Denied',
+              text2: 'This app is for customers only. Drivers cannot login here.',
+              position: 'top',
+              visibilityTime: 4000,
+            });
+            setLoading(false);
+            return;
+          }
 
-        // Show lovely success toast instead of alert
-        Toast.show({
-          type: 'success',
-          text1: 'Welcome back 👋',
-          text2: 'Logged in successfully!',
-          position: 'top',
-          visibilityTime: 2500,
-        });
+          const { data: customer, error: customerError } = await supabase
+            .from('customers')
+            .select('id, status')
+            .eq('email', user.email)
+            .single();
 
-        // Navigate to main tabs
-        if (navigation) {
-          navigation.navigate('MainTabs');
+          if (customerError) {
+            // Customer not found (PGRST116) - likely a driver trying to login
+            if (customerError.code === 'PGRST116') {
+              await supabase.auth.signOut();
+              Toast.show({
+                type: 'error',
+                text1: 'Access Denied',
+                text2: 'This app is for customers only. Drivers cannot login here.',
+                position: 'top',
+                visibilityTime: 4000,
+              });
+              setLoading(false);
+              return;
+            }
+            // Other error
+            await supabase.auth.signOut();
+            Toast.show({
+              type: 'error',
+              text1: 'Error',
+              text2: 'Unable to verify customer account. Please contact support.',
+              position: 'top',
+              visibilityTime: 4000,
+            });
+            setLoading(false);
+            return;
+          }
+
+          if (!customer) {
+            // Customer not found
+            await supabase.auth.signOut();
+            Toast.show({
+              type: 'error',
+              text1: 'Access Denied',
+              text2: 'This app is for customers only. Drivers cannot login here.',
+              position: 'top',
+              visibilityTime: 4000,
+            });
+            setLoading(false);
+            return;
+          }
+
+          // Check if customer is inactive
+          const status = (customer?.status || '').trim().toLowerCase();
+          const isInactive = status === 'inactive' || status === 'disabled' || status === 'deactivated';
+          if (isInactive) {
+            await supabase.auth.signOut();
+            Toast.show({
+              type: 'error',
+              text1: 'Account Inactive',
+              text2: 'Your account has been deactivated. Please contact support.',
+              position: 'top',
+              visibilityTime: 4000,
+            });
+            setLoading(false);
+            return;
+          }
+
+          // Customer verified - proceed with login
+          // Save FCM token after login
+          const { saveFCMTokenAfterLogin } = require('../services/firebaseMessaging');
+          saveFCMTokenAfterLogin().catch(err => {
+            console.error('Error saving FCM token after login:', err);
+          });
+
+          // Show lovely success toast instead of alert
+          Toast.show({
+            type: 'success',
+            text1: 'Welcome back 👋',
+            text2: 'Logged in successfully!',
+            position: 'top',
+            visibilityTime: 2500,
+          });
+
+          // Navigate to main tabs
+          if (navigation) {
+            navigation.navigate('MainTabs');
+          }
+        } catch (checkError) {
+          console.error('Error checking customer:', checkError);
+          await supabase.auth.signOut();
+          Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2: 'Unable to verify customer account. Please try again.',
+            position: 'top',
+            visibilityTime: 4000,
+          });
         }
       }
     } catch (error) {
