@@ -1451,22 +1451,47 @@ const ProfileScreen = ({ navigation }) => {
           )}
         </View>
 
-        {/* Invite Link Section */}
+        {/* Invite Customer Section */}
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
-            <Icon name="share-social-outline" size={18} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Invite Others</Text>
+            <View style={styles.headerIconContainer}>
+              <Icon name="people-outline" size={18} color={Colors.primaryPink} />
+            </View>
+            <Text style={styles.sectionTitle}>Invite Customer</Text>
+            <View style={styles.inviteBadge}>
+              <Text style={styles.inviteBadgeText}>PRO</Text>
+            </View>
           </View>
-          <TouchableOpacity 
-            style={styles.inviteButton}
-            onPress={handleShareInviteLink}
-          >
-            <Icon name="share-social-outline" size={20} color={Colors.primary} />
-            <Text style={styles.inviteButtonText}>Share Invite Link</Text>
-          </TouchableOpacity>
-          <Text style={styles.inviteDescription}>
-            Invite others to join your company. They will be automatically added to your franchise.
-          </Text>
+          
+          <View style={styles.inviteContent}>
+           
+            
+            <TouchableOpacity 
+              style={styles.inviteButton}
+              onPress={handleShareInviteLink}
+              activeOpacity={0.8}
+            >
+              <View style={styles.inviteButtonGradient}>
+                <Icon name="share-social-outline" size={20} color='#fff' />
+                <Text style={styles.inviteButtonText}>Share Invite Link</Text>
+              </View>
+            </TouchableOpacity>
+            
+            <View style={styles.inviteFeatures}>
+              <View style={styles.featureItem}>
+                <Icon name="checkmark-circle" size={14} color={Colors.success} />
+                <Text style={styles.featureText}>Automatic franchise assignment</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Icon name="shield-checkmark" size={14} color={Colors.success} />
+                <Text style={styles.featureText}>Secure customer onboarding</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Icon name="time-outline" size={14} color={Colors.success} />
+                <Text style={styles.featureText}>Quick setup process</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
         {/* Delivery Addresses */}
@@ -2058,7 +2083,7 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
     gap: 8,
   },
   cardTitle: {
@@ -2374,16 +2399,25 @@ const styles = StyleSheet.create({
   inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primaryLight,
-    padding: 16,
+    backgroundColor: Colors.primaryLight, 
+    borderRadius: 12, 
+    
+  },
+  inviteButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     borderRadius: 12,
-    marginTop: 8,
+    gap: 12,
+    color:'#fff',
+    backgroundColor: Colors.primaryPink,
   },
   inviteButtonText: {
-    marginLeft: 12,
     fontSize: 16,
     fontFamily: fontFamilyBody,
-    color: Colors.primary,
+        color:'#fff', 
     fontWeight: '600',
   },
   inviteDescription: {
@@ -2392,6 +2426,60 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 8,
     lineHeight: 16,
+  },
+  // Professional Invite Section Styles
+  inviteBadge: {
+    backgroundColor: Colors.primaryPink,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  inviteBadgeText: {
+    fontSize: 10,
+    fontFamily: fontFamilyBody,
+    color: Colors.white,
+    fontWeight: '700',
+  },
+ 
+  inviteInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: Colors.backgroundGray,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 12,
+  },
+  inviteTextContainer: {
+    flex: 1,
+  },
+  inviteTitle: {
+    fontSize: 16,
+    fontFamily: fontFamilyBody,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  inviteSubtitle: {
+    fontSize: 13,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  inviteFeatures: {
+    marginTop: 16,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  featureText: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    flex: 1,
   },
 });
 
