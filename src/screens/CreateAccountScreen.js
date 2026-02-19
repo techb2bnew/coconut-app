@@ -3,7 +3,7 @@
  * Multi-step form with multiple sections and validation
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import {
   PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
@@ -38,6 +39,35 @@ import {
 } from '../utils/validation';
 
 const CreateAccountScreen = ({ navigation }) => {
+  const route = useRoute();
+  
+  // State for invite parameters
+  const [inviteData, setInviteData] = useState({
+    company_id: null,
+    franchise_id: null,
+    ref: null,
+  });
+
+  // Handle invite parameters from URL
+  useEffect(() => {
+    console.log('🔗 CreateAccountScreen - route.params:', route.params);
+    if (route.params) {
+      const { company_id, franchise_id, ref } = route.params;
+      setInviteData({
+        company_id: company_id || null,
+        franchise_id: franchise_id || null,
+        ref: ref || null,
+      });
+      
+      if (company_id || franchise_id) {
+        console.log('✅ Invite parameters detected:', { company_id, franchise_id, ref });
+        console.log('🎯 Will create customer with these invite parameters');
+      } else {
+        console.log('ℹ️ No invite parameters found - normal signup');
+      }
+    }
+  }, [route.params]);
+
   // Industry options
   const industryOptions = [
     { label: 'Hotel', value: 'hotel' },
@@ -546,9 +576,12 @@ const CreateAccountScreen = ({ navigation }) => {
         notes: null,
         password: password, // Store password (admin uses temp password, mobile uses user's password)
         status: 'active',
-        franchise_id: null, // Mobile app signups don't have franchise_id
+        franchise_id: inviteData.franchise_id || null, // Use franchise_id from invite link
+        company_id: inviteData.company_id || null, // Use company_id from invite link
+        invited_by: inviteData.ref || null, // Store who invited them
       };
-      console.log('customerData', customerData);
+      console.log('📝 Creating customer with data:', customerData);
+      console.log('🎯 Invite data being used:', inviteData);
       const { error: insertError } = await supabase.from('customers').insert(customerData);
 
       if (insertError) {

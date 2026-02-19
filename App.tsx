@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { StatusBar, useColorScheme, Text, StyleSheet, AppState, AppStateStatus } from 'react-native';
+import { StatusBar, useColorScheme, Text, StyleSheet, AppState, AppStateStatus, Linking } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import AppNavigator from './src/navigation/AppNavigator';
+import AppNavigator, { navigationRef } from './src/navigation/AppNavigator';
 import { fontFamilyBody } from './src/theme/fonts';
 import Colors from './src/theme/colors';
 import {
@@ -304,6 +304,59 @@ function App() {
     };
 
     initFCM();
+  }, []);
+
+  // Add deep linking handling
+  useEffect(() => {
+    const handleDeepLink = (url: string) => {
+      console.log('Deep link received:', url);
+      
+      if (url.includes('/signup') || url.includes('signup')) {
+        // Parse URL parameters manually
+        const urlParts = url.split('?');
+        if (urlParts.length > 1) {
+          const queryString = urlParts[1];
+          const params: any = {};
+          
+          // Parse query string manually
+          queryString.split('&').forEach(param => {
+            const [key, value] = param.split('=');
+            if (key && value) {
+              params[key] = decodeURIComponent(value);
+            }
+          });
+          
+          const company_id = params.company_id;
+          const franchise_id = params.franchise_id;
+          const ref = params.ref;
+          
+          // Navigate to CreateAccount with parameters
+          if (navigationRef.isReady()) {
+            (navigationRef as any).navigate('CreateAccount', {
+              company_id,
+              franchise_id,
+              ref,
+            });
+          }
+        }
+      }
+    };
+
+    // Handle app opened from deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
+      }
+    });
+
+    // Handle deep link when app is already open
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      handleDeepLink(url);
+    });
+
+    return () => {
+      subscription?.remove();
+    };
   }, []);
 
   // Splash gradient start – same as SplashScreen so no white flash before first screen

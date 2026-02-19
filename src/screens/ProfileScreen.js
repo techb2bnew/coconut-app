@@ -15,6 +15,8 @@ import {
   Linking,
   Platform,
   RefreshControl,
+  Share,
+  Clipboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -27,7 +29,11 @@ import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 import AddAddressModal from '../components/AddAddressModal';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import { validateRequired, validatePassword, validatePasswordMatch } from '../utils/validation';
+import {
+  validateRequired,
+  validatePassword,
+  validatePasswordMatch,
+} from '../utils/validation';
 import supabase from '../config/supabase';
 import { performLogoutAndNavigateToLogin } from '../services/customerAuthCheck';
 
@@ -42,11 +48,14 @@ const ProfileScreen = ({ navigation }) => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [editingAddressIndex, setEditingAddressIndex] = useState(null);
-  
+  const [editingAddressId, setEditingAddressId] = useState(null);
+  const [addressFormInitialValues, setAddressFormInitialValues] =
+    useState(null);
+
   // Inline editing states
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  
+
   // Account edit form states
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -54,7 +63,7 @@ const ProfileScreen = ({ navigation }) => {
   const [phone, setPhone] = useState('');
   const [accountErrors, setAccountErrors] = useState({});
   const [savingAccount, setSavingAccount] = useState(false);
-  
+
   // Password change form states
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -63,10 +72,10 @@ const ProfileScreen = ({ navigation }) => {
   const [savingPassword, setSavingPassword] = useState(false);
 
   // Helper function to get status color
-  const getStatusColor = (status) => {
+  const getStatusColor = status => {
     if (!status) return '#9E9E9E';
     const statusLower = status.trim().toLowerCase();
-    
+
     if (statusLower === 'completed') return '#4CAF50'; // Green for Completed
     if (statusLower === 'processing') return '#FFE082'; // Yellow/Orange for Processing
     if (statusLower.includes('completed')) return '#4CAF50'; // Green for completed
@@ -89,7 +98,9 @@ const ProfileScreen = ({ navigation }) => {
         setRefreshing(true);
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || !user.email) {
         setLoading(false);
         setRefreshing(false);
@@ -117,7 +128,10 @@ const ProfileScreen = ({ navigation }) => {
 
       // Customer set inactive by admin → auto logout
       const status = (customer?.status || '').trim().toLowerCase();
-      const isInactive = status === 'inactive' || status === 'disabled' || status === 'deactivated';
+      const isInactive =
+        status === 'inactive' ||
+        status === 'disabled' ||
+        status === 'deactivated';
       if (isInactive) {
         setLoading(false);
         setRefreshing(false);
@@ -126,7 +140,7 @@ const ProfileScreen = ({ navigation }) => {
       }
 
       setCustomerData(customer);
-      
+
       // Initialize form fields when customer data is loaded
       if (customer) {
         setFirstName(customer.first_name || '');
@@ -145,13 +159,21 @@ const ProfileScreen = ({ navigation }) => {
 
         if (!ordersError && orders) {
           // Calculate active orders (orders that are NOT completed or delivered)
-          const activeOrdersCount = orders.filter((order) => {
+          const activeOrdersCount = orders.filter(order => {
             const status = (order.status || '').trim().toLowerCase();
-            const deliveryStatus = (order.delivery_status || order.deliveryStatus || '').trim().toLowerCase();
+            const deliveryStatus = (
+              order.delivery_status ||
+              order.deliveryStatus ||
+              ''
+            )
+              .trim()
+              .toLowerCase();
             const statusToCheck = deliveryStatus || status;
-            
+
             // Count orders that are NOT completed or delivered
-            const isCompleted = statusToCheck.includes('completed') || statusToCheck.includes('delivered');
+            const isCompleted =
+              statusToCheck.includes('completed') ||
+              statusToCheck.includes('delivered');
             return !isCompleted;
           }).length;
 
@@ -183,7 +205,7 @@ const ProfileScreen = ({ navigation }) => {
     useCallback(() => {
       console.log('🔄 Profile screen focused, refreshing data...');
       fetchCustomerData(false);
-    }, [fetchCustomerData])
+    }, [fetchCustomerData]),
   );
 
   // Pull to refresh handler
@@ -198,7 +220,7 @@ const ProfileScreen = ({ navigation }) => {
     const lastName = customerData.last_name || '';
     const firstLetter = firstName.charAt(0).toUpperCase() || '';
     const lastLetter = lastName.charAt(0).toUpperCase() || '';
-    return (firstLetter + lastLetter) || 'JD';
+    return firstLetter + lastLetter || 'JD';
   };
 
   // Get company logo URL
@@ -215,7 +237,7 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   // Format date - get time ago (same as HomeScreen)
-  const formatDate = (dateString) => {
+  const formatDate = dateString => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const now = new Date();
@@ -238,7 +260,7 @@ const ProfileScreen = ({ navigation }) => {
     if (!customerData?.delivery_address) return [];
     try {
       let addresses = [];
-      
+
       // If it's a string, try to parse it as JSON first
       if (typeof customerData.delivery_address === 'string') {
         try {
@@ -246,19 +268,22 @@ const ProfileScreen = ({ navigation }) => {
           // If parsed successfully and it's an array
           if (Array.isArray(parsed)) {
             addresses = parsed;
-          } 
+          }
           // If it's an object with "address" key (old format)
           else if (parsed && typeof parsed === 'object' && parsed.address) {
-            addresses = [{
-              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              label: parsed.label || 'Main Office',
-              street: parsed.address || parsed.street || '',
-              city: parsed.city || '',
-              state: parsed.state || '',
-              zipCode: parsed.zipCode || parsed.zip_code || '',
-              notes: parsed.notes || '',
-              isSelected: parsed.isSelected !== undefined ? parsed.isSelected : true,
-            }];
+            addresses = [
+              {
+                id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                label: parsed.label || 'Main Office',
+                street: parsed.address || parsed.street || '',
+                city: parsed.city || '',
+                state: parsed.state || '',
+                zipCode: parsed.zipCode || parsed.zip_code || '',
+                notes: parsed.notes || '',
+                isSelected:
+                  parsed.isSelected !== undefined ? parsed.isSelected : true,
+              },
+            ];
           }
           // If it's a plain object (admin might have added it this way)
           else if (parsed && typeof parsed === 'object') {
@@ -266,48 +291,68 @@ const ProfileScreen = ({ navigation }) => {
           }
         } catch (parseError) {
           // If JSON parsing fails, treat it as a plain string address (admin-added format)
-          addresses = [{
-            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            label: 'Delivery Address',
-            street: customerData.delivery_address,
-            city: '',
-            state: '',
-            zipCode: '',
-            notes: '',
-            isSelected: true,
-          }];
+          addresses = [
+            {
+              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              label: 'Delivery Address',
+              street: customerData.delivery_address,
+              city: '',
+              state: '',
+              zipCode: '',
+              notes: '',
+              isSelected: true,
+            },
+          ];
         }
-      } 
+      }
       // If it's already an array (jsonb array format)
       else if (Array.isArray(customerData.delivery_address)) {
         addresses = customerData.delivery_address;
-      } 
+      }
       // If it's an object (jsonb object format)
       else if (typeof customerData.delivery_address === 'object') {
         // Check if it has an address property
-        if (customerData.delivery_address.address || customerData.delivery_address.street) {
-          addresses = [{
-            id: customerData.delivery_address.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            label: customerData.delivery_address.label || 'Main Office',
-            street: customerData.delivery_address.address || customerData.delivery_address.street || '',
-            city: customerData.delivery_address.city || '',
-            state: customerData.delivery_address.state || '',
-            zipCode: customerData.delivery_address.zipCode || customerData.delivery_address.zip_code || '',
-            notes: customerData.delivery_address.notes || '',
-            isSelected: customerData.delivery_address.isSelected !== undefined ? customerData.delivery_address.isSelected : true,
-          }];
+        if (
+          customerData.delivery_address.address ||
+          customerData.delivery_address.street
+        ) {
+          addresses = [
+            {
+              id:
+                customerData.delivery_address.id ||
+                `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              label: customerData.delivery_address.label || 'Main Office',
+              street:
+                customerData.delivery_address.address ||
+                customerData.delivery_address.street ||
+                '',
+              city: customerData.delivery_address.city || '',
+              state: customerData.delivery_address.state || '',
+              zipCode:
+                customerData.delivery_address.zipCode ||
+                customerData.delivery_address.zip_code ||
+                '',
+              notes: customerData.delivery_address.notes || '',
+              isSelected:
+                customerData.delivery_address.isSelected !== undefined
+                  ? customerData.delivery_address.isSelected
+                  : true,
+            },
+          ];
         } else {
           // If it's an object but doesn't have address/street, treat it as a single address object
           addresses = [customerData.delivery_address];
         }
       }
-      
+
       // Ensure all addresses have IDs and proper structure
       return addresses.map((addr, index) => {
         // If address is just a string, convert it to proper format
         if (typeof addr === 'string') {
           return {
-            id: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `${Date.now()}-${index}-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`,
             label: 'Delivery Address',
             street: addr,
             city: '',
@@ -317,15 +362,17 @@ const ProfileScreen = ({ navigation }) => {
             isSelected: index === 0,
           };
         }
-        
+
         // Ensure all addresses have IDs
         if (!addr.id) {
           return {
             ...addr,
-            id: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `${Date.now()}-${index}-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`,
           };
         }
-        
+
         // Ensure ID is a string for consistent comparison
         return {
           ...addr,
@@ -336,25 +383,28 @@ const ProfileScreen = ({ navigation }) => {
       console.error('Error parsing addresses:', error);
       // Fallback: if parsing fails completely, try to show the raw value
       if (customerData.delivery_address) {
-        return [{
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          label: 'Delivery Address',
-          street: typeof customerData.delivery_address === 'string' 
-            ? customerData.delivery_address 
-            : JSON.stringify(customerData.delivery_address),
-          city: '',
-          state: '',
-          zipCode: '',
-          notes: '',
-          isSelected: true,
-        }];
+        return [
+          {
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            label: 'Delivery Address',
+            street:
+              typeof customerData.delivery_address === 'string'
+                ? customerData.delivery_address
+                : JSON.stringify(customerData.delivery_address),
+            city: '',
+            state: '',
+            zipCode: '',
+            notes: '',
+            isSelected: true,
+          },
+        ];
       }
       return [];
     }
   };
 
   // Format address for display
-  const formatAddress = (address) => {
+  const formatAddress = address => {
     const parts = [
       address.street,
       address.city,
@@ -372,9 +422,12 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   // Address Management Functions
-  const handleAddAddress = async (addressData) => {
+  // ✅ Address Management Functions (ADD + EDIT in one)
+  const handleAddAddress = async addressData => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || !user.email) {
         Toast.show({
           type: 'error',
@@ -387,43 +440,114 @@ const ProfileScreen = ({ navigation }) => {
       }
 
       const addresses = parseAddresses();
+
+      // =========================================================
+      // ✅ EDIT MODE: update existing address (no duplicate)
+      // =========================================================
+      if (editingAddressId) {
+        const updatedAddresses = addresses.map(addr => {
+          const addrId = addr.id?.toString();
+          const targetId = editingAddressId?.toString();
+
+          if (addrId !== targetId) return { ...addr, id: addrId || addr.id };
+
+          return {
+            ...addr,
+            id: addrId || targetId,
+            label: (addressData.label || '').trim(),
+            street: (addressData.street || '').trim(),
+            city: (addressData.city || '').trim(),
+            state: (addressData.state || '').trim(),
+            zipCode: (addressData.zipCode || '').trim(),
+            notes: addressData.notes || '',
+            // isSelected stays as it is
+          };
+        });
+
+        const { error } = await supabase
+          .from('customers')
+          .update({ delivery_address: updatedAddresses })
+          .eq('email', user.email);
+
+        if (error) {
+          console.error('Error updating address:', error);
+          Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2: 'Failed to update address. Please try again.',
+            position: 'top',
+            visibilityTime: 2500,
+          });
+          return;
+        }
+
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: 'Address updated successfully!',
+          position: 'top',
+          visibilityTime: 2500,
+        });
+
+        // Refresh customer data
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('email', user.email)
+          .single();
+
+        if (customer) setCustomerData(customer);
+
+        // ✅ Reset edit states (modal close tumhara onClose bhi karega, but safe)
+        setEditingAddressId(null);
+        setEditingAddressIndex(null);
+        setAddressFormInitialValues(null);
+
+        return; // ✅ IMPORTANT: stop here
+      }
+
+      // =========================================================
+      // ✅ ADD MODE: add new address (your original logic)
+      // =========================================================
+
       // Generate unique ID using timestamp + random number
-      const uniqueId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const uniqueId = `${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+
       const newAddress = {
         id: uniqueId,
-        label: addressData.label.trim(),
-        street: addressData.street.trim(),
-        city: addressData.city.trim(),
-        state: addressData.state.trim(),
-        zipCode: addressData.zipCode.trim(),
+        label: (addressData.label || '').trim(),
+        street: (addressData.street || '').trim(),
+        city: (addressData.city || '').trim(),
+        state: (addressData.state || '').trim(),
+        zipCode: (addressData.zipCode || '').trim(),
         notes: addressData.notes || '',
         isSelected: addresses.length === 0, // First address is auto-selected
       };
 
-      // If this is the first address, make it selected
-      // Otherwise, unselect all others if this one should be selected
-      // Ensure all existing addresses have IDs before adding new one
+      // Ensure all existing addresses have IDs as strings
       const addressesWithIds = addresses.map((addr, idx) => {
         if (!addr.id) {
           return {
             ...addr,
-            id: `${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `${Date.now()}-${idx}-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`,
           };
         }
         return { ...addr, id: addr.id.toString() };
       });
+
       const updatedAddresses = [...addressesWithIds, newAddress];
 
-      // Update customer delivery address
       const { error } = await supabase
         .from('customers')
-        .update({
-          delivery_address: updatedAddresses,
-        })
+        .update({ delivery_address: updatedAddresses })
         .eq('email', user.email);
 
       if (error) {
-        console.error('Error updating address:', error);
+        console.error('Error saving address:', error);
         Toast.show({
           type: 'error',
           text1: 'Error',
@@ -441,17 +565,17 @@ const ProfileScreen = ({ navigation }) => {
         position: 'top',
         visibilityTime: 2500,
       });
+
       // Refresh customer data
       const { data: customer } = await supabase
         .from('customers')
         .select('*')
         .eq('email', user.email)
         .single();
-      if (customer) {
-        setCustomerData(customer);
-      }
+
+      if (customer) setCustomerData(customer);
     } catch (error) {
-      console.error('Error saving address:', error);
+      console.error('Error saving/updating address:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -462,9 +586,11 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  const handleSetDefaultAddress = async (addressId) => {
+  const handleSetDefaultAddress = async addressId => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || !user.email) {
         Toast.show({
           type: 'error',
@@ -480,7 +606,9 @@ const ProfileScreen = ({ navigation }) => {
       // Ensure all addresses have string IDs for consistent comparison
       const addressesWithIds = addresses.map(addr => ({
         ...addr,
-        id: addr.id?.toString() || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id:
+          addr.id?.toString() ||
+          `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       }));
       const updatedAddresses = addressesWithIds.map(addr => ({
         ...addr,
@@ -534,9 +662,11 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  const handleDeleteAddress = async (addressId) => {
+  const handleDeleteAddress = async addressId => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || !user.email) {
         Toast.show({
           type: 'error',
@@ -549,9 +679,12 @@ const ProfileScreen = ({ navigation }) => {
       }
 
       const addresses = parseAddresses();
-      console.log('All addresses before delete:', JSON.stringify(addresses, null, 2));
+      console.log(
+        'All addresses before delete:',
+        JSON.stringify(addresses, null, 2),
+      );
       console.log('Deleting address with ID:', addressId);
-      
+
       // Filter out the address with matching ID (strict comparison)
       const filteredAddresses = addresses.filter(addr => {
         const addrId = addr.id?.toString();
@@ -560,22 +693,27 @@ const ProfileScreen = ({ navigation }) => {
         console.log(`Comparing: ${addrId} !== ${targetId} = ${shouldKeep}`);
         return shouldKeep;
       });
-      
-      console.log('Filtered addresses after delete:', JSON.stringify(filteredAddresses, null, 2));
-      
+
+      console.log(
+        'Filtered addresses after delete:',
+        JSON.stringify(filteredAddresses, null, 2),
+      );
+
       // Ensure all remaining addresses have IDs (as strings)
       const addressesWithIds = filteredAddresses.map(addr => ({
         ...addr,
-        id: addr.id?.toString() || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id:
+          addr.id?.toString() ||
+          `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       }));
-      
+
       // If deleted address was selected, select first one
       const deletedAddress = addresses.find(a => {
         const addrId = a.id?.toString();
         const targetId = addressId?.toString();
         return addrId === targetId;
       });
-      
+
       const deletedWasSelected = deletedAddress?.isSelected;
       if (deletedWasSelected && addressesWithIds.length > 0) {
         addressesWithIds[0].isSelected = true;
@@ -584,7 +722,8 @@ const ProfileScreen = ({ navigation }) => {
       const { error } = await supabase
         .from('customers')
         .update({
-          delivery_address: addressesWithIds.length > 0 ? addressesWithIds : null,
+          delivery_address:
+            addressesWithIds.length > 0 ? addressesWithIds : null,
         })
         .eq('email', user.email);
 
@@ -669,7 +808,9 @@ const ProfileScreen = ({ navigation }) => {
 
     setSavingAccount(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || !user.email) {
         Toast.show({
           type: 'error',
@@ -756,7 +897,7 @@ const ProfileScreen = ({ navigation }) => {
     // Remove spaces, parentheses, and dashes for tel: protocol
     const phoneNumber = '+15551234567';
     const phoneUrl = `tel:${phoneNumber}`;
-    
+
     try {
       // Directly open phone dialer - tel: protocol is standard
       await Linking.openURL(phoneUrl);
@@ -773,8 +914,54 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
+  // Generate invite link function
+  const generateInviteLink = () => {
+    if (!customerData?.id) return null;
+    
+    // Use custom scheme for deep linking
+    const baseUrl = 'coconutapp://signup';
+    const companyId = customerData.company_id || '';
+    const franchiseId = customerData.franchise_id || '';
+    
+    return `${baseUrl}?company_id=${companyId}&franchise_id=${franchiseId}&ref=${customerData.id}`;
+  };
+
+  // Handle invite link sharing
+  const handleShareInviteLink = async () => {
+    const inviteLink = generateInviteLink();
+    if (!inviteLink) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Unable to generate invite link.',
+        position: 'top',
+        visibilityTime: 2500,
+      });
+      return;
+    }
+
+    try {
+      await Share.share({
+        message: `Join our company on the Coconut app! ${inviteLink}`,
+        url: inviteLink,
+        title: 'Join our company',
+      });
+    } catch (error) {
+      console.error('Error sharing invite link:', error);
+      // Fallback: copy to clipboard
+      Clipboard.setString(inviteLink);
+      Toast.show({
+        type: 'success',
+        text1: 'Link Copied',
+        text2: 'Invite link copied to clipboard!',
+        position: 'top',
+        visibilityTime: 2500,
+      });
+    }
+  };
+
   // Handle social media link opening
-  const handleSocialLink = async (url) => {
+  const handleSocialLink = async url => {
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) {
@@ -802,11 +989,15 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleSavePassword = async () => {
     const newErrors = {};
-    if (!currentPassword.trim()) newErrors.currentPassword = 'Current Password is required';
+    if (!currentPassword.trim())
+      newErrors.currentPassword = 'Current Password is required';
     if (!newPassword.trim()) newErrors.newPassword = 'New Password is required';
-    else if (newPassword.length < 6) newErrors.newPassword = 'Password must be at least 6 characters';
-    if (!confirmPassword.trim()) newErrors.confirmPassword = 'Please confirm password';
-    else if (newPassword !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+    else if (newPassword.length < 6)
+      newErrors.newPassword = 'Password must be at least 6 characters';
+    if (!confirmPassword.trim())
+      newErrors.confirmPassword = 'Please confirm password';
+    else if (newPassword !== confirmPassword)
+      newErrors.confirmPassword = 'Passwords do not match';
 
     if (Object.keys(newErrors).length > 0) {
       setPasswordErrors(newErrors);
@@ -815,7 +1006,9 @@ const ProfileScreen = ({ navigation }) => {
 
     setSavingPassword(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || !user.email) {
         Toast.show({
           type: 'error',
@@ -899,6 +1092,25 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
+  const handleEditAddress = addressId => {
+    const addresses = parseAddresses();
+    const toEdit = addresses.find(
+      a => a.id?.toString() === addressId?.toString(),
+    );
+    if (!toEdit) return;
+
+    setEditingAddressId(toEdit.id.toString());
+    setAddressFormInitialValues({
+      label: toEdit.label || '',
+      street: toEdit.street || '',
+      city: toEdit.city || '',
+      state: toEdit.state || '',
+      zipCode: toEdit.zipCode || '',
+      notes: toEdit.notes || '',
+    });
+    setShowAddAddressModal(true);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={[]}>
@@ -922,14 +1134,15 @@ const ProfileScreen = ({ navigation }) => {
             tintColor={Colors.primaryBlue}
             colors={[Colors.primaryBlue]}
           />
-        }>
+        }
+      >
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               {getCompanyLogo() ? (
-                <Image 
-                  source={{ uri: getCompanyLogo() }} 
+                <Image
+                  source={{ uri: getCompanyLogo() }}
                   style={styles.avatarImage}
                   resizeMode="cover"
                 />
@@ -939,10 +1152,18 @@ const ProfileScreen = ({ navigation }) => {
             </View>
           </View>
           <Text style={styles.userName}>
-            {customerData ? `${customerData.first_name || ''} ${customerData.last_name || ''}`.trim() : 'John Doe'}
+            {customerData
+              ? `${customerData.first_name || ''} ${
+                  customerData.last_name || ''
+                }`.trim()
+              : 'John Doe'}
           </Text>
           <View style={styles.companyRow}>
-            <Icon name="business-outline" size={14} color={Colors.cardBackground} />
+            <Icon
+              name="business-outline"
+              size={14}
+              color={Colors.cardBackground}
+            />
             <Text style={styles.companyName}>
               {customerData?.company_name || 'Beach Resort & Spa'}
             </Text>
@@ -952,15 +1173,28 @@ const ProfileScreen = ({ navigation }) => {
         {/* Summary Cards */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryCard}>
-            <View style={[styles.summaryIcon, { backgroundColor: Colors.primaryPink }]}>
-              <Icon name="cube-outline" size={20} color={Colors.cardBackground} />
+            <View
+              style={[
+                styles.summaryIcon,
+                { backgroundColor: Colors.primaryPink },
+              ]}
+            >
+              <Icon
+                name="cube-outline"
+                size={20}
+                color={Colors.cardBackground}
+              />
             </View>
             <Text style={styles.summaryValue}>{stats.totalOrders}</Text>
             <Text style={styles.summaryLabel}>Total Orders</Text>
           </View>
           <View style={styles.summaryCard}>
             <View style={[styles.summaryIcon, { backgroundColor: '#9500ff' }]}>
-              <Icon name="trending-up-outline" size={20} color={Colors.cardBackground} />
+              <Icon
+                name="trending-up-outline"
+                size={20}
+                color={Colors.cardBackground}
+              />
             </View>
             <Text style={styles.summaryValue}>{stats.activeOrders}</Text>
             <Text style={styles.summaryLabel}>Active</Text>
@@ -972,29 +1206,61 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.sectionHeader}>
             <Icon name="cube-outline" size={18} color={Colors.primaryPink} />
             <Text style={styles.sectionTitle}>Recent Orders</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => navigation.navigate('HomeStack', { screen: 'OrdersList' })}>
-              <Icon name="chevron-forward" size={18} color={Colors.primaryPink} />
+              onPress={() =>
+                navigation.navigate('HomeStack', { screen: 'OrdersList' })
+              }
+            >
+              <Icon
+                name="chevron-forward"
+                size={18}
+                color={Colors.primaryPink}
+              />
             </TouchableOpacity>
           </View>
           {recentOrders.length > 0 ? (
-            recentOrders.map((order) => {
-              const deliveryStatus = order.delivery_status || order.deliveryStatus || order.status || 'Pending';
+            recentOrders.map(order => {
+              const deliveryStatus =
+                order.delivery_status ||
+                order.deliveryStatus ||
+                order.status ||
+                'Pending';
               const statusColor = getStatusColor(deliveryStatus);
               return (
                 <View key={order.id} style={styles.orderRow}>
-                  <View style={[styles.orderIcon, { backgroundColor: '#E8F5E9' }]}>
-                    <Icon name="checkmark-circle" size={20} color={Colors.success} />
+                  <View
+                    style={[styles.orderIcon, { backgroundColor: '#E8F5E9' }]}
+                  >
+                    <Icon
+                      name="checkmark-circle"
+                      size={20}
+                      color={Colors.success}
+                    />
                   </View>
                   <View style={styles.orderInfo}>
-                    <Text style={styles.orderId}>{order.order_name || `ORD-${order.id}`}</Text>
+                    <Text style={styles.orderId}>
+                      {order.order_name || `ORD-${order.id}`}
+                    </Text>
                     <Text style={styles.orderTime}>
-                      {formatDate(order.created_at || order.createdAt || order.created_date || order.order_date)}
+                      {formatDate(
+                        order.created_at ||
+                          order.createdAt ||
+                          order.created_date ||
+                          order.order_date,
+                      )}
                     </Text>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-                    <Text style={styles.statusText}>{deliveryStatus.charAt(0).toUpperCase() + deliveryStatus.slice(1)}</Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: statusColor },
+                    ]}
+                  >
+                    <Text style={styles.statusText}>
+                      {deliveryStatus.charAt(0).toUpperCase() +
+                        deliveryStatus.slice(1)}
+                    </Text>
                   </View>
                 </View>
               );
@@ -1007,13 +1273,20 @@ const ProfileScreen = ({ navigation }) => {
         {/* Account Information */}
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
-            <View  >
+            <View>
               <Icon name="person" size={18} color={Colors.primaryPink} />
             </View>
             <Text style={styles.sectionTitle}>Account Information</Text>
             {!isEditingAccount && (
-              <TouchableOpacity style={styles.iconButton} onPress={handleEditAccount}>
-                <Icon name="pencil-outline" size={14} color={Colors.primaryPink} />
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={handleEditAccount}
+              >
+                <Icon
+                  name="pencil-outline"
+                  size={14}
+                  color={Colors.primaryPink}
+                />
               </TouchableOpacity>
             )}
           </View>
@@ -1022,49 +1295,77 @@ const ProfileScreen = ({ navigation }) => {
             // View Mode
             <>
               <View style={styles.infoRow}>
-                <Icon name="person-outline" size={16} color={Colors.textSecondary} />
+                <Icon
+                  name="person-outline"
+                  size={16}
+                  color={Colors.textSecondary}
+                />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Customer Name</Text>
-                  <Text style={[styles.infoValue, { textTransform: 'capitalize' }]}>
-                    {customerData ? `${customerData.first_name || ''} ${customerData.last_name || ''}`.trim() : 'John Doe'}
+                  <Text
+                    style={[styles.infoValue, { textTransform: 'capitalize' }]}
+                  >
+                    {customerData
+                      ? `${customerData.first_name || ''} ${
+                          customerData.last_name || ''
+                        }`.trim()
+                      : 'John Doe'}
                   </Text>
                 </View>
               </View>
               <View style={styles.infoRow}>
-                <Icon name="mail-outline" size={16} color={Colors.textSecondary} />
+                <Icon
+                  name="mail-outline"
+                  size={16}
+                  color={Colors.textSecondary}
+                />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Email</Text>
-                  <Text style={styles.infoValue}>{customerData?.email || 'N/A'}</Text>
+                  <Text style={styles.infoValue}>
+                    {customerData?.email || 'N/A'}
+                  </Text>
                 </View>
               </View>
               <View style={styles.infoRow}>
-                <Icon name="business-outline" size={16} color={Colors.textSecondary} />
+                <Icon
+                  name="business-outline"
+                  size={16}
+                  color={Colors.textSecondary}
+                />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Company Name</Text>
-                  <Text style={styles.infoValue}>{customerData?.company_name || 'Beach Resort & Spa'}</Text>
+                  <Text style={styles.infoValue}>
+                    {customerData?.company_name || 'Beach Resort & Spa'}
+                  </Text>
                 </View>
               </View>
               <View style={styles.infoRow}>
-                <Icon name="call-outline" size={16} color={Colors.textSecondary} />
+                <Icon
+                  name="call-outline"
+                  size={16}
+                  color={Colors.textSecondary}
+                />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Phone Number</Text>
-                  <Text style={styles.infoValue}>{customerData?.phone || 'N/A'}</Text>
+                  <Text style={styles.infoValue}>
+                    {customerData?.phone || 'N/A'}
+                  </Text>
                 </View>
               </View>
             </>
           ) : (
             // Edit Mode
             <>
-          
               <View style={styles.rowInputs}>
                 <View style={styles.halfInput}>
                   <Input
                     label="First Name"
                     placeholder="First Name"
                     value={firstName}
-                    onChangeText={(text) => {
+                    onChangeText={text => {
                       setFirstName(text);
-                      if (accountErrors.firstName) setAccountErrors({ ...accountErrors, firstName: '' });
+                      if (accountErrors.firstName)
+                        setAccountErrors({ ...accountErrors, firstName: '' });
                     }}
                     errorMessage={accountErrors.firstName}
                     required
@@ -1076,9 +1377,10 @@ const ProfileScreen = ({ navigation }) => {
                     label="Last Name"
                     placeholder="Last Name"
                     value={lastName}
-                    onChangeText={(text) => {
+                    onChangeText={text => {
                       setLastName(text);
-                      if (accountErrors.lastName) setAccountErrors({ ...accountErrors, lastName: '' });
+                      if (accountErrors.lastName)
+                        setAccountErrors({ ...accountErrors, lastName: '' });
                     }}
                     errorMessage={accountErrors.lastName}
                     required
@@ -1098,16 +1400,19 @@ const ProfileScreen = ({ navigation }) => {
                 </View>
               </View>
               <View style={styles.rowInputs}>
-              <View style={styles.halfInput}>
+                <View style={styles.halfInput}>
                   <Input
                     label="Phone Number"
                     placeholder="Phone Number"
                     value={phone}
-                    onChangeText={(text) => {
+                    onChangeText={text => {
                       // Only allow numeric input and limit to 10 digits
-                      const numericText = text.replace(/[^0-9]/g, '').slice(0, 10);
+                      const numericText = text
+                        .replace(/[^0-9]/g, '')
+                        .slice(0, 10);
                       setPhone(numericText);
-                      if (accountErrors.phone) setAccountErrors({ ...accountErrors, phone: '' });
+                      if (accountErrors.phone)
+                        setAccountErrors({ ...accountErrors, phone: '' });
                     }}
                     errorMessage={accountErrors.phone}
                     keyboardType="phone-pad"
@@ -1125,7 +1430,6 @@ const ProfileScreen = ({ navigation }) => {
                     inputStyle={styles.editInputField}
                   />
                 </View>
-               
               </View>
               <View style={styles.buttonRow}>
                 <Button
@@ -1147,6 +1451,24 @@ const ProfileScreen = ({ navigation }) => {
           )}
         </View>
 
+        {/* Invite Link Section */}
+        <View style={styles.infoCard}>
+          <View style={styles.cardHeader}>
+            <Icon name="share-social-outline" size={18} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>Invite Others</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.inviteButton}
+            onPress={handleShareInviteLink}
+          >
+            <Icon name="share-social-outline" size={20} color={Colors.primary} />
+            <Text style={styles.inviteButtonText}>Share Invite Link</Text>
+          </TouchableOpacity>
+          <Text style={styles.inviteDescription}>
+            Invite others to join your company. They will be automatically added to your franchise.
+          </Text>
+        </View>
+
         {/* Delivery Addresses */}
         <View style={styles.infoCard}>
           <View style={styles.cardHeader}>
@@ -1157,14 +1479,19 @@ const ProfileScreen = ({ navigation }) => {
               onPress={() => {
                 setEditingAddressIndex(null);
                 setShowAddAddressModal(true);
-              }}>
+              }}
+            >
               <Icon name="add" size={18} color={Colors.primaryPink} />
             </TouchableOpacity>
           </View>
           {(() => {
             const addresses = parseAddresses();
             if (addresses.length === 0) {
-              return <Text style={styles.noAddressText}>No delivery address added</Text>;
+              return (
+                <Text style={styles.noAddressText}>
+                  No delivery address added
+                </Text>
+              );
             }
             return addresses.map((address, index) => (
               <View
@@ -1172,32 +1499,63 @@ const ProfileScreen = ({ navigation }) => {
                 style={[
                   styles.addressRow,
                   index === addresses.length - 1 && styles.addressRowLast,
-                ]}>
-                <Icon name="home-outline" size={16} color={Colors.textSecondary} />
+                ]}
+              >
+                <Icon
+                  name="home-outline"
+                  size={16}
+                  color={Colors.textSecondary}
+                />
                 <View style={styles.addressContent}>
                   <View style={styles.addressHeader}>
-                    <Text style={styles.addressLabel}>{address.label || 'Address'}</Text>
-                    {address.isSelected && (
-                      <View style={styles.defaultBadge}>
-                        <Text style={styles.defaultBadgeText}>Default</Text>
-                      </View>
-                    )}
-                    {!address.isSelected && (
+                    <View style={styles.addressHeaderLeft}>
+                      <Text style={styles.addressLabel}>
+                        {address.label || 'Address'}
+                      </Text>
+                      {address.isSelected && (
+                        <View style={styles.defaultBadge}>
+                          <Text style={styles.defaultBadgeText}>Default</Text>
+                        </View>
+                      )}
+                      {!address.isSelected && (
+                        <TouchableOpacity
+                          onPress={() => handleSetDefaultAddress(address.id)}
+                          style={styles.setDefaultButton}
+                        >
+                          <Text style={styles.setDefaultText}>Set Default</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <View style={styles.addressHeaderRight}>
                       <TouchableOpacity
-                        onPress={() => handleSetDefaultAddress(address.id)}
-                        style={styles.setDefaultButton}>
-                        <Text style={styles.setDefaultText}>Set Default</Text>
+                        style={styles.addressAction}
+                        onPress={() => handleEditAddress(address.id)}
+                      >
+                        <Icon
+                          name="pencil-outline"
+                          size={14}
+                          color={Colors.primaryPink}
+                        />
                       </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                      style={styles.addressAction}
-                      onPress={() => handleDeleteAddress(address.id)}>
-                      <Icon name="trash-outline" size={16} color={Colors.textSecondary} />
-                    </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.addressAction}
+                        onPress={() => handleDeleteAddress(address.id)}
+                      >
+                        <Icon
+                          name="trash-outline"
+                          size={16}
+                          color={Colors.textSecondary}
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <Text style={styles.addressValue}>{formatAddress(address)}</Text>
+                  <Text style={styles.addressValue}>
+                    {formatAddress(address)}
+                  </Text>
                   {address.notes && (
-                    <Text style={styles.addressNotes}>Notes: {address.notes}</Text>
+                    <Text style={styles.addressNotes}>
+                      Notes: {address.notes}
+                    </Text>
                   )}
                 </View>
               </View>
@@ -1213,8 +1571,15 @@ const ProfileScreen = ({ navigation }) => {
             </View>
             <Text style={styles.sectionTitle}>Security & Password</Text>
             {!isChangingPassword && (
-              <TouchableOpacity style={styles.iconButton} onPress={handleChangePassword}>
-                <Icon name="pencil-outline" size={14} color={Colors.primaryPink} />
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={handleChangePassword}
+              >
+                <Icon
+                  name="pencil-outline"
+                  size={14}
+                  color={Colors.primaryPink}
+                />
               </TouchableOpacity>
             )}
           </View>
@@ -1222,7 +1587,11 @@ const ProfileScreen = ({ navigation }) => {
           {!isChangingPassword ? (
             // View Mode
             <View style={styles.infoRow}>
-              <Icon name="lock-closed-outline" size={16} color={Colors.textSecondary} />
+              <Icon
+                name="lock-closed-outline"
+                size={16}
+                color={Colors.textSecondary}
+              />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Password</Text>
                 <Text style={styles.infoValue}>••••••••</Text>
@@ -1235,9 +1604,13 @@ const ProfileScreen = ({ navigation }) => {
                 label="Current Password"
                 placeholder="Enter current password"
                 value={currentPassword}
-                onChangeText={(text) => {
+                onChangeText={text => {
                   setCurrentPassword(text);
-                  if (passwordErrors.currentPassword) setPasswordErrors({ ...passwordErrors, currentPassword: '' });
+                  if (passwordErrors.currentPassword)
+                    setPasswordErrors({
+                      ...passwordErrors,
+                      currentPassword: '',
+                    });
                 }}
                 secureTextEntry
                 errorMessage={passwordErrors.currentPassword}
@@ -1248,9 +1621,10 @@ const ProfileScreen = ({ navigation }) => {
                 label="New Password"
                 placeholder="Enter new password"
                 value={newPassword}
-                onChangeText={(text) => {
+                onChangeText={text => {
                   setNewPassword(text);
-                  if (passwordErrors.newPassword) setPasswordErrors({ ...passwordErrors, newPassword: '' });
+                  if (passwordErrors.newPassword)
+                    setPasswordErrors({ ...passwordErrors, newPassword: '' });
                 }}
                 secureTextEntry
                 errorMessage={passwordErrors.newPassword}
@@ -1261,9 +1635,13 @@ const ProfileScreen = ({ navigation }) => {
                 label="Confirm New Password"
                 placeholder="Confirm new password"
                 value={confirmPassword}
-                onChangeText={(text) => {
+                onChangeText={text => {
                   setConfirmPassword(text);
-                  if (passwordErrors.confirmPassword) setPasswordErrors({ ...passwordErrors, confirmPassword: '' });
+                  if (passwordErrors.confirmPassword)
+                    setPasswordErrors({
+                      ...passwordErrors,
+                      confirmPassword: '',
+                    });
                 }}
                 secureTextEntry
                 errorMessage={passwordErrors.confirmPassword}
@@ -1298,49 +1676,90 @@ const ProfileScreen = ({ navigation }) => {
           </View>
           <TouchableOpacity
             style={styles.linkRow}
-            onPress={() => navigation.navigate('AllAboutCoconuts')}>
+            onPress={() => navigation.navigate('AllAboutCoconuts')}
+          >
             <View style={[styles.linkIcon, { backgroundColor: '#E0E0E0' }]}>
-              <Icon name="play-circle-outline" size={20} color={Colors.textPrimary} />
+              <Icon
+                name="play-circle-outline"
+                size={20}
+                color={Colors.textPrimary}
+              />
             </View>
             <Text style={styles.linkText}>All About Coconuts</Text>
-            <Icon name="chevron-forward" size={20} color={Colors.textSecondary} />
+            <Icon
+              name="chevron-forward"
+              size={20}
+              color={Colors.textSecondary}
+            />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.linkRow}
-            onPress={() => navigation.navigate('DocumentCenter')}>
+            onPress={() => navigation.navigate('DocumentCenter')}
+          >
             <View style={[styles.linkIcon, { backgroundColor: '#E0E0E0' }]}>
-              <Icon name="document-text-outline" size={20} color={Colors.textPrimary} />
+              <Icon
+                name="document-text-outline"
+                size={20}
+                color={Colors.textPrimary}
+              />
             </View>
             <Text style={styles.linkText}>Document Center</Text>
-            <Icon name="chevron-forward" size={20} color={Colors.textSecondary} />
+            <Icon
+              name="chevron-forward"
+              size={20}
+              color={Colors.textSecondary}
+            />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.linkRow}
-            onPress={() => navigation.navigate('PrivacyPolicy')}>
+            onPress={() => navigation.navigate('PrivacyPolicy')}
+          >
             <View style={[styles.linkIcon, { backgroundColor: '#E0E0E0' }]}>
-              <Icon name="shield-checkmark-outline" size={20} color={Colors.textPrimary} />
+              <Icon
+                name="shield-checkmark-outline"
+                size={20}
+                color={Colors.textPrimary}
+              />
             </View>
             <Text style={styles.linkText}>Privacy Policy</Text>
-            <Icon name="chevron-forward" size={20} color={Colors.textSecondary} />
+            <Icon
+              name="chevron-forward"
+              size={20}
+              color={Colors.textSecondary}
+            />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.linkRow}
-            onPress={() => navigation.navigate('TermsAndConditions')}>
+            onPress={() => navigation.navigate('TermsAndConditions')}
+          >
             <View style={[styles.linkIcon, { backgroundColor: '#E0E0E0' }]}>
-              <Icon name="document-text-outline" size={20} color={Colors.textPrimary} />
+              <Icon
+                name="document-text-outline"
+                size={20}
+                color={Colors.textPrimary}
+              />
             </View>
             <Text style={styles.linkText}>Terms & Conditions</Text>
-            <Icon name="chevron-forward" size={20} color={Colors.textSecondary} />
+            <Icon
+              name="chevron-forward"
+              size={20}
+              color={Colors.textSecondary}
+            />
           </TouchableOpacity>
         </View>
 
         {/* Contact Section */}
         <View style={styles.contactCard}>
-          <Text style={styles.sectionTitle}>Need to modify or cancel an order?</Text>
-          <Text style={styles.contactSubtitle}>Call us if you want to modify or cancel your order</Text>
-          <TouchableOpacity 
+          <Text style={styles.sectionTitle}>
+            Need to modify or cancel an order?
+          </Text>
+          <Text style={styles.contactSubtitle}>
+            Call us if you want to modify or cancel your order
+          </Text>
+          <TouchableOpacity
             style={styles.phoneButton}
-            onPress={handlePhoneCall}>
+            onPress={handlePhoneCall}
+          >
             <Icon name="call-outline" size={20} color={Colors.cardBackground} />
             <Text style={styles.phoneButtonText}>+1 (555) 123-4567</Text>
           </TouchableOpacity>
@@ -1349,27 +1768,51 @@ const ProfileScreen = ({ navigation }) => {
         {/* Connect With Us */}
         <View style={styles.socialCard}>
           <Text style={styles.sectionTitle}>Connect With Us</Text>
-          <Text style={styles.socialSubtitle}>Follow us on social media for updates, tips, and special offers!</Text>
+          <Text style={styles.socialSubtitle}>
+            Follow us on social media for updates, tips, and special offers!
+          </Text>
           <View style={styles.socialIcons}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialIcon}
-              onPress={() => handleSocialLink('https://www.facebook.com/coconutstock/')}>
+              onPress={() =>
+                handleSocialLink('https://www.facebook.com/coconutstock/')
+              }
+            >
               <Icon name="logo-facebook" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialIcon}
-              onPress={() => handleSocialLink('https://www.instagram.com/coconutstock/')}>
-              <Icon name="logo-instagram" size={20} color={Colors.textPrimary} />
+              onPress={() =>
+                handleSocialLink('https://www.instagram.com/coconutstock/')
+              }
+            >
+              <Icon
+                name="logo-instagram"
+                size={20}
+                color={Colors.textPrimary}
+              />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialIcon}
-              onPress={() => handleSocialLink('https://www.linkedin.com/company/coconut-stock-corp/')}>
+              onPress={() =>
+                handleSocialLink(
+                  'https://www.linkedin.com/company/coconut-stock-corp/',
+                )
+              }
+            >
               <Icon name="logo-linkedin" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialIcon}
-              onPress={() => handleSocialLink('https://tr.pinterest.com/coconutstockcorp/')}>
-              <Icon name="logo-pinterest" size={20} color={Colors.textPrimary} />
+              onPress={() =>
+                handleSocialLink('https://tr.pinterest.com/coconutstockcorp/')
+              }
+            >
+              <Icon
+                name="logo-pinterest"
+                size={20}
+                color={Colors.textPrimary}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -1383,7 +1826,8 @@ const ProfileScreen = ({ navigation }) => {
               index: 0,
               routes: [{ name: 'Login' }],
             });
-          }}>
+          }}
+        >
           <Icon name="log-out-outline" size={20} color={Colors.primaryPink} />
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
@@ -1401,9 +1845,13 @@ const ProfileScreen = ({ navigation }) => {
         visible={showAddAddressModal}
         onClose={() => {
           setShowAddAddressModal(false);
+          setEditingAddressId(null);
           setEditingAddressIndex(null);
+          setAddressFormInitialValues(null);
         }}
         onSave={handleAddAddress}
+        initialValues={addressFormInitialValues}
+        isEditing={!!editingAddressId}
       />
     </SafeAreaView>
   );
@@ -1428,9 +1876,9 @@ const styles = StyleSheet.create({
   profileHeader: {
     backgroundColor: Colors.primaryBlue,
     paddingTop: Platform.OS === 'ios' ? 55 : 20,
-    paddingBottom: 60, 
+    paddingBottom: 60,
     paddingHorizontal: 20,
-    alignItems: 'center',  
+    alignItems: 'center',
   },
   avatarContainer: {
     position: 'relative',
@@ -1580,13 +2028,13 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12, 
+    borderRadius: 12,
   },
   statusText: {
     fontSize: 12,
     fontWeight: '500',
     fontFamily: fontFamilyBody,
-    color: '#000000', 
+    color: '#000000',
   },
   noOrdersText: {
     fontSize: 14,
@@ -1665,7 +2113,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     fontFamily: fontFamilyBody,
-    color: Colors.textPrimary, 
+    color: Colors.textPrimary,
   },
   addressRow: {
     flexDirection: 'row',
@@ -1681,10 +2129,28 @@ const styles = StyleSheet.create({
   addressContent: {
     flex: 1,
   },
+  addressContentFlex: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 8,
+  },
   addressHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
+  },
+  addressHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1, // long label handle
+    gap: 8,
+  },
+  addressHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 'auto', // ✅ pushes icons to right
     gap: 8,
   },
   addressLabel: {
@@ -1904,6 +2370,28 @@ const styles = StyleSheet.create({
   },
   inlineButton: {
     flex: 1,
+  },
+  inviteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primaryLight,
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  inviteButtonText: {
+    marginLeft: 12,
+    fontSize: 16,
+    fontFamily: fontFamilyBody,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  inviteDescription: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    marginTop: 8,
+    lineHeight: 16,
   },
 });
 

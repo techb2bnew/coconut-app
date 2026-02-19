@@ -46,6 +46,14 @@
             <action android:name="FLUTTER_NOTIFICATION_CLICK" />
             <category android:name="android.intent.category.DEFAULT" />
         </intent-filter>
+        <!-- Handle deep links for invite functionality -->
+        <intent-filter android:autoVerify="true">
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" android:host="yourapp.com" />
+            <data android:scheme="coconutapp" android:host="signup" />
+        </intent-filter>
       </activity>
 
       <!-- Firebase Cloud Messaging Default Notification Channel -->

@@ -1,9 +1,9 @@
 /**
  * Add Address Modal Component
- * Modal for adding new delivery address
+ * Modal for adding/editing delivery address
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,6 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import Colors from '../theme/colors';
-import TextStyles from '../theme/textStyles';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { validateRequired } from '../utils/validation';
@@ -26,7 +25,8 @@ import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
 
 const GOOGLE_PLACES_API_KEY = 'AIzaSyBtb6hSmwJ9_OznDC5e8BcZM90ms4WD_DE';
 
-const AddAddressModal = ({ visible, onClose, onSave }) => {
+// NEW props: initialValues, isEditing
+const AddAddressModal = ({ visible, onClose, onSave, initialValues, isEditing }) => {
   const [addressLabel, setAddressLabel] = useState('');
   const [streetAddress, setStreetAddress] = useState('');
   const [city, setCity] = useState('');
@@ -48,57 +48,60 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
     setErrors((prev) => ({ ...prev, [field]: message }));
   };
 
+  // ✅ Prefill when modal opens (Edit mode)
+  useEffect(() => {
+    if (!visible) return;
+
+    setAddressLabel(initialValues?.label || '');
+    setStreetAddress(initialValues?.street || '');
+    setCity(initialValues?.city || '');
+    setState(initialValues?.state || '');
+    setZipCode(initialValues?.zipCode || '');
+    setDeliveryNotes(initialValues?.notes || '');
+
+    setErrors({
+      addressLabel: '',
+      streetAddress: '',
+      city: '',
+      state: '',
+      zipCode: '',
+    });
+
+    // prevent list opening on edit load
+    setShowAddressSuggestions(false);
+    setIsProcessingAddress(false);
+  }, [visible, initialValues]);
+
   // Parse address components from Google Places details
   const parseAddressDetails = (details) => {
-    if (!details || !details.address_components) {
-      return;
-    }
+    if (!details || !details.address_components) return;
 
     const addressComponents = details.address_components || [];
-    
-    // Extract street address
-    const streetNumber = addressComponents.find(
-      (component) => component.types.includes('street_number')
-    )?.long_name || '';
-    
-    const route = addressComponents.find(
-      (component) => component.types.includes('route')
-    )?.long_name || '';
-    
+
+    const streetNumber =
+      addressComponents.find((c) => c.types.includes('street_number'))?.long_name || '';
+    const route =
+      addressComponents.find((c) => c.types.includes('route'))?.long_name || '';
+
     const fullStreet = `${streetNumber} ${route}`.trim();
     if (fullStreet) {
       setStreetAddress(fullStreet);
     } else {
-      // Fallback to formatted address if street components not found
       setStreetAddress(details.formatted_address || details.name || '');
     }
 
-    // Extract city
     const cityComponent = addressComponents.find(
-      (component) => 
-        component.types.includes('locality') || 
-        component.types.includes('administrative_area_level_2')
+      (c) => c.types.includes('locality') || c.types.includes('administrative_area_level_2')
     );
-    if (cityComponent) {
-      setCity(cityComponent.long_name);
-    }
+    if (cityComponent) setCity(cityComponent.long_name);
 
-    // Extract state
-    const stateComponent = addressComponents.find(
-      (component) => 
-        component.types.includes('administrative_area_level_1')
+    const stateComponent = addressComponents.find((c) =>
+      c.types.includes('administrative_area_level_1')
     );
-    if (stateComponent) {
-      setState(stateComponent.short_name || stateComponent.long_name);
-    }
+    if (stateComponent) setState(stateComponent.short_name || stateComponent.long_name);
 
-    // Extract zip code
-    const zipComponent = addressComponents.find(
-      (component) => component.types.includes('postal_code')
-    );
-    if (zipComponent) {
-      setZipCode(zipComponent.long_name);
-    }
+    const zipComponent = addressComponents.find((c) => c.types.includes('postal_code'));
+    if (zipComponent) setZipCode(zipComponent.long_name);
   };
 
   const validateForm = () => {
@@ -129,16 +132,30 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
       isValid = false;
     }
 
-    // ZIP Code is now optional, so no validation needed
-
-    setErrors(newErrors);
+    setErrors((prev) => ({ ...prev, ...newErrors }));
     return isValid;
   };
 
+  const resetForm = () => {
+    setAddressLabel('');
+    setStreetAddress('');
+    setCity('');
+    setState('');
+    setZipCode('');
+    setDeliveryNotes('');
+    setErrors({
+      addressLabel: '',
+      streetAddress: '',
+      city: '',
+      state: '',
+      zipCode: '',
+    });
+    setShowAddressSuggestions(false);
+    setIsProcessingAddress(false);
+  };
+
   const handleSave = async () => {
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
     try {
@@ -155,14 +172,7 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
         await onSave(addressData);
       }
 
-      // Reset form
-      setAddressLabel('');
-      setStreetAddress('');
-      setCity('');
-      setState('');
-      setZipCode('');
-      setDeliveryNotes('');
-      setErrors({});
+      resetForm();
       onClose();
     } catch (error) {
       console.error('Error saving address:', error);
@@ -173,14 +183,7 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
   };
 
   const handleClose = () => {
-    // Reset form
-    setAddressLabel('');
-    setStreetAddress('');
-    setCity('');
-    setState('');
-    setZipCode('');
-    setDeliveryNotes('');
-    setErrors({});
+    resetForm();
     onClose();
   };
 
@@ -188,57 +191,58 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
     <Modal
       visible={visible}
       animationType="slide"
-      transparent={true}
-      onRequestClose={handleClose}>
+      transparent
+      onRequestClose={handleClose}
+    >
       <View style={styles.modalOverlay}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoidingView}>
+          style={styles.keyboardAvoidingView}
+        >
           <View style={styles.modalContainer}>
             {/* Header */}
             <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Add New Address</Text>
-                <Text style={styles.modalSubtitle}>Enter the details for your new delivery address.</Text>
+                <Text style={styles.modalTitle}>
+                  {isEditing ? 'Edit Address' : 'Add New Address'}
+                </Text>
+                <Text style={styles.modalSubtitle}>
+                  {isEditing
+                    ? 'Update the details for this delivery address.'
+                    : 'Enter the details for your new delivery address.'}
+                </Text>
               </View>
               <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                 <Icon name="close" size={24} color={Colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
-            {/* Street Address with Google Places Autocomplete - Outside ScrollView to avoid nested VirtualizedList */}
+            {/* Street Address with Google Places Autocomplete */}
             <View style={styles.addressAutocompleteWrapper}>
               <View style={styles.addressAutocompleteContainer}>
                 <Text style={styles.inputLabel}>
                   Street Address <Text style={styles.required}>*</Text>
                 </Text>
+
                 <GooglePlacesAutocomplete
                   placeholder="Enter street address"
                   onPress={(data, details = null) => {
-                    // Prevent double selection
-                    if (isProcessingAddress) {
-                      return;
-                    }
-                    
+                    if (isProcessingAddress) return;
+
                     setIsProcessingAddress(true);
-                    console.log('Address selected:', data, details);
-                    const fullAddress = data.description || data.structured_formatting?.main_text || '';
+
+                    const fullAddress =
+                      data.description || data.structured_formatting?.main_text || '';
+
                     if (fullAddress) {
                       setStreetAddress(fullAddress);
                       updateError('streetAddress', '');
-                      
-                      // Parse address details to auto-fill city, state, zip code
-                      if (details) {
-                        parseAddressDetails(details);
-                      }
-                      
-                      // Hide suggestions immediately
+
+                      if (details) parseAddressDetails(details);
+
                       setShowAddressSuggestions(false);
-                      
-                      // Reset processing flag after a delay
-                      setTimeout(() => {
-                        setIsProcessingAddress(false);
-                      }, 500);
+
+                      setTimeout(() => setIsProcessingAddress(false), 500);
                     } else {
                       setIsProcessingAddress(false);
                     }
@@ -248,41 +252,27 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
                     language: 'en',
                     components: 'country:us',
                   }}
-                  fetchDetails={true}
+                  fetchDetails
                   enablePoweredByContainer={false}
                   debounce={300}
                   listViewDisplayed={showAddressSuggestions ? 'auto' : false}
-                  onFocus={() => {
-                    setShowAddressSuggestions(true);
-                  }}
+                  onFocus={() => setShowAddressSuggestions(true)}
                   onBlur={() => {
-                    // Delay to allow onPress to fire first
-                    setTimeout(() => {
-                      setShowAddressSuggestions(false);
-                    }, 300);
+                    setTimeout(() => setShowAddressSuggestions(false), 300);
                   }}
                   textInputProps={{
                     value: streetAddress,
                     onChangeText: (text) => {
                       setStreetAddress(text);
                       updateError('streetAddress', '');
-                      if (text.length > 0) {
-                        setShowAddressSuggestions(true);
-                      } else {
-                        setShowAddressSuggestions(false);
-                      }
+                      if (text.length > 0) setShowAddressSuggestions(true);
+                      else setShowAddressSuggestions(false);
                     },
                     placeholder: 'Enter street address',
                     placeholderTextColor: Colors.textSecondary,
-                    onBlur: () => {
-                      // Don't hide immediately on blur, let onPress handle it
-                    },
                   }}
                   styles={{
-                    container: {
-                      flex: 0,
-                      zIndex: 1000,
-                    },
+                    container: { flex: 0, zIndex: 1000 },
                     textInputContainer: {
                       backgroundColor: Colors.cardBackground,
                       borderRadius: 12,
@@ -297,9 +287,6 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
                       paddingVertical: 12,
                       paddingHorizontal: 12,
                       minHeight: 36,
-                    },
-                    predefinedPlacesDescription: {
-                      color: Colors.textSecondary,
                     },
                     listView: {
                       backgroundColor: Colors.cardBackground,
@@ -316,18 +303,13 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
                       left: 0,
                       right: 0,
                       zIndex: 99999,
-                      overflow: 'auto',
+                      overflow: 'hidden',
                     },
-                    row: {
-                      backgroundColor: Colors.cardBackground,
-                      padding: 12,
-                    },
-                    separator: {
-                      height: 1,
-                      backgroundColor: Colors.borderLight,
-                    },
+                    row: { backgroundColor: Colors.cardBackground, padding: 12 },
+                    separator: { height: 1, backgroundColor: Colors.borderLight },
                   }}
                 />
+
                 {errors.streetAddress ? (
                   <Text style={styles.errorText}>{errors.streetAddress}</Text>
                 ) : null}
@@ -337,9 +319,9 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
             <ScrollView
               style={styles.scrollView}
               contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={true}
-              keyboardShouldPersistTaps="handled">
-              {/* Address Label */}
+              showsVerticalScrollIndicator
+              keyboardShouldPersistTaps="handled"
+            >
               <Input
                 label="Address Label"
                 placeholder="e.g., Home, Office, Warehouse"
@@ -353,7 +335,6 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
                 inputStyle={styles.inputField}
               />
 
-              {/* City and State in Row */}
               <View style={styles.rowInputs}>
                 <View style={styles.halfInput}>
                   <Input
@@ -369,6 +350,7 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
                     inputStyle={styles.inputField}
                   />
                 </View>
+
                 <View style={styles.halfInput}>
                   <Input
                     label="State"
@@ -385,7 +367,6 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
                 </View>
               </View>
 
-              {/* ZIP Code (Optional) */}
               <Input
                 label="ZIP Code (Optional)"
                 placeholder="ZIP Code"
@@ -399,7 +380,6 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
                 inputStyle={styles.inputField}
               />
 
-              {/* Delivery Notes (Optional) */}
               <Input
                 label="Delivery Notes (Optional)"
                 placeholder="e.g., Use side entrance"
@@ -410,7 +390,6 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
               />
             </ScrollView>
 
-            {/* Action Buttons */}
             <View style={styles.buttonRow}>
               <Button
                 title="Cancel"
@@ -419,7 +398,11 @@ const AddAddressModal = ({ visible, onClose, onSave }) => {
                 style={styles.button}
               />
               <Button
-                title={loading ? 'Adding...' : 'Add Address'}
+                title={
+                  loading
+                    ? (isEditing ? 'Updating...' : 'Adding...')
+                    : (isEditing ? 'Update Address' : 'Add Address')
+                }
                 onPress={handleSave}
                 variant="primary"
                 style={styles.button}
@@ -463,7 +446,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '600', 
+    fontWeight: '600',
     fontFamily: fontFamilyHeading,
     marginBottom: 4,
   },
@@ -484,7 +467,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   inputField: {
-    backgroundColor: Colors.cardBackground, 
+    backgroundColor: Colors.cardBackground,
   },
   notesInput: {
     minHeight: 80,
@@ -516,7 +499,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     zIndex: 1000,
   },
-  addressAutocompleteContainer: { 
+  addressAutocompleteContainer: {
     position: 'relative',
   },
   inputLabel: {
@@ -539,4 +522,3 @@ const styles = StyleSheet.create({
 });
 
 export default AddAddressModal;
-
