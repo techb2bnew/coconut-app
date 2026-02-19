@@ -564,8 +564,7 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.headerMainText}>Order Fresh and</Text>
               <Text style={styles.headerMainText}>Stay Stocked</Text>
             </View>
-          </View>
-          <Text style={styles.headerTreeIcon}>🌴</Text>
+          </View> 
         </View>
 
         {/* Image Carousel Banner */}
