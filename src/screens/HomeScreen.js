@@ -114,7 +114,7 @@ const HomeScreen = ({ navigation }) => {
     return '#f2f2f2'; // Default gray
   };
 
-  // Fetch customer ID and franchise logo from logged in user email
+  // Fetch customer ID, franchise logo, and company ID from logged in user email
   const fetchCustomerId = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -123,10 +123,10 @@ const HomeScreen = ({ navigation }) => {
         return null;
       }
 
-      // Get customer ID, franchise_id, status from customers table using email
+      // Get customer ID, franchise_id, company_id, status from customers table using email
       const { data: customer, error } = await supabase
         .from('customers')
-        .select('id, franchise_id, status')
+        .select('id, franchise_id, company_id, status')
         .eq('email', user.email)
         .single();
 
@@ -150,6 +150,7 @@ const HomeScreen = ({ navigation }) => {
 
       console.log('Customer data:', customer);
       console.log('Customer franchise_id:', customer?.franchise_id);
+      console.log('Customer company_id:', customer?.company_id);
 
       // Fetch franchise logo if customer has franchise_id
       if (customer?.franchise_id) {
@@ -160,7 +161,10 @@ const HomeScreen = ({ navigation }) => {
         setFranchiseLogo(null); // No franchise, use default logo
       }
 
-      return customer?.id || null;
+      return { 
+        customerId: customer?.id || null,
+        companyId: customer?.company_id || null 
+      };
     } catch (error) {
       console.error('Error in fetchCustomerId:', error);
       return null;
@@ -226,19 +230,44 @@ const HomeScreen = ({ navigation }) => {
     }
   };
   
-  // Fetch orders for customer
-  const fetchOrders = async (customerId) => {
-    if (!customerId) {
+  // Fetch orders for the entire company
+  const fetchOrders = async (customerData) => {
+    if (!customerData || !customerData.companyId) {
       setLoading(false);
       return;
     }
 
     try {
-      // Fetch orders from orders table
+      console.log('📥 HomeScreen: Fetching orders for company:', customerData.companyId);
+      
+      // Get all customers in this company
+      const { data: companyCustomers, error: customersError } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('company_id', customerData.companyId);
+
+      if (customersError) {
+        console.error('❌ Error fetching company customers:', customersError);
+        setLoading(false);
+        return;
+      }
+
+      const customerIds = companyCustomers?.map(c => c.id) || [];
+      console.log('👥 HomeScreen: Company customers count:', customerIds.length);
+
+      if (customerIds.length === 0) {
+        console.log('ℹ️ No customers found for this company');
+        setRecentOrders([]);
+        setFilteredOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch all orders for all customers in this company
       const { data: orders, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('customer_id', customerId)
+        .in('customer_id', customerIds)
         .order('order_date', { ascending: false }); // Get all orders
         
       if (error) {
@@ -246,6 +275,8 @@ const HomeScreen = ({ navigation }) => {
         setLoading(false);
         return;
       }
+
+      console.log('✅ HomeScreen: Fetched company orders count:', orders?.length || 0);
      
       // Process orders data
       const processedOrders = (orders || []).map((order) => {
@@ -433,11 +464,13 @@ const HomeScreen = ({ navigation }) => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      const id = await fetchCustomerId();
-      if (id) {
-        setCustomerId(id);
-        await fetchOrders(id);
+      const data = await fetchCustomerId();
+      if (data) {
+        console.log('👤 HomeScreen: Loaded customer data:', data);
+        setCustomerId(data.customerId);
+        await fetchOrders(data);
       } else {
+        console.log('⚠️ HomeScreen: No customer data found');
         setLoading(false);
       }
     };
@@ -448,8 +481,11 @@ const HomeScreen = ({ navigation }) => {
   // Real-time orders: refetch when admin adds/updates/deletes orders (no refresh needed)
   useEffect(() => {
     if (!customerId) return;
-    const unsub = subscribeToOrdersRealtime(customerId, () => {
-      fetchOrders(customerId);
+    const unsub = subscribeToOrdersRealtime(customerId, async () => {
+      const data = await fetchCustomerId();
+      if (data) {
+        fetchOrders(data);
+      }
     });
     return () => unsub();
   }, [customerId]);
@@ -518,9 +554,9 @@ const HomeScreen = ({ navigation }) => {
   // Refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
-    const id = await fetchCustomerId(); // This will also refresh franchise logo
-    if (id) {
-      await fetchOrders(id);
+    const data = await fetchCustomerId(); // This will also refresh franchise logo
+    if (data) {
+      await fetchOrders(data);
     } else {
       setRefreshing(false);
     }
@@ -633,7 +669,7 @@ const HomeScreen = ({ navigation }) => {
         {/* Recent Orders Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Orders</Text>
+            <Text style={styles.sectionTitle}>Company Recent Orders</Text>
             <TouchableOpacity onPress={() => navigation.navigate('OrdersList')}>
               <View style={styles.viewAllContainer}>
                 <Text style={styles.viewAllText}>View All</Text>

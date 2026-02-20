@@ -20,6 +20,7 @@ import {
   Dimensions,
   Modal,
 } from 'react-native';
+import DatePicker from 'react-native-date-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -63,6 +64,11 @@ const CreateOrderScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  
+  // Date picker states
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedOrderDate, setSelectedOrderDate] = useState(new Date());
+  const [orderDateText, setOrderDateText] = useState('');
   
   // Bottom sheet ref and snap points
   const bottomSheetRef = useRef(null);
@@ -1012,7 +1018,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
         special_event_logo: logoUrl || null,
         special_event_amount: specialEvent ? 150 : null,
         openerKit: openerKit || false,
-        order_date: new Date().toISOString(),
+        order_date: orderDateText ? selectedOrderDate.toISOString() : new Date().toISOString(), // Use selected date or today
         delivery_date: deliveryDate.toISOString(),
         delivery_day_date: deliveryDayText || null, // Text value: "Same Day", "1 day", "2 days", or null for fallback
         status: 'pending',
@@ -1050,6 +1056,8 @@ const CreateOrderScreen = ({ navigation, route }) => {
       setOrderNotes('');
       setLogoFile(null);
       setLogoPreview(null);
+      setSelectedOrderDate(new Date());
+      setOrderDateText('');
       setErrors({});
 
       // Small delay to ensure database commit, then navigate
@@ -1081,6 +1089,8 @@ const CreateOrderScreen = ({ navigation, route }) => {
     setOrderNotes('');
     setLogoFile(null);
     setLogoPreview(null);
+    setSelectedOrderDate(new Date());
+    setOrderDateText('');
     setErrors({});
     setProductType('case');
     
@@ -1120,6 +1130,34 @@ const CreateOrderScreen = ({ navigation, route }) => {
       address.zipCode,
     ].filter(Boolean);
     return parts.length > 0 ? parts.join(', ') : (address.label || 'Address');
+  };
+
+  // Date picker functions
+  const formatDateForDisplay = (date) => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    const dayName = days[date.getDay()];
+    const monthName = months[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    
+    return `${dayName}, ${monthName} ${day}, ${year}`;
+  };
+
+  const handleDateChange = (date) => {
+    setSelectedOrderDate(date);
+    setOrderDateText(formatDateForDisplay(date));
+  };
+
+  const handleDatePickerConfirm = () => {
+    setShowDatePicker(false);
+  };
+
+  const handleDatePickerCancel = () => {
+    setShowDatePicker(false);
+    setSelectedOrderDate(new Date());
+    setOrderDateText('');
   };
 
   // Prepare dropdown options for addresses
@@ -1209,6 +1247,24 @@ const CreateOrderScreen = ({ navigation, route }) => {
                 placeholderTextColor={Colors.textSecondary}
               />
             </View>
+          </View>
+
+          {/* Order Date Picker */}
+          <View style={styles.formCard}>
+            <Text style={styles.label}>Order Date (Optional)</Text>
+            <TouchableOpacity
+              style={[styles.inputContainer, styles.datePickerInput]}
+              onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.8}>
+              <View style={styles.datePickerContent}>
+                <Icon name="calendar-outline" size={20} color={Colors.primaryPink} />
+                <Text style={[styles.input, styles.datePickerText, { flex: 1 }]}>
+                  {orderDateText || 'Select order date'}
+                </Text>
+                <Icon name="chevron-down" size={16} color={Colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+            <Text style={styles.helperText}>Leave empty to use today's date</Text>
           </View>
 
           {/* Quantity */}
@@ -1453,6 +1509,12 @@ const CreateOrderScreen = ({ navigation, route }) => {
                   <Text style={styles.orderSummaryLabel}>Quantity:</Text>
                   <Text style={styles.orderSummaryValue}>{quantity} Cases</Text>
                 </View>
+                {orderDateText && (
+                  <View style={styles.orderSummaryRow}>
+                    <Text style={styles.orderSummaryLabel}>Order Date:</Text>
+                    <Text style={styles.orderSummaryValue}>{orderDateText}</Text>
+                  </View>
+                )}
                 {estimatedDeliveryDate && (
                   <View style={styles.orderSummaryRow}>
                     <Text style={styles.orderSummaryLabel}>Delivery:</Text>
@@ -1496,6 +1558,40 @@ const CreateOrderScreen = ({ navigation, route }) => {
                 </TouchableOpacity>
               </View>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Date Picker Modal */}
+      <Modal
+        visible={showDatePicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleDatePickerCancel}>
+        <View style={styles.datePickerModalOverlay}>
+          <View style={styles.datePickerModalContainer}>
+            <View style={styles.datePickerHeader}>
+              <TouchableOpacity
+                style={styles.datePickerCancelButton}
+                onPress={handleDatePickerCancel}
+                activeOpacity={0.8}>
+                <Text style={styles.datePickerCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.datePickerTitle}>Select Order Date</Text>
+              <TouchableOpacity
+                style={styles.datePickerConfirmButton}
+                onPress={handleDatePickerConfirm}
+                activeOpacity={0.8}>
+                <Text style={styles.datePickerConfirmText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <DatePicker
+              date={selectedOrderDate}
+              onDateChange={handleDateChange}
+              mode="date"
+              minimumDate={new Date()} // Prevent selecting previous dates
+              style={styles.datePicker}
+            />
           </View>
         </View>
       </Modal>
@@ -1928,6 +2024,78 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     fontWeight: '600',
     color: Colors.cardBackground,
+  },
+  // Date Picker Styles
+  datePickerInput: {
+    backgroundColor: '#F5F5F5',
+  },
+  datePickerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 50,
+  },
+  datePickerText: {
+    fontSize: 14,
+    fontFamily: fontFamilyBody,
+    color: Colors.textPrimary,
+    marginLeft: 12,
+  },
+  helperText: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  datePickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  datePickerModalContainer: {
+    backgroundColor: Colors.cardBackground,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  datePickerTitle: {
+    fontSize: 18,
+    fontFamily: fontFamilyHeading,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  datePickerCancelButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  datePickerCancelText: {
+    fontSize: 16,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+  },
+  datePickerConfirmButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  datePickerConfirmText: {
+    fontSize: 16,
+    fontFamily: fontFamilyBody,
+    color: Colors.primaryPink,
+    fontWeight: '600',
+  },
+  datePicker: {
+    marginTop: 20,
   },
 });
 

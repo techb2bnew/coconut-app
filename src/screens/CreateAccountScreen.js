@@ -40,7 +40,7 @@ import {
 
 const CreateAccountScreen = ({ navigation }) => {
   const route = useRoute();
-  
+
   // State for invite parameters
   const [inviteData, setInviteData] = useState({
     company_id: null,
@@ -50,23 +50,65 @@ const CreateAccountScreen = ({ navigation }) => {
 
   // Handle invite parameters from URL
   useEffect(() => {
-    console.log('🔗 CreateAccountScreen - route.params:', route.params);
-    if (route.params) {
-      const { company_id, franchise_id, ref } = route.params;
-      setInviteData({
-        company_id: company_id || null,
-        franchise_id: franchise_id || null,
-        ref: ref || null,
-      });
-      
-      if (company_id || franchise_id) {
-        console.log('✅ Invite parameters detected:', { company_id, franchise_id, ref });
-        console.log('🎯 Will create customer with these invite parameters');
-      } else {
-        console.log('ℹ️ No invite parameters found - normal signup');
-      }
+    if (!route?.params) return;
+
+    const { company_id, franchise_id, ref } = route.params;
+
+    console.log('🔗 Invite params:', route.params);
+
+    setInviteData({
+      company_id: company_id ?? null,
+      franchise_id: franchise_id ?? null,
+      ref: ref ?? null,
+    });
+
+    if (company_id || franchise_id) {
+      fetchCompanyAndFranchiseData(company_id, franchise_id);
     }
-  }, [route.params]);
+  }, [route?.params]);
+
+  // Fetch company and franchise data from invite parameters
+  const fetchCompanyAndFranchiseData = async (companyId, franchiseId) => {
+    try {
+      console.log('🔍 Fetching company/franchise...');
+
+      // 1️⃣ Fetch company name from company table
+      if (companyId) {
+        const { data, error } = await supabase
+          .from('company')
+          .select('company_name')
+          .eq('id', companyId)
+          .single();
+
+        if (!error && data?.company_name) {
+          console.log('✅ Company name found:', data.company_name);
+          setCompanyName(data.company_name); // ❗ no condition
+          return;
+        }
+
+        console.log('❌ Company not found in company table');
+      }
+
+      // 2️⃣ Fallback: franchise name
+      if (franchiseId) {
+        const { data, error } = await supabase
+          .from('franchises')
+          .select('name')
+          .eq('id', franchiseId)
+          .single();
+
+        if (!error && data?.name) {
+          console.log('✅ Franchise name used:', data.name);
+          setCompanyName(data.name);
+          return;
+        }
+      }
+
+      console.log('⚠️ Company name not found, user will enter manually');
+    } catch (err) {
+      console.error('❌ fetchCompanyAndFranchiseData error:', err);
+    }
+  };
 
   // Industry options
   const industryOptions = [
@@ -114,7 +156,6 @@ const CreateAccountScreen = ({ navigation }) => {
   // Errors
   const [errors, setErrors] = useState({
     companyName: '',
-    industry: '',
     firstName: '',
     lastName: '',
     email: '',
@@ -129,21 +170,19 @@ const CreateAccountScreen = ({ navigation }) => {
   });
 
   const updateError = (field, value) => {
-    setErrors((prev) => ({ ...prev, [field]: value }));
+    setErrors(prev => ({ ...prev, [field]: value }));
   };
 
   // Form 1 Validation
   const validateForm1 = () => {
     const companyNameError = validateRequired(companyName, 'Company');
-    const industryError = validateRequired(industry, 'Industry');
 
-    setErrors((prev) => ({
+    setErrors(prev => ({
       ...prev,
       companyName: companyNameError,
-      industry: industryError,
     }));
 
-    return !companyNameError && !industryError;
+    return !companyNameError;
   };
 
   // Form 2 Validation
@@ -153,7 +192,7 @@ const CreateAccountScreen = ({ navigation }) => {
     const emailError = validateEmail(email);
     const phoneError = validatePhone(phone);
 
-    setErrors((prev) => ({
+    setErrors(prev => ({
       ...prev,
       firstName: firstNameError,
       lastName: lastNameError,
@@ -172,21 +211,26 @@ const CreateAccountScreen = ({ navigation }) => {
       ? validatePhone(alternatePhone)
       : '';
 
-    setErrors((prev) => ({
+    setErrors(prev => ({
       ...prev,
       alternateEmail1: alternateEmail1Error,
       alternateEmail2: alternateEmail2Error,
       alternatePhone: alternatePhoneError,
     }));
 
-    return !alternateEmail1Error && !alternateEmail2Error && !alternatePhoneError;
+    return (
+      !alternateEmail1Error && !alternateEmail2Error && !alternatePhoneError
+    );
   };
 
   // Form 4 Validation
   const validateForm4 = () => {
-    const deliveryAddressError = validateRequired(deliveryAddress, 'Delivery Address');
+    const deliveryAddressError = validateRequired(
+      deliveryAddress,
+      'Delivery Address',
+    );
 
-    setErrors((prev) => ({
+    setErrors(prev => ({
       ...prev,
       deliveryAddress: deliveryAddressError,
     }));
@@ -197,11 +241,16 @@ const CreateAccountScreen = ({ navigation }) => {
   // Form 5 Validation
   const validateForm5 = () => {
     const passwordError = validateMinLength(password, 8, 'Password');
-    const confirmPasswordError = validatePasswordMatch(password, confirmPassword);
+    const confirmPasswordError = validatePasswordMatch(
+      password,
+      confirmPassword,
+    );
 
-    setErrors((prev) => ({
+    setErrors(prev => ({
       ...prev,
-      password: passwordError || (password.length < 8 ? 'Password must be at least 8 characters' : ''),
+      password:
+        passwordError ||
+        (password.length < 8 ? 'Password must be at least 8 characters' : ''),
       confirmPassword: confirmPasswordError,
     }));
 
@@ -209,7 +258,7 @@ const CreateAccountScreen = ({ navigation }) => {
   };
 
   // Detect zone from Google Places address details
-  const detectZoneFromPlaceDetails = async (placeDetails) => {
+  const detectZoneFromPlaceDetails = async placeDetails => {
     if (!placeDetails) return;
 
     setZoneLoading(true);
@@ -217,18 +266,18 @@ const CreateAccountScreen = ({ navigation }) => {
       // Extract address components from Google Places
       const addressComponents = placeDetails.address_components || [];
       const formattedAddress = placeDetails.formatted_address || '';
-      
+
       // Extract zone information from address components
       // Try to find zone in different address component types
       let zoneInfo = null;
 
       // Method 1: Try to find zone from sublocality or neighborhood
       const zoneComponent = addressComponents.find(
-        (component) => 
+        component =>
           component.types.includes('sublocality') ||
           component.types.includes('sublocality_level_1') ||
           component.types.includes('neighborhood') ||
-          component.types.includes('administrative_area_level_3')
+          component.types.includes('administrative_area_level_3'),
       );
 
       if (zoneComponent) {
@@ -238,8 +287,8 @@ const CreateAccountScreen = ({ navigation }) => {
 
       // Method 2: Use postal code as zone identifier
       if (!zoneInfo) {
-        const postalCodeComponent = addressComponents.find(
-          (component) => component.types.includes('postal_code')
+        const postalCodeComponent = addressComponents.find(component =>
+          component.types.includes('postal_code'),
         );
         if (postalCodeComponent) {
           zoneInfo = postalCodeComponent.long_name;
@@ -250,9 +299,9 @@ const CreateAccountScreen = ({ navigation }) => {
       // Method 3: Use city/locality if zone not found
       if (!zoneInfo) {
         const cityComponent = addressComponents.find(
-          (component) => 
-            component.types.includes('locality') || 
-            component.types.includes('administrative_area_level_2')
+          component =>
+            component.types.includes('locality') ||
+            component.types.includes('administrative_area_level_2'),
         );
         if (cityComponent) {
           zoneInfo = cityComponent.long_name;
@@ -273,7 +322,10 @@ const CreateAccountScreen = ({ navigation }) => {
 
         if (!customerError && existingCustomer?.delivery_zone) {
           setZoneId(existingCustomer.delivery_zone);
-          console.log('Zone ID found from existing customer:', existingCustomer.delivery_zone);
+          console.log(
+            'Zone ID found from existing customer:',
+            existingCustomer.delivery_zone,
+          );
           return;
         }
 
@@ -293,7 +345,9 @@ const CreateAccountScreen = ({ navigation }) => {
         // Option 3: If you have a zone mapping, use it here
         // For now, we'll store zoneInfo and you can map it later
         console.log('Zone info extracted:', zoneInfo);
-        console.log('Note: Implement zone ID mapping logic based on your zone structure');
+        console.log(
+          'Note: Implement zone ID mapping logic based on your zone structure',
+        );
       }
 
       // If zone ID not found, set to null
@@ -312,7 +366,7 @@ const CreateAccountScreen = ({ navigation }) => {
     if (Platform.OS === 'android') {
       try {
         const androidVersion = Platform.Version;
-        
+
         // For Android 13+ (API 33+), use READ_MEDIA_IMAGES
         if (androidVersion >= 33) {
           const granted = await PermissionsAndroid.request(
@@ -323,7 +377,7 @@ const CreateAccountScreen = ({ navigation }) => {
               buttonNeutral: 'Ask Me Later',
               buttonNegative: 'Cancel',
               buttonPositive: 'OK',
-            }
+            },
           );
           return granted === PermissionsAndroid.RESULTS.GRANTED;
         } else {
@@ -332,11 +386,12 @@ const CreateAccountScreen = ({ navigation }) => {
             PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
             {
               title: 'Storage Permission',
-              message: 'App needs access to your storage to upload company logo',
+              message:
+                'App needs access to your storage to upload company logo',
               buttonNeutral: 'Ask Me Later',
               buttonNegative: 'Cancel',
               buttonPositive: 'OK',
-            }
+            },
           );
           return granted === PermissionsAndroid.RESULTS.GRANTED;
         }
@@ -361,7 +416,7 @@ const CreateAccountScreen = ({ navigation }) => {
           [
             { text: 'Cancel', style: 'cancel' },
             { text: 'OK', onPress: () => {} },
-          ]
+          ],
         );
         return;
       }
@@ -376,13 +431,14 @@ const CreateAccountScreen = ({ navigation }) => {
       selectionLimit: 1,
     };
 
-    launchImageLibrary(options, (response) => {
+    launchImageLibrary(options, response => {
       if (response.didCancel) {
         console.log('User cancelled image picker');
       } else if (response.errorCode) {
         let errorMessage = 'Failed to pick image';
         if (response.errorCode === 'permission') {
-          errorMessage = 'Permission denied. Please grant photo permission in app settings.';
+          errorMessage =
+            'Permission denied. Please grant photo permission in app settings.';
         } else if (response.errorMessage) {
           errorMessage = response.errorMessage;
         }
@@ -412,7 +468,13 @@ const CreateAccountScreen = ({ navigation }) => {
     const isForm4Valid = validateForm4();
     const isForm5Valid = validateForm5();
 
-    if (!isForm1Valid || !isForm2Valid || !isForm3Valid || !isForm4Valid || !isForm5Valid) {
+    if (
+      !isForm1Valid ||
+      !isForm2Valid ||
+      !isForm3Valid ||
+      !isForm4Valid ||
+      !isForm5Valid
+    ) {
       return;
     }
 
@@ -434,7 +496,10 @@ const CreateAccountScreen = ({ navigation }) => {
 
       if (authError) {
         console.error('Auth error:', authError);
-        Alert.alert('Signup Error', authError.message || 'Failed to create account. Please try again.');
+        Alert.alert(
+          'Signup Error',
+          authError.message || 'Failed to create account. Please try again.',
+        );
         setLoading(false);
         return;
       }
@@ -457,11 +522,14 @@ const CreateAccountScreen = ({ navigation }) => {
           });
 
           const timestamp = Date.now();
-          const filenameSafe = companyLogoFile.fileName || `logo-${timestamp}.jpg`;
+          const filenameSafe =
+            companyLogoFile.fileName || `logo-${timestamp}.jpg`;
           const path = `customer-logos/${timestamp}-${filenameSafe}`;
           const bucketName = 'logos';
           const fileExt = filenameSafe.split('.').pop() || 'jpg';
-          const contentType = companyLogoFile.type || `image/${fileExt === 'png' ? 'png' : 'jpeg'}`;
+          const contentType =
+            companyLogoFile.type ||
+            `image/${fileExt === 'png' ? 'png' : 'jpeg'}`;
 
           // Check if base64 is available
           if (companyLogoFile.base64) {
@@ -474,14 +542,20 @@ const CreateAccountScreen = ({ navigation }) => {
               bytes[i] = binaryString.charCodeAt(i);
             }
             const fileData = bytes.buffer;
-            console.log('File data prepared, size:', fileData.byteLength, 'bytes');
+            console.log(
+              'File data prepared, size:',
+              fileData.byteLength,
+              'bytes',
+            );
 
             // Upload to Supabase Storage
-            console.log('Uploading to Supabase Storage...', { bucketName, path });
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from(bucketName)
-              .upload(path, fileData, { 
-                upsert: true, 
+            console.log('Uploading to Supabase Storage...', {
+              bucketName,
+              path,
+            });
+            const { data: uploadData, error: uploadError } =
+              await supabase.storage.from(bucketName).upload(path, fileData, {
+                upsert: true,
                 contentType: contentType,
                 cacheControl: '3600',
               });
@@ -495,8 +569,13 @@ const CreateAccountScreen = ({ navigation }) => {
               // RLS policy error - logo upload failed but account creation will continue
               logoUrl = null;
             } else if (uploadData) {
-              console.log('Upload successful, getting public URL...', uploadData);
-              const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(uploadData.path);
+              console.log(
+                'Upload successful, getting public URL...',
+                uploadData,
+              );
+              const { data: urlData } = supabase.storage
+                .from(bucketName)
+                .getPublicUrl(uploadData.path);
               logoUrl = urlData.publicUrl;
               console.log('Logo uploaded successfully! URL:', logoUrl);
             } else {
@@ -510,32 +589,44 @@ const CreateAccountScreen = ({ navigation }) => {
             });
             // Try to read from URI as fallback
             if (companyLogoFile.uri) {
-              console.log('Attempting to read file from URI:', companyLogoFile.uri);
+              console.log(
+                'Attempting to read file from URI:',
+                companyLogoFile.uri,
+              );
               try {
                 const response = await fetch(companyLogoFile.uri);
                 if (response.ok) {
                   const blob = await response.blob();
                   const arrayBuffer = await blob.arrayBuffer();
-                  
+
                   console.log('File read from URI, uploading...');
-                  const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from(bucketName)
-                    .upload(path, arrayBuffer, { 
-                      upsert: true, 
-                      contentType: contentType,
-                      cacheControl: '3600',
-                    });
+                  const { data: uploadData, error: uploadError } =
+                    await supabase.storage
+                      .from(bucketName)
+                      .upload(path, arrayBuffer, {
+                        upsert: true,
+                        contentType: contentType,
+                        cacheControl: '3600',
+                      });
 
                   if (!uploadError && uploadData) {
-                    const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(uploadData.path);
+                    const { data: urlData } = supabase.storage
+                      .from(bucketName)
+                      .getPublicUrl(uploadData.path);
                     logoUrl = urlData.publicUrl;
-                    console.log('Logo uploaded successfully from URI! URL:', logoUrl);
+                    console.log(
+                      'Logo uploaded successfully from URI! URL:',
+                      logoUrl,
+                    );
                   } else {
                     console.error('Upload from URI failed:', uploadError);
                     logoUrl = null;
                   }
                 } else {
-                  console.log('Failed to read file from URI, status:', response.status);
+                  console.log(
+                    'Failed to read file from URI, status:',
+                    response.status,
+                  );
                   logoUrl = null;
                 }
               } catch (uriError) {
@@ -565,7 +656,6 @@ const CreateAccountScreen = ({ navigation }) => {
         email: email.trim(),
         phone: phone,
         delivery_address: deliveryAddress,
-        industry: industry,
         delivery_zone: zoneId || null, // Use UUID instead of string
         zoneCity: null, // Can be set if needed
         created_by_email: null, // Mobile app signups don't have admin email
@@ -582,40 +672,46 @@ const CreateAccountScreen = ({ navigation }) => {
       };
       console.log('📝 Creating customer with data:', customerData);
       console.log('🎯 Invite data being used:', inviteData);
-      const { error: insertError } = await supabase.from('customers').insert(customerData);
+      console.log('🔗 Franchise ID in payload:', inviteData.franchise_id);
+      console.log('👤 Invited by in payload:', inviteData.ref);
+      const { error: insertError } = await supabase
+        .from('customers')
+        .insert(customerData);
 
       if (insertError) {
         console.error('Error inserting customer:', insertError);
-        
+
         // If customer insert fails, try to delete the auth user
-        await supabase.auth.admin.deleteUser(authData.user.id).catch(console.error);
-        
-        Alert.alert('Error', insertError.message || 'Failed to save customer data. Please try again.');
+        await supabase.auth.admin
+          .deleteUser(authData.user.id)
+          .catch(console.error);
+
+        Alert.alert(
+          'Error',
+          insertError.message ||
+            'Failed to save customer data. Please try again.',
+        );
         setLoading(false);
         return;
       }
 
       // Success!
-      const logoMessage = logoUrl 
+      const logoMessage = logoUrl
         ? 'Account created successfully with logo! You can now login.'
         : companyLogoFile
         ? 'Account created successfully! Note: Logo upload failed (storage permissions issue). You can upload logo later from your profile. You can now login.'
         : 'Account created successfully! You can now login.';
-      
-      Alert.alert(
-        'Success',
-        logoMessage,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              if (navigation) {
-                navigation.navigate('Login');
-              }
-            },
+
+      Alert.alert('Success', logoMessage, [
+        {
+          text: 'OK',
+          onPress: () => {
+            if (navigation) {
+              navigation.navigate('Login');
+            }
           },
-        ]
-      );
+        },
+      ]);
     } catch (error) {
       console.error('Unexpected error during signup:', error);
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
@@ -634,13 +730,15 @@ const CreateAccountScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}>
+        style={styles.keyboardView}
+      >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={true}
           nestedScrollEnabled={true}
-          bounces={true}>
+          bounces={true}
+        >
           {/* Header Section - Full Width */}
           <View style={styles.headerSection}>
             <Text style={styles.headerTitle}>Create New Account</Text>
@@ -651,26 +749,38 @@ const CreateAccountScreen = ({ navigation }) => {
 
           {/* Form 1: Company Information */}
           <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Company Information</Text>
+            <Text style={styles.sectionTitle}>Company Information</Text>
 
-              <View style={styles.row}>
-                <View style={styles.halfWidth}>
-                  <Input
-                    label="Company Name"
-                    placeholder="Enter company name"
-                    value={companyName}
-                    onChangeText={(text) => {
+            <View style={styles.row}>
+              <View style={styles.halfWidth}>
+                <Input
+                  label="Company Name"
+                  placeholder="Enter company name"
+                  value={companyName}
+                  onChangeText={text => {
+                    // Only allow editing if no invite data
+                    if (!inviteData.company_id && !inviteData.franchise_id) {
                       setCompanyName(text);
-                      if (errors.companyName) {
-                        updateError('companyName', validateRequired(text, 'Company Name'));
-                      }
-                    }}
-                    errorMessage={errors.companyName}
-                    required
-                    style={styles.inputRow}
-                  />
-                </View>
-                <View style={[styles.halfWidth]}>
+                    }
+                    if (errors.companyName) {
+                      updateError(
+                        'companyName',
+                        validateRequired(text, 'Company Name'),
+                      );
+                    }
+                  }}
+                  errorMessage={errors.companyName}
+                  required
+                  editable={!(inviteData.company_id || inviteData.franchise_id)} // Read-only if invite data exists
+                  style={styles.inputRow}
+                />
+                {inviteData.company_id && (
+                  <Text style={styles.helperText}>
+                    Company name pre-filled from invite link
+                  </Text>
+                )}
+              </View>
+              {/* <View style={[styles.halfWidth]}>
                   <Dropdown
                     label="Industry"
                     placeholder="Select..."
@@ -686,269 +796,314 @@ const CreateAccountScreen = ({ navigation }) => {
                     required
                     style={styles.inputRow}
                   />
-                </View>
-              </View>
+                </View> */}
+            </View>
           </View>
 
           {/* Form 2: Primary Contact Information */}
           <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Primary Contact Information</Text>
+            <Text style={styles.sectionTitle}>Primary Contact Information</Text>
 
-              <View style={styles.row}>
-                <View style={styles.halfWidth}>
-                  <Input
-                    label="Contact First Name"
-                    placeholder="Enter first name"
-                    value={firstName}
-                    onChangeText={(text) => {
-                      setFirstName(text);
-                      if (errors.firstName) {
-                        updateError('firstName', validateRequired(text, 'First Name'));
-                      }
-                    }}
-                    errorMessage={errors.firstName}
-                    required
-                    style={styles.inputRow}
-                  />
-                </View>
-                <View style={[styles.halfWidth]}>
-                  <Input
-                    label="Contact Last Name"
-                    placeholder="Enter last name"
-                    value={lastName}
-                    onChangeText={(text) => {
-                      setLastName(text);
-                      if (errors.lastName) {
-                        updateError('lastName', validateRequired(text, 'Last Name'));
-                      }
-                    }}
-                    errorMessage={errors.lastName}
-                    required
-                    style={styles.inputRow}
-                  />
-                </View>
+            <View style={styles.row}>
+              <View style={styles.halfWidth}>
+                <Input
+                  label="Contact First Name"
+                  placeholder="Enter first name"
+                  value={firstName}
+                  onChangeText={text => {
+                    setFirstName(text);
+                    if (errors.firstName) {
+                      updateError(
+                        'firstName',
+                        validateRequired(text, 'First Name'),
+                      );
+                    }
+                  }}
+                  errorMessage={errors.firstName}
+                  required
+                  style={styles.inputRow}
+                />
               </View>
+              <View style={[styles.halfWidth]}>
+                <Input
+                  label="Contact Last Name"
+                  placeholder="Enter last name"
+                  value={lastName}
+                  onChangeText={text => {
+                    setLastName(text);
+                    if (errors.lastName) {
+                      updateError(
+                        'lastName',
+                        validateRequired(text, 'Last Name'),
+                      );
+                    }
+                  }}
+                  errorMessage={errors.lastName}
+                  required
+                  style={styles.inputRow}
+                />
+              </View>
+            </View>
 
-              <View style={styles.row}>
-                <View style={styles.halfWidth}>
-                  <Input
-                    label="Email"
-                    placeholder="email@example.com"
-                    value={email}
-                    onChangeText={(text) => {
-                      setEmail(text);
-                      if (errors.email) {
-                        updateError('email', validateEmail(text));
-                      }
-                    }}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    errorMessage={errors.email}
-                    required
-                    icon={<Icon name="mail-outline" size={20} color={Colors.textSecondary} />}
-                    iconPosition="right"
-                    style={styles.inputRow}
-                  />
-                </View>
-                <View style={[styles.halfWidth]}>
-                  <Input
-                    label="Phone Number"
-                    placeholder="+1 (305) 555-0100"
-                    value={phone}
-                    onChangeText={(text) => {
-                      setPhone(text);
-                      if (errors.phone) {
-                        updateError('phone', validatePhone(text));
-                      }
-                    }}
-                    keyboardType="phone-pad"
-                    errorMessage={errors.phone}
-                    required
-                    style={styles.inputRow}
-                  />
-                </View>
+            <View style={styles.row}>
+              <View style={styles.halfWidth}>
+                <Input
+                  label="Email"
+                  placeholder="email@example.com"
+                  value={email}
+                  onChangeText={text => {
+                    setEmail(text);
+                    if (errors.email) {
+                      updateError('email', validateEmail(text));
+                    }
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  errorMessage={errors.email}
+                  required
+                  icon={
+                    <Icon
+                      name="mail-outline"
+                      size={20}
+                      color={Colors.textSecondary}
+                    />
+                  }
+                  iconPosition="right"
+                  style={styles.inputRow}
+                />
               </View>
+              <View style={[styles.halfWidth]}>
+                <Input
+                  label="Phone Number"
+                  placeholder="+1 (305) 555-0100"
+                  value={phone}
+                  onChangeText={text => {
+                    setPhone(text);
+                    if (errors.phone) {
+                      updateError('phone', validatePhone(text));
+                    }
+                  }}
+                  keyboardType="phone-pad"
+                  errorMessage={errors.phone}
+                  required
+                  style={styles.inputRow}
+                />
+              </View>
+            </View>
           </View>
 
           {/* Form 3: Alternate Contact Information */}
           <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Alternate Contact Information</Text>
+            <Text style={styles.sectionTitle}>
+              Alternate Contact Information
+            </Text>
 
-              <View style={styles.row}>
-                <View style={styles.halfWidth}>
-                  <Input
-                    label="Alternate Email 1"
-                    placeholder="alternate1@example.com"
-                    value={alternateEmail1}
-                    onChangeText={(text) => {
-                      setAlternateEmail1(text);
-                      if (errors.alternateEmail1) {
-                        updateError('alternateEmail1', validateOptionalEmail(text));
-                      }
-                    }}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    errorMessage={errors.alternateEmail1}
-                    icon={<Icon name="mail-outline" size={20} color={Colors.textSecondary} />}
-                    iconPosition="right"
-                    style={styles.inputRow}
-                  />
-                </View>
-                <View style={[styles.halfWidth]}>
-                  <Input
-                    label="Alternate Email 2"
-                    placeholder="alternate2@example.com"
-                    value={alternateEmail2}
-                    onChangeText={(text) => {
-                      setAlternateEmail2(text);
-                      if (errors.alternateEmail2) {
-                        updateError('alternateEmail2', validateOptionalEmail(text));
-                      }
-                    }}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    errorMessage={errors.alternateEmail2}
-                    icon={<Icon name="mail-outline" size={20} color={Colors.textSecondary} />}
-                    iconPosition="right"
-                    style={styles.inputRow}
-                  />
-                </View>
-              </View>
-
-              <Input
-                label="Alternate Phone"
-                placeholder="+1 (305) 555-0200"
-                value={alternatePhone}
-                onChangeText={(text) => {
-                  setAlternatePhone(text);
-                  if (errors.alternatePhone) {
-                    updateError('alternatePhone', text ? validatePhone(text) : '');
+            <View style={styles.row}>
+              <View style={styles.halfWidth}>
+                <Input
+                  label="Alternate Email 1"
+                  placeholder="alternate1@example.com"
+                  value={alternateEmail1}
+                  onChangeText={text => {
+                    setAlternateEmail1(text);
+                    if (errors.alternateEmail1) {
+                      updateError(
+                        'alternateEmail1',
+                        validateOptionalEmail(text),
+                      );
+                    }
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  errorMessage={errors.alternateEmail1}
+                  icon={
+                    <Icon
+                      name="mail-outline"
+                      size={20}
+                      color={Colors.textSecondary}
+                    />
                   }
-                }}
-                keyboardType="phone-pad"
-                errorMessage={errors.alternatePhone}
-              />
+                  iconPosition="right"
+                  style={styles.inputRow}
+                />
+              </View>
+              <View style={[styles.halfWidth]}>
+                <Input
+                  label="Alternate Email 2"
+                  placeholder="alternate2@example.com"
+                  value={alternateEmail2}
+                  onChangeText={text => {
+                    setAlternateEmail2(text);
+                    if (errors.alternateEmail2) {
+                      updateError(
+                        'alternateEmail2',
+                        validateOptionalEmail(text),
+                      );
+                    }
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  errorMessage={errors.alternateEmail2}
+                  icon={
+                    <Icon
+                      name="mail-outline"
+                      size={20}
+                      color={Colors.textSecondary}
+                    />
+                  }
+                  iconPosition="right"
+                  style={styles.inputRow}
+                />
+              </View>
+            </View>
+
+            <Input
+              label="Alternate Phone"
+              placeholder="+1 (305) 555-0200"
+              value={alternatePhone}
+              onChangeText={text => {
+                setAlternatePhone(text);
+                if (errors.alternatePhone) {
+                  updateError(
+                    'alternatePhone',
+                    text ? validatePhone(text) : '',
+                  );
+                }
+              }}
+              keyboardType="phone-pad"
+              errorMessage={errors.alternatePhone}
+            />
           </View>
 
           {/* Form 4: Delivery Information */}
           <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Delivery Information</Text>
+            <Text style={styles.sectionTitle}>Delivery Information</Text>
 
-              <View style={styles.inputWrapper}>
-                <Text style={[TextStyles.label, styles.label]}>
-                  Delivery Address <Text style={styles.required}>*</Text>
-                </Text>
-                <GooglePlacesAutocomplete
-                  placeholder="Enter full address"
-                  onPress={(data, details = null) => {
-                    console.log('Address selected:', data, details);
-                    const fullAddress = data.description || data.structured_formatting?.main_text || '';
-                    if (fullAddress) {
-                      setDeliveryAddress(fullAddress);
-                      
-                      // Hide suggestions after a short delay to allow onPress to complete
-                      setTimeout(() => {
-                        setShowAddressSuggestions(false);
-                      }, 100);
-                      
-                      // Clear error if any
-                      if (errors.deliveryAddress) {
-                        updateError('deliveryAddress', '');
-                      }
-                      
-                      // Detect zone from place details
-                      if (details) {
-                        detectZoneFromPlaceDetails(details);
-                      } else if (fullAddress) {
-                        // If details not provided, still try to detect zone from address
-                        setTimeout(() => {
-                          detectZoneFromPlaceDetails({ formatted_address: fullAddress });
-                        }, 200);
-                      }
+            <View style={styles.inputWrapper}>
+              <Text style={[TextStyles.label, styles.label]}>
+                Delivery Address <Text style={styles.required}>*</Text>
+              </Text>
+              <GooglePlacesAutocomplete
+                placeholder="Enter full address"
+                onPress={(data, details = null) => {
+                  console.log('Address selected:', data, details);
+                  const fullAddress =
+                    data.description ||
+                    data.structured_formatting?.main_text ||
+                    '';
+                  if (fullAddress) {
+                    setDeliveryAddress(fullAddress);
+
+                    // Hide suggestions after a short delay to allow onPress to complete
+                    setTimeout(() => {
+                      setShowAddressSuggestions(false);
+                    }, 100);
+
+                    // Clear error if any
+                    if (errors.deliveryAddress) {
+                      updateError('deliveryAddress', '');
                     }
-                  }}
-                  query={{
-                    key: 'AIzaSyBtb6hSmwJ9_OznDC5e8BcZM90ms4WD_DE', // TODO: Replace with your Google Places API key
-                    language: 'en',
-                    components: 'country:us', // Adjust based on your country
-                  }}
-                  fetchDetails={true}
-                  enablePoweredByContainer={false}
-                  debounce={300}
-                  listViewDisplayed={showAddressSuggestions ? 'auto' : 'none'}
-                  onFocus={() => setShowAddressSuggestions(true)}
-                  onBlur={() => {
-                    // Delay hiding suggestions to allow onPress to fire
-                    setTimeout(() => setShowAddressSuggestions(false), 200);
-                  }}
-                  flatListProps={{
-                    nestedScrollEnabled: true,
-                    scrollEnabled: true,
-                  }}
-                  styles={{
-                    container: {
-                      flex: 0,
-                      zIndex: 1000,
-                    },
-                    textInputContainer: {
-                      backgroundColor: Colors.cardBackground,
-                      borderRadius: 12,
-                      borderWidth: errors.deliveryAddress ? 1.5 : 1,
-                      borderColor: errors.deliveryAddress ? Colors.error : Colors.borderLight,
-                      paddingHorizontal: 0,
-                    },
-                    textInput: {
-                      fontSize: 14,
-                      fontFamily: fontFamilyBody,
-                      color: Colors.textPrimary,
-                      paddingVertical: 12,
-                      paddingHorizontal: 16,
-                      minHeight: 50,
-                    },
-                    predefinedPlacesDescription: {
-                      color: Colors.textSecondary,
-                    },
-                    listView: {
-                      backgroundColor: Colors.cardBackground,
-                      borderRadius: 8,
-                      marginTop: 4,
-                      elevation: 10,
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 4,
-                      maxHeight: 200,
-                    },
-                    row: {
-                      backgroundColor: Colors.cardBackground,
-                      padding: 12,
-                    },
-                    separator: {
-                      height: 1,
-                      backgroundColor: Colors.borderLight,
-                    },
-                  }}
-                  textInputProps={{
-                    value: deliveryAddress,
-                    onChangeText: (text) => {
-                      setDeliveryAddress(text);
-                      setShowAddressSuggestions(true); // Show suggestions when typing
-                      if (errors.deliveryAddress) {
-                        updateError('deliveryAddress', validateRequired(text, 'Delivery Address'));
-                      }
-                    },
-                    onBlur: () => {
-                      // Hide suggestions when input loses focus
-                      setTimeout(() => setShowAddressSuggestions(false), 200);
-                    },
-                  }}
-                />
-                {errors.deliveryAddress ? (
-                  <Text style={styles.errorText}>{errors.deliveryAddress}</Text>
-                ) : null}
-              </View>
 
-              {/* <View style={styles.inputWrapper}>
+                    // Detect zone from place details
+                    if (details) {
+                      detectZoneFromPlaceDetails(details);
+                    } else if (fullAddress) {
+                      // If details not provided, still try to detect zone from address
+                      setTimeout(() => {
+                        detectZoneFromPlaceDetails({
+                          formatted_address: fullAddress,
+                        });
+                      }, 200);
+                    }
+                  }
+                }}
+                query={{
+                  key: 'AIzaSyBtb6hSmwJ9_OznDC5e8BcZM90ms4WD_DE', // TODO: Replace with your Google Places API key
+                  language: 'en',
+                  components: 'country:us', // Adjust based on your country
+                }}
+                fetchDetails={true}
+                enablePoweredByContainer={false}
+                debounce={300}
+                listViewDisplayed={showAddressSuggestions ? 'auto' : 'none'}
+                onFocus={() => setShowAddressSuggestions(true)}
+                onBlur={() => {
+                  // Delay hiding suggestions to allow onPress to fire
+                  setTimeout(() => setShowAddressSuggestions(false), 200);
+                }}
+                flatListProps={{
+                  nestedScrollEnabled: true,
+                  scrollEnabled: true,
+                }}
+                styles={{
+                  container: {
+                    flex: 0,
+                    zIndex: 1000,
+                  },
+                  textInputContainer: {
+                    backgroundColor: Colors.cardBackground,
+                    borderRadius: 12,
+                    borderWidth: errors.deliveryAddress ? 1.5 : 1,
+                    borderColor: errors.deliveryAddress
+                      ? Colors.error
+                      : Colors.borderLight,
+                    paddingHorizontal: 0,
+                  },
+                  textInput: {
+                    fontSize: 14,
+                    fontFamily: fontFamilyBody,
+                    color: Colors.textPrimary,
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    minHeight: 50,
+                  },
+                  predefinedPlacesDescription: {
+                    color: Colors.textSecondary,
+                  },
+                  listView: {
+                    backgroundColor: Colors.cardBackground,
+                    borderRadius: 8,
+                    marginTop: 4,
+                    elevation: 10,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    maxHeight: 200,
+                  },
+                  row: {
+                    backgroundColor: Colors.cardBackground,
+                    padding: 12,
+                  },
+                  separator: {
+                    height: 1,
+                    backgroundColor: Colors.borderLight,
+                  },
+                }}
+                textInputProps={{
+                  value: deliveryAddress,
+                  onChangeText: text => {
+                    setDeliveryAddress(text);
+                    setShowAddressSuggestions(true); // Show suggestions when typing
+                    if (errors.deliveryAddress) {
+                      updateError(
+                        'deliveryAddress',
+                        validateRequired(text, 'Delivery Address'),
+                      );
+                    }
+                  },
+                  onBlur: () => {
+                    // Hide suggestions when input loses focus
+                    setTimeout(() => setShowAddressSuggestions(false), 200);
+                  },
+                }}
+              />
+              {errors.deliveryAddress ? (
+                <Text style={styles.errorText}>{errors.deliveryAddress}</Text>
+              ) : null}
+            </View>
+
+            {/* <View style={styles.inputWrapper}>
                 <Text style={[TextStyles.label, styles.label]}>Zone</Text>
                 <View style={styles.inputContainer}>
                   <TextInput
@@ -973,45 +1128,53 @@ const CreateAccountScreen = ({ navigation }) => {
 
           {/* Form 5: Account Security */}
           <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Account Security</Text>
+            <Text style={styles.sectionTitle}>Account Security</Text>
 
-              <Input
-                label="Password"
-                placeholder="Enter password (min. 8 characters)"
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (errors.password) {
-                    const error = validateMinLength(text, 8, 'Password');
-                    updateError('password', error || (text.length < 8 ? 'Password must be at least 8 characters' : ''));
-                  }
-                }}
-                secureTextEntry
-                errorMessage={errors.password}
-                required
-              />
+            <Input
+              label="Password"
+              placeholder="Enter password (min. 8 characters)"
+              value={password}
+              onChangeText={text => {
+                setPassword(text);
+                if (errors.password) {
+                  const error = validateMinLength(text, 8, 'Password');
+                  updateError(
+                    'password',
+                    error ||
+                      (text.length < 8
+                        ? 'Password must be at least 8 characters'
+                        : ''),
+                  );
+                }
+              }}
+              secureTextEntry
+              errorMessage={errors.password}
+              required
+            />
 
-              <Input
-                label="Confirm Password"
-                placeholder="Re-enter password"
-                value={confirmPassword}
-                onChangeText={(text) => {
-                  setConfirmPassword(text);
-                  if (errors.confirmPassword) {
-                    updateError('confirmPassword', validatePasswordMatch(password, text));
-                  }
-                }}
-                secureTextEntry
-                errorMessage={errors.confirmPassword}
-                required
-              />
+            <Input
+              label="Confirm Password"
+              placeholder="Re-enter password"
+              value={confirmPassword}
+              onChangeText={text => {
+                setConfirmPassword(text);
+                if (errors.confirmPassword) {
+                  updateError(
+                    'confirmPassword',
+                    validatePasswordMatch(password, text),
+                  );
+                }
+              }}
+              secureTextEntry
+              errorMessage={errors.confirmPassword}
+              required
+            />
           </View>
 
           {/* Form 6: Company Logo */}
-          <View style={styles.sectionCard}>
+          {/* <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Company Logo (Optional)</Text>
-
-            {/* Information Box */}
+ 
             <View style={styles.infoBox}>
               <Text style={styles.infoText}>
                 Preferred: Vector files (SVG, AI, EPS) for best quality
@@ -1024,8 +1187,7 @@ const CreateAccountScreen = ({ navigation }) => {
                 <Text style={styles.warningText}>Screenshots not accepted</Text>
               </View>
             </View>
-
-            {/* Upload Area */}
+ 
             <TouchableOpacity 
               style={styles.uploadArea}
               onPress={handleLogoUpload}
@@ -1053,7 +1215,7 @@ const CreateAccountScreen = ({ navigation }) => {
                 </>
               )}
             </TouchableOpacity>
-          </View>
+          </View> */}
 
           {/* Action Buttons */}
           <View style={styles.buttonContainer}>
@@ -1095,7 +1257,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryPink,
     paddingVertical: 20,
     paddingHorizontal: 20,
-    alignItems: 'center', 
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 24,
@@ -1133,11 +1295,10 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyHeading,
     color: Colors.textPrimary,
     marginBottom: 16,
-  }, 
+  },
   halfWidth: {
-    flex: 1, 
+    flex: 1,
     marginBottom: 12,
-
   },
   halfWidthLast: {
     marginRight: 0,
@@ -1282,6 +1443,28 @@ const styles = StyleSheet.create({
   },
   loadingIcon: {
     marginLeft: 8,
+  },
+  uploadAreaDisabled: {
+    opacity: 0.6,
+    backgroundColor: Colors.backgroundGray,
+  },
+  preFilledBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: Colors.success,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  preFilledText: {
+    fontSize: 10,
+    fontFamily: fontFamilyBody,
+    color: Colors.cardBackground,
+    fontWeight: '600',
   },
 });
 

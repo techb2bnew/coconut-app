@@ -140,6 +140,8 @@ const ProfileScreen = ({ navigation }) => {
       }
 
       setCustomerData(customer);
+      console.log('👤 ProfileScreen: Loaded customer data:', customer);
+      console.log('🏢 ProfileScreen: Customer company_id:', customer?.company_id);
 
       // Initialize form fields when customer data is loaded
       if (customer) {
@@ -149,43 +151,73 @@ const ProfileScreen = ({ navigation }) => {
         setPhone(customer.phone || '');
       }
 
-      // Fetch orders for stats
-      if (customer?.id) {
-        const { data: orders, error: ordersError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('customer_id', customer.id)
-          .order('created_at', { ascending: false }); // Sort by created_at to get latest orders first
+      // Fetch orders for stats - Company wide orders
+      if (customer?.company_id) {
+        console.log('📥 ProfileScreen: Fetching company orders for company:', customer.company_id);
+        
+        // Get all customers in this company
+        const { data: companyCustomers, error: customersError } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('company_id', customer.company_id);
 
-        if (!ordersError && orders) {
-          // Calculate active orders (orders that are NOT completed or delivered)
-          const activeOrdersCount = orders.filter(order => {
-            const status = (order.status || '').trim().toLowerCase();
-            const deliveryStatus = (
-              order.delivery_status ||
-              order.deliveryStatus ||
-              ''
-            )
-              .trim()
-              .toLowerCase();
-            const statusToCheck = deliveryStatus || status;
+        if (customersError) {
+          console.error('❌ Error fetching company customers:', customersError);
+        } else {
+          const customerIds = companyCustomers?.map(c => c.id) || [];
+          console.log('👥 ProfileScreen: Company customers count:', customerIds.length);
 
-            // Count orders that are NOT completed or delivered
-            const isCompleted =
-              statusToCheck.includes('completed') ||
-              statusToCheck.includes('delivered');
-            return !isCompleted;
-          }).length;
+          if (customerIds.length > 0) {
+            // Fetch all orders for all customers in this company
+            const { data: orders, error: ordersError } = await supabase
+              .from('orders')
+              .select('*')
+              .in('customer_id', customerIds)
+              .order('created_at', { ascending: false }); // Sort by created_at to get latest orders first
 
-          setStats({
-            totalOrders: orders.length,
-            activeOrders: activeOrdersCount,
-          });
+            if (!ordersError && orders) {
+              console.log('✅ ProfileScreen: Fetched company orders count:', orders.length);
+              
+              // Calculate active orders (orders that are NOT completed or delivered)
+              const activeOrdersCount = orders.filter(order => {
+                const status = (order.status || '').trim().toLowerCase();
+                const deliveryStatus = (
+                  order.delivery_status ||
+                  order.deliveryStatus ||
+                  ''
+                )
+                  .trim()
+                  .toLowerCase();
+                const statusToCheck = deliveryStatus || status;
 
-          // Get recent orders (already sorted by created_at desc from query)
-          const recent = orders.slice(0, 3);
-          setRecentOrders(recent);
+                // Count orders that are NOT completed or delivered
+                const isCompleted =
+                  statusToCheck.includes('completed') ||
+                  statusToCheck.includes('delivered');
+                return !isCompleted;
+              }).length;
+
+              setStats({
+                totalOrders: orders.length,
+                activeOrders: activeOrdersCount,
+              });
+
+              // Get recent orders (already sorted by created_at desc from query)
+              const recent = orders.slice(0, 3);
+              setRecentOrders(recent);
+            } else {
+              console.error('❌ Error fetching company orders:', ordersError);
+            }
+          } else {
+            console.log('ℹ️ No customers found for this company');
+            setStats({ totalOrders: 0, activeOrders: 0 });
+            setRecentOrders([]);
+          }
         }
+      } else {
+        console.log('⚠️ ProfileScreen: Customer has no company_id');
+        setStats({ totalOrders: 0, activeOrders: 0 });
+        setRecentOrders([]);
       }
     } catch (error) {
       console.error('Error in fetchCustomerData:', error);
@@ -1201,11 +1233,11 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Recent Orders */}
+        {/* Company Recent Orders */}
         <View style={styles.recentOrdersCard}>
           <View style={styles.sectionHeader}>
             <Icon name="cube-outline" size={18} color={Colors.primaryPink} />
-            <Text style={styles.sectionTitle}>Recent Orders</Text>
+            <Text style={styles.sectionTitle}>Company Recent Orders</Text>
             <TouchableOpacity
               style={styles.iconButton}
               onPress={() =>

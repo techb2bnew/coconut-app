@@ -95,7 +95,7 @@ const OrdersListScreen = ({ navigation }) => {
     return '#424242'; // Default dark gray
   };
 
-  // Fetch customer ID
+  // Fetch customer ID and company ID
   const fetchCustomerId = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -105,7 +105,7 @@ const OrdersListScreen = ({ navigation }) => {
 
       const { data: customer, error } = await supabase
         .from('customers')
-        .select('id, status')
+        .select('id, status, company_id')
         .eq('email', user.email)
         .single();
 
@@ -125,7 +125,10 @@ const OrdersListScreen = ({ navigation }) => {
         return null;
       }
 
-      return customer?.id || null;
+      return { 
+        customerId: customer?.id || null, 
+        companyId: customer?.company_id || null 
+      };
     } catch (error) {
       console.error('Error in fetchCustomerId:', error);
       return null;
@@ -254,19 +257,44 @@ const OrdersListScreen = ({ navigation }) => {
     setFilteredOrders(filtered);
   };
 
-  // Fetch orders
-  const fetchOrders = async (customerId) => {
-    if (!customerId) {
+  // Fetch orders for the entire company
+  const fetchOrders = async (customerData) => {
+    if (!customerData || !customerData.companyId) {
       setLoading(false);
       return;
     }
 
     try {
-      console.log('📥 Fetching orders for customer:', customerId);
+      console.log('📥 Fetching orders for company:', customerData.companyId);
+      
+      // Get all customers in this company
+      const { data: companyCustomers, error: customersError } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('company_id', customerData.companyId);
+
+      if (customersError) {
+        console.error('❌ Error fetching company customers:', customersError);
+        setLoading(false);
+        return;
+      }
+
+      const customerIds = companyCustomers?.map(c => c.id) || [];
+      console.log('👥 Company customers count:', customerIds.length);
+
+      if (customerIds.length === 0) {
+        console.log('ℹ️ No customers found for this company');
+        setOrders([]);
+        setFilteredOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch all orders for all customers in this company
       const { data: ordersData, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('customer_id', customerId)
+        .in('customer_id', customerIds)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -275,7 +303,7 @@ const OrdersListScreen = ({ navigation }) => {
         return;
       }
 
-      console.log('✅ Fetched orders count:', ordersData || 0);
+      console.log('✅ Fetched company orders count:', ordersData?.length || 0);
 
       const processedOrders = (ordersData || []).map((order) => {
         const status = (order.status || 'Pending').trim();
@@ -376,13 +404,13 @@ const OrdersListScreen = ({ navigation }) => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      const id = await fetchCustomerId();
-      if (id) {
-        console.log('👤 Loaded customer ID on mount:', id);
-        setCustomerId(id);
-        await fetchOrders(id);
+      const data = await fetchCustomerId();
+      if (data) {
+        console.log('👤 Loaded customer data on mount:', data);
+        setCustomerId(data.customerId);
+        await fetchOrders(data);
       } else {
-        console.log('⚠️ No customer ID found on mount');
+        console.log('⚠️ No customer data found on mount');
         setLoading(false);
       }
     };
@@ -393,8 +421,11 @@ const OrdersListScreen = ({ navigation }) => {
   // Real-time orders: refetch when admin adds/updates/deletes orders (no refresh needed)
   useEffect(() => {
     if (!customerId) return;
-    const unsub = subscribeToOrdersRealtime(customerId, () => {
-      fetchOrders(customerId);
+    const unsub = subscribeToOrdersRealtime(customerId, async () => {
+      const data = await fetchCustomerId();
+      if (data) {
+        fetchOrders(data);
+      }
     });
     return () => unsub();
   }, [customerId]);
@@ -408,7 +439,15 @@ const OrdersListScreen = ({ navigation }) => {
 
       console.log('🔄 Screen focused, refreshing orders for customer:', customerId);
       setRefreshing(true);
-      fetchOrders(customerId);
+      const loadData = async () => {
+        const data = await fetchCustomerId();
+        if (data) {
+          await fetchOrders(data);
+        } else {
+          setRefreshing(false);
+        }
+      };
+      loadData();
     }, [customerId])
   );
 
@@ -425,9 +464,9 @@ const OrdersListScreen = ({ navigation }) => {
   // Refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
-    const id = await fetchCustomerId();
-    if (id) {
-      await fetchOrders(id);
+    const data = await fetchCustomerId();
+    if (data) {
+      await fetchOrders(data);
     } else {
       setRefreshing(false);
     }
@@ -636,8 +675,8 @@ const OrdersListScreen = ({ navigation }) => {
             <Icon name="arrow-back" size={24} color={Colors.cardBackground} />
             <Text style={styles.backText}>Dashboard</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Orders</Text>
-          <Text style={styles.headerSubtitle}>Manage your coconut deliveries</Text>
+          <Text style={styles.headerTitle}>Company Orders</Text>
+          <Text style={styles.headerSubtitle}>View all orders from your company</Text>
           {/* Search Bar */}
           <View style={styles.searchContainer}>
             <View style={styles.searchBar}>
