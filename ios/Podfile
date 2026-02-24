@@ -5,7 +5,7 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-# Enable New Architecture
+# Enable New Architecture (required by react-native-reanimated v4)
 ENV['RCT_NEW_ARCH_ENABLED'] = '1'
 
 platform :ios, min_ios_version_supported
@@ -29,7 +29,7 @@ target 'demo' do
     :path => react_native_path,
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/..",
-    # Enable New Architecture
+    # Enable New Architecture (required by react-native-reanimated v4)
     :new_arch_enabled => true
   )
 
@@ -71,6 +71,11 @@ target 'demo' do
         if target.name == 'glog'
           config.build_settings['CLANG_ENABLE_MODULES'] = 'NO'
           config.build_settings['DEFINES_MODULE'] = 'NO'
+        end
+
+        # Firebase/abseil: fix duplicate/undefined symbols with CocoaPods 1.16+
+        if target.name == 'abseil'
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'gnu++14'
         end
       end
     end

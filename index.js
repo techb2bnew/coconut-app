@@ -12,8 +12,15 @@ import 'react-native-url-polyfill/auto';
 
 // IMPORTANT: Set up background message handler BEFORE any other imports
 // This must be registered outside of React component lifecycle
-import { setupBackgroundMessageHandler } from './src/services/firebaseMessaging';
-setupBackgroundMessageHandler();
+// Wrapped in try-catch so TestFlight/production build does not crash if Firebase init fails
+try {
+  const { setupBackgroundMessageHandler } = require('./src/services/firebaseMessaging');
+  setupBackgroundMessageHandler();
+} catch (e) {
+  if (__DEV__) {
+    console.warn('Firebase background message handler setup failed:', e?.message || e);
+  }
+}
 
 import 'react-native-screens';
 import { AppRegistry } from 'react-native';
