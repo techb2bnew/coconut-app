@@ -1489,10 +1489,7 @@ const ProfileScreen = ({ navigation }) => {
             <View style={styles.headerIconContainer}>
               <Icon name="people-outline" size={18} color={Colors.primaryPink} />
             </View>
-            <Text style={styles.sectionTitle}>Invite Customer</Text>
-            <View style={styles.inviteBadge}>
-              <Text style={styles.inviteBadgeText}>PRO</Text>
-            </View>
+            <Text style={styles.sectionTitle}>Invite Customer</Text> 
           </View>
           
           <View style={styles.inviteContent}>
@@ -1507,22 +1504,7 @@ const ProfileScreen = ({ navigation }) => {
                 <Icon name="share-social-outline" size={20} color='#fff' />
                 <Text style={styles.inviteButtonText}>Share Invite Link</Text>
               </View>
-            </TouchableOpacity>
-            
-            <View style={styles.inviteFeatures}>
-              <View style={styles.featureItem}>
-                <Icon name="checkmark-circle" size={14} color={Colors.success} />
-                <Text style={styles.featureText}>Automatic franchise assignment</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Icon name="shield-checkmark" size={14} color={Colors.success} />
-                <Text style={styles.featureText}>Secure customer onboarding</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Icon name="time-outline" size={14} color={Colors.success} />
-                <Text style={styles.featureText}>Quick setup process</Text>
-              </View>
-            </View>
+            </TouchableOpacity> 
           </View>
         </View>
 
@@ -2439,8 +2421,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderRadius: 12,
     gap: 12,
     color:'#fff',

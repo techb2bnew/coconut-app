@@ -46,7 +46,7 @@ const HomeScreen = ({ navigation }) => {
   const scrollX = useRef(new Animated.Value(0)).current;
   const slideInterval = useRef(null);
   const carouselRef = useRef(null);
-  
+
   const [stats, setStats] = useState({
     activeOrders: 0,
     pending: 0,
@@ -57,7 +57,7 @@ const HomeScreen = ({ navigation }) => {
 
   // Coconut images array
   const coconutImages = [coconut1, coconut2, coconut3];
-  
+
   // Animation values for filter tabs
   const filterAnimations = useRef({
     all: new Animated.Value(1),
@@ -67,7 +67,7 @@ const HomeScreen = ({ navigation }) => {
   }).current;
 
   // Helper function to format date
-  const formatDate = (dateString) => {
+  const formatDate = dateString => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -77,7 +77,7 @@ const HomeScreen = ({ navigation }) => {
   };
 
   // Helper function to get time ago
-  const getTimeAgo = (dateString) => {
+  const getTimeAgo = dateString => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const now = new Date();
@@ -96,10 +96,10 @@ const HomeScreen = ({ navigation }) => {
   };
 
   // Helper function to get status color
-  const getStatusColor = (status) => {
+  const getStatusColor = status => {
     if (!status) return '#9E9E9E';
     const statusLower = status.trim().toLowerCase();
-    
+
     // Handle exact status values from database
     if (statusLower === 'completed') return '#4CAF50'; // Green for Completed
     if (statusLower === 'processing') return '#FFE082'; // Yellow/Orange for Processing
@@ -117,7 +117,9 @@ const HomeScreen = ({ navigation }) => {
   // Fetch customer ID, franchise logo, and company ID from logged in user email
   const fetchCustomerId = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || !user.email) {
         console.log('No user logged in');
         return null;
@@ -142,7 +144,10 @@ const HomeScreen = ({ navigation }) => {
 
       // Customer set inactive by admin → auto logout
       const status = (customer?.status || '').trim().toLowerCase();
-      const isInactive = status === 'inactive' || status === 'disabled' || status === 'deactivated';
+      const isInactive =
+        status === 'inactive' ||
+        status === 'disabled' ||
+        status === 'deactivated';
       if (isInactive) {
         await performLogoutAndNavigateToLogin();
         return null;
@@ -161,9 +166,9 @@ const HomeScreen = ({ navigation }) => {
         setFranchiseLogo(null); // No franchise, use default logo
       }
 
-      return { 
+      return {
         customerId: customer?.id || null,
-        companyId: customer?.company_id || null 
+        companyId: customer?.company_id || null,
       };
     } catch (error) {
       console.error('Error in fetchCustomerId:', error);
@@ -172,7 +177,7 @@ const HomeScreen = ({ navigation }) => {
   };
 
   // Fetch franchise logo from franchises table
-  const fetchFranchiseLogo = async (franchiseId) => {
+  const fetchFranchiseLogo = async franchiseId => {
     try {
       console.log('Fetching franchise logo for franchise_id:', franchiseId);
       const { data: franchise, error } = await supabase
@@ -190,7 +195,11 @@ const HomeScreen = ({ navigation }) => {
       console.log('Franchise data:', franchise);
       console.log('Franchise logo URL:', franchise?.logo);
 
-      if (franchise?.logo && franchise.logo.trim() !== '' && franchise.logo !== 'NULL') {
+      if (
+        franchise?.logo &&
+        franchise.logo.trim() !== '' &&
+        franchise.logo !== 'NULL'
+      ) {
         const logoUrl = franchise.logo.trim();
         console.log('Setting franchise logo:', logoUrl);
         setFranchiseLogo(logoUrl);
@@ -203,25 +212,28 @@ const HomeScreen = ({ navigation }) => {
       setFranchiseLogo(null);
     }
   };
- 
-  const getSelectedDeliveryAddressFromOrder = (order) => {
+
+  const getSelectedDeliveryAddressFromOrder = order => {
     if (!order?.customer_details) return null;
-  
+
     try {
       const customer = JSON.parse(order.customer_details);
-      
+
       // Check if delivery_address exists and is an array
       if (!customer?.delivery_address) return null;
-      
+
       // If delivery_address is not an array, return null
       if (!Array.isArray(customer.delivery_address)) {
-        console.warn('delivery_address is not an array:', customer.delivery_address);
+        console.warn(
+          'delivery_address is not an array:',
+          customer.delivery_address,
+        );
         return null;
       }
-      
+
       // Check if array has items
       if (customer.delivery_address.length === 0) return null;
-  
+
       // Find selected address
       return customer.delivery_address.find(addr => addr && addr.isSelected);
     } catch (e) {
@@ -229,17 +241,20 @@ const HomeScreen = ({ navigation }) => {
       return null;
     }
   };
-  
+
   // Fetch orders for the entire company
-  const fetchOrders = async (customerData) => {
+  const fetchOrders = async customerData => {
     if (!customerData || !customerData.companyId) {
       setLoading(false);
       return;
     }
 
     try {
-      console.log('📥 HomeScreen: Fetching orders for company:', customerData.companyId);
-      
+      console.log(
+        '📥 HomeScreen: Fetching orders for company:',
+        customerData.companyId,
+      );
+
       // Get all customers in this company
       const { data: companyCustomers, error: customersError } = await supabase
         .from('customers')
@@ -253,7 +268,10 @@ const HomeScreen = ({ navigation }) => {
       }
 
       const customerIds = companyCustomers?.map(c => c.id) || [];
-      console.log('👥 HomeScreen: Company customers count:', customerIds.length);
+      console.log(
+        '👥 HomeScreen: Company customers count:',
+        customerIds.length,
+      );
 
       if (customerIds.length === 0) {
         console.log('ℹ️ No customers found for this company');
@@ -269,17 +287,20 @@ const HomeScreen = ({ navigation }) => {
         .select('*')
         .in('customer_id', customerIds)
         .order('order_date', { ascending: false }); // Get all orders
-        
+
       if (error) {
         console.error('Error fetching orders:', error);
         setLoading(false);
         return;
       }
 
-      console.log('✅ HomeScreen: Fetched company orders count:', orders?.length || 0);
-     
+      console.log(
+        '✅ HomeScreen: Fetched company orders count:',
+        orders?.length || 0,
+      );
+
       // Process orders data
-      const processedOrders = (orders || []).map((order) => {
+      const processedOrders = (orders || []).map(order => {
         console.log('order', order);
         // Use status from database directly (trim to remove any extra spaces)
         const status = (order.status || 'Pending').trim();
@@ -292,13 +313,17 @@ const HomeScreen = ({ navigation }) => {
           const street = selectedAddress.street || '';
           const city = selectedAddress.city || '';
           const state = selectedAddress.state || '';
-          const zipCode = selectedAddress.zipCode || selectedAddress.zip_code || '';
-          delivery_address = `${street}, ${city}, ${state}${zipCode ? ' - ' + zipCode : ''}`.trim();
+          const zipCode =
+            selectedAddress.zipCode || selectedAddress.zip_code || '';
+          delivery_address = `${street}, ${city}, ${state}${
+            zipCode ? ' - ' + zipCode : ''
+          }`.trim();
         } else if (order.delivery_address) {
           // Fallback to order.delivery_address if it's a string
-          delivery_address = typeof order.delivery_address === 'string' 
-            ? order.delivery_address 
-            : 'No delivery address selected';
+          delivery_address =
+            typeof order.delivery_address === 'string'
+              ? order.delivery_address
+              : 'No delivery address selected';
         }
         return {
           id: order.id,
@@ -340,7 +365,7 @@ const HomeScreen = ({ navigation }) => {
 
       // Set recent orders
       setRecentOrders(processedOrders);
-      
+
       // Apply initial filter
       applyTimeFilter(processedOrders, timeFilter);
 
@@ -349,29 +374,32 @@ const HomeScreen = ({ navigation }) => {
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
 
-      const activeOrdersCount = processedOrders.filter(
-        (order) => {
-          const statusLower = (order.status || '').toLowerCase();
-          return statusLower.includes('processing') || statusLower.includes('pending');
-        }
-      ).length;
+      const activeOrdersCount = processedOrders.filter(order => {
+        const statusLower = (order.status || '').toLowerCase();
+        return (
+          statusLower.includes('processing') || statusLower.includes('pending')
+        );
+      }).length;
 
-      const pendingCount = processedOrders.filter(
-        (order) => {
-          // Use deliveryStatus if available, otherwise fallback to status
-          const deliveryStatusValue = order.deliveryStatus || order.status || '';
-          const statusLower = deliveryStatusValue.trim().toLowerCase();
-          
-          // Count orders that are NOT completed or delivered
-          const isCompleted = statusLower.includes('completed') || statusLower.includes('delivered');
-          return !isCompleted;
-        }
-      ).length;
+      const pendingCount = processedOrders.filter(order => {
+        // Use deliveryStatus if available, otherwise fallback to status
+        const deliveryStatusValue = order.deliveryStatus || order.status || '';
+        const statusLower = deliveryStatusValue.trim().toLowerCase();
 
-      const thisMonthCount = processedOrders.filter((order) => {
+        // Count orders that are NOT completed or delivered
+        const isCompleted =
+          statusLower.includes('completed') ||
+          statusLower.includes('delivered');
+        return !isCompleted;
+      }).length;
+
+      const thisMonthCount = processedOrders.filter(order => {
         if (!order.orderDate) return false;
         const orderDate = new Date(order.orderDate);
-        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+        return (
+          orderDate.getMonth() === currentMonth &&
+          orderDate.getFullYear() === currentYear
+        );
       }).length;
 
       setStats({
@@ -412,10 +440,26 @@ const HomeScreen = ({ navigation }) => {
     }
 
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      0,
+      0,
+      0,
+      0,
+    );
+    const todayEnd = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
 
-    const filtered = ordersList.filter((order) => {
+    const filtered = ordersList.filter(order => {
       const orderDate = order.orderDateRaw || order.orderDate;
       if (!orderDate) return false;
       const orderCreatedDate = new Date(orderDate);
@@ -429,7 +473,15 @@ const HomeScreen = ({ navigation }) => {
         weekAgo.setHours(0, 0, 0, 0);
         return orderCreatedDate >= weekAgo && orderCreatedDate <= todayEnd;
       } else if (filter === 'month') {
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        const monthStart = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          1,
+          0,
+          0,
+          0,
+          0,
+        );
         return orderCreatedDate >= monthStart && orderCreatedDate <= todayEnd;
       }
       return true;
@@ -439,9 +491,9 @@ const HomeScreen = ({ navigation }) => {
   };
 
   // Handle time filter change with animation
-  const handleTimeFilterChange = (filter) => {
+  const handleTimeFilterChange = filter => {
     // Animate scale for all buttons
-    Object.keys(filterAnimations).forEach((key) => {
+    Object.keys(filterAnimations).forEach(key => {
       Animated.sequence([
         Animated.timing(filterAnimations[key], {
           toValue: 0.95,
@@ -502,12 +554,24 @@ const HomeScreen = ({ navigation }) => {
     <View style={styles.orderCard}>
       <View style={styles.orderCardContent}>
         <View style={styles.orderLeft}>
-          <View style={[styles.skeletonBox, { width: 120, height: 16, marginBottom: 8 }]} />
+          <View
+            style={[
+              styles.skeletonBox,
+              { width: 120, height: 16, marginBottom: 8 },
+            ]}
+          />
           <View style={[styles.skeletonBox, { width: 80, height: 14 }]} />
         </View>
-        <View style={[styles.skeletonBox, { width: 90, height: 24, borderRadius: 12 }]} />
+        <View
+          style={[
+            styles.skeletonBox,
+            { width: 90, height: 24, borderRadius: 12 },
+          ]}
+        />
       </View>
-      <View style={[styles.skeletonBox, { width: 150, height: 14, marginTop: 8 }]} />
+      <View
+        style={[styles.skeletonBox, { width: 150, height: 14, marginTop: 8 }]}
+      />
     </View>
   );
 
@@ -537,9 +601,10 @@ const HomeScreen = ({ navigation }) => {
             opacity,
             transform: [{ scale }],
           },
-        ]}>
+        ]}
+      >
         <Image source={item} style={styles.carouselImage} resizeMode="cover" />
-        <View style={styles.carouselOverlay} /> 
+        <View style={styles.carouselOverlay} />
         <View style={styles.carouselContent}>
           <Text style={styles.carouselSubtitle}>Premium Quality</Text>
           <Text style={styles.carouselTitle}>Fresh Coconuts Delivered</Text>
@@ -569,210 +634,303 @@ const HomeScreen = ({ navigation }) => {
           <ActivityIndicator size="large" color={Colors.primaryBlue} />
         </View>
       ) : (
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryBlue} />
-        }>
-        {/* Header Section with Logo and Text */}
-        <View style={styles.topHeader}>
-          <View style={styles.headerLeft}>
-            {franchiseLogo ? (
-              <Image 
-                source={{ uri: franchiseLogo }} 
-                style={[styles.logo, { width: 70, height: 70, borderRadius: 10 }]}
-                resizeMode="contain"
-                onError={(error) => {
-                  console.error('Error loading franchise logo:', error);
-                  console.error('Logo URL:', franchiseLogo);
-                  setFranchiseLogo(null); // Fallback to default logo on error
-                }}
-                onLoad={() => {
-                  console.log('Franchise logo loaded successfully:', franchiseLogo);
-                }}
-              />
-            ) : (
-              <Logo style={styles.logo} size={70} variant="black" />
-            )}
-            <View style={styles.headerTextContainer}> 
-              <Text style={styles.headerMainText}>Order Fresh and</Text>
-              <Text style={styles.headerMainText}>Stay Stocked</Text>
-            </View>
-          </View> 
-        </View>
-
-        {/* Image Carousel Banner */}
-        <View style={styles.carouselContainer}>
-          <FlatList
-            ref={carouselRef}
-            data={coconutImages}
-            renderItem={renderCarouselItem}
-            keyExtractor={(item, index) => index.toString()}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-              { useNativeDriver: false }
-            )}
-            scrollEventThrottle={16}
-            onMomentumScrollEnd={(event) => {
-              const itemWidth = width - 32;
-              const index = Math.round(event.nativeEvent.contentOffset.x / itemWidth);
-              setCurrentSlideIndex(index);
-            }}
-            getItemLayout={(data, index) => {
-              const itemWidth = width - 32;
-              return {
-                length: itemWidth,
-                offset: itemWidth * index,
-                index,
-              };
-            }}
-          />
-          {/* Carousel Indicators */}
-          <View style={styles.carouselIndicators}>
-            {coconutImages.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.indicator,
-                  currentSlideIndex === index && styles.indicatorActive,
-                ]}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* Product Offering Card */}
-        <View style={styles.productCard}>
-          <View style={styles.productCardContent}>
-            <View style={styles.productCardLeft}>
-              <Text style={styles.productCardLabel}>FRESH & WHOLESALE</Text> 
-              <Text style={styles.productCardDescription}>
-                High-quality coconuts sourced fresh for your business needs
-              </Text>
-            </View>
-            <Text style={styles.productCardIcon}>🥥</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.orderNowButton}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('NewStack', { screen: 'CreateOrder' })}>
-            <Icon name="cart-outline" size={20} color={Colors.cardBackground} />
-            <Text style={styles.orderNowText}>Order Now</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Recent Orders Section */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Company Recent Orders</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('OrdersList')}>
-              <View style={styles.viewAllContainer}>
-                <Text style={styles.viewAllText}>View All</Text>
-                <Icon name="chevron-forward" size={16} color={Colors.primaryBlue} />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Time Period Filters */}
-          <View style={styles.timeFilterContainer}>
-            {[
-              { key: 'all', label: 'All Time' },
-              { key: 'today', label: 'Today' },
-              { key: 'week', label: 'This Week' },
-              { key: 'month', label: 'This Month' },
-            ].map((filter) => (
-              <Animated.View
-                key={filter.key}
-                style={{ transform: [{ scale: filterAnimations[filter.key] }] }}>
-                <TouchableOpacity
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Colors.primaryBlue}
+            />
+          }
+        >
+          {/* Header Section with Logo and Text */}
+          <View style={styles.topHeader}>
+            <View style={styles.headerLeft}>
+              {franchiseLogo ? (
+                <Image
+                  source={{ uri: franchiseLogo }}
                   style={[
-                    styles.timeFilterButton,
-                    timeFilter === filter.key && styles.timeFilterButtonActive,
+                    styles.logo,
+                    { width: 70, height: 70, borderRadius: 10 },
                   ]}
-                  onPress={() => handleTimeFilterChange(filter.key)}
-                  activeOpacity={0.7}>
-                  <Text
-                    style={[
-                      styles.timeFilterButtonText,
-                      timeFilter === filter.key && styles.timeFilterButtonTextActive,
-                    ]}>
-                    {filter.label}
-                  </Text>
-                </TouchableOpacity>
-              </Animated.View>
-            ))}
+                  resizeMode="contain"
+                  onError={error => {
+                    console.error('Error loading franchise logo:', error);
+                    console.error('Logo URL:', franchiseLogo);
+                    setFranchiseLogo(null); // Fallback to default logo on error
+                  }}
+                  onLoad={() => {
+                    console.log(
+                      'Franchise logo loaded successfully:',
+                      franchiseLogo,
+                    );
+                  }}
+                />
+              ) : (
+                <Logo style={styles.logo} size={70} variant="black" />
+              )}
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.headerMainText}>Order Fresh and</Text>
+                <Text style={styles.headerMainText}>Stay Stocked</Text>
+              </View>
+            </View>
           </View>
 
-          {/* Orders List */}
-          {loading ? (
-            <View>
-              {[1, 2, 3].map((index) => (
-                <OrderCardSkeleton key={index} />
+          {/* Image Carousel Banner */}
+          <View style={styles.carouselContainer}>
+            <FlatList
+              ref={carouselRef}
+              data={coconutImages}
+              renderItem={renderCarouselItem}
+              keyExtractor={(item, index) => index.toString()}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={Animated.event(
+                [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                { useNativeDriver: false },
+              )}
+              scrollEventThrottle={16}
+              onMomentumScrollEnd={event => {
+                const itemWidth = width - 32;
+                const index = Math.round(
+                  event.nativeEvent.contentOffset.x / itemWidth,
+                );
+                setCurrentSlideIndex(index);
+              }}
+              getItemLayout={(data, index) => {
+                const itemWidth = width - 32;
+                return {
+                  length: itemWidth,
+                  offset: itemWidth * index,
+                  index,
+                };
+              }}
+            />
+            {/* Carousel Indicators */}
+            <View style={styles.carouselIndicators}>
+              {coconutImages.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.indicator,
+                    currentSlideIndex === index && styles.indicatorActive,
+                  ]}
+                />
               ))}
             </View>
-          ) : filteredOrders.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No orders found</Text>
-            </View>
-          ) : (
-            filteredOrders.map((order, index) => (
-              <TouchableOpacity
-                key={order.id}
-                style={styles.orderCard}
-                activeOpacity={0.8}
-                onPress={() => navigation.navigate('OrderDetail', { order })}>
-                <View style={styles.orderCardContent}>
-                  <View style={styles.orderLeft}>
-                    <Text style={styles.orderId}>{order.orderName || `ORD-${order.id}`}</Text>
-                    {order.cases > 0 && (
-                      <Text style={styles.orderCases}>{order.cases} cases</Text>
-                    )}
-                  </View>
-                  <View style={styles.orderRight}>
-                    <View style={[styles.statusBadge, { backgroundColor: order.deliveryStatus ? getStatusColor(order.deliveryStatus) : order.statusColor }]}>
-                      <Text style={styles.statusText}>{order.deliveryStatus || order.status}</Text>
-                    </View>
-                  </View>
-                </View>
-                <View style={styles.deliveryDateRow}>
-                  <Text style={styles.deliveryDate}>
-                    Delivery: {order.delivery_day_date || order.deliveryDate || 'Updates will be sent to your email soon.'}
-                  </Text>
-                  <Icon name="chevron-forward" size={20} color={Colors.primaryBlue} />
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
+          </View>
 
-        {/* Need Coconuts Fast Card - Only show when customer has no orders */}
-        {recentOrders.length === 0 && !loading && (
-          <View style={styles.needCoconutsCard}>
-            <View style={styles.needCoconutsIconContainer}>
-              <Icon name="sparkles" size={32} color={Colors.cardBackground} />
+          {/* Product Offering Card */}
+          <View style={styles.productCard}>
+            <View style={styles.productCardContent}>
+              <View style={styles.productCardLeft}>
+                <Text style={styles.productCardLabel}>FRESH & WHOLESALE</Text>
+                <Text style={styles.productCardDescription}>
+                  High-quality coconuts sourced fresh for your business needs
+                </Text>
+              </View>
+              <Text style={styles.productCardIcon}>🥥</Text>
             </View>
-            <Text style={styles.needCoconutsTitle}>Need Coconuts Fast?</Text>
-            <Text style={styles.needCoconutsSubtitle}>
-              Quick ordering with next-day delivery available
-            </Text>
             <TouchableOpacity
-              style={styles.startNewOrderButton}
+              style={styles.orderNowButton}
               activeOpacity={0.8}
-              onPress={() => navigation.navigate('NewStack', { screen: 'CreateOrder' })}>
-              <Text style={styles.startNewOrderText}>Start New Order</Text>
+              onPress={() =>
+                navigation.navigate('NewStack', { screen: 'CreateOrder' })
+              }
+            >
+              <Icon
+                name="cart-outline"
+                size={20}
+                color={Colors.cardBackground}
+              />
+              <Text style={styles.orderNowText}>Order Now</Text>
             </TouchableOpacity>
           </View>
-        )}
 
-        {/* Bottom spacing for navigation */} 
-      </ScrollView>
+          {/* Recent Orders Section */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Company Recent Orders</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('OrdersList')}
+              >
+                <View style={styles.viewAllContainer}>
+                  <Text style={styles.viewAllText}>View All</Text>
+                  <Icon
+                    name="chevron-forward"
+                    size={16}
+                    color={Colors.primaryBlue}
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Time Period Filters */}
+            <View style={styles.timeFilterContainer}>
+              {[
+                { key: 'all', label: 'All Time' },
+                { key: 'today', label: 'Today' },
+                { key: 'week', label: 'This Week' },
+                { key: 'month', label: 'This Month' },
+              ].map(filter => (
+                <Animated.View
+                  key={filter.key}
+                  style={{
+                    transform: [{ scale: filterAnimations[filter.key] }],
+                  }}
+                >
+                  <TouchableOpacity
+                    style={[
+                      styles.timeFilterButton,
+                      timeFilter === filter.key &&
+                        styles.timeFilterButtonActive,
+                    ]}
+                    onPress={() => handleTimeFilterChange(filter.key)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.timeFilterButtonText,
+                        timeFilter === filter.key &&
+                          styles.timeFilterButtonTextActive,
+                      ]}
+                    >
+                      {filter.label}
+                    </Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+            </View>
+
+            {/* Orders List */}
+            {loading ? (
+              <View>
+                {[1, 2, 3].map(index => (
+                  <OrderCardSkeleton key={index} />
+                ))}
+              </View>
+            ) : filteredOrders.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No orders found</Text>
+              </View>
+            ) : (
+              filteredOrders.map((order, index) => (
+                <TouchableOpacity
+                  key={order.id}
+                  style={styles.orderCard}
+                  activeOpacity={0.8}
+                  onPress={() => navigation.navigate('OrderDetail', { order })}
+                >
+                  <View style={styles.orderCardContent}>
+                    <View style={styles.orderLeft}>
+                      <Text style={styles.orderId}>
+                        {order.orderName || `ORD-${order.id}`}
+                      </Text>
+                      {order.cases > 0 && (
+                        <Text style={styles.orderCases}>
+                          {order.cases} cases
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.orderRight}>
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          {
+                            backgroundColor: order.deliveryStatus
+                              ? getStatusColor(order.deliveryStatus)
+                              : order.statusColor,
+                          },
+                        ]}
+                      >
+                        <Text style={styles.statusText}>
+                          {order.deliveryStatus || order.status}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.deliveryDateRow}>
+                    <Text style={styles.deliveryDate}>
+                      {(() => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const orderDate = new Date(
+                          order.order_date || order.orderDateRaw,
+                        );
+                        orderDate.setHours(0, 0, 0, 0);
+                        const isFutureDate = orderDate > today;
+
+                        if (
+                          isFutureDate &&
+                          (order.order_date || order.orderDateRaw)
+                        ) { 
+                          const d = new Date(
+                            order.order_date || order.orderDateRaw,
+                          );
+                          const months = [
+                            'Jan',
+                            'Feb',
+                            'Mar',
+                            'Apr',
+                            'May',
+                            'Jun',
+                            'Jul',
+                            'Aug',
+                            'Sep',
+                            'Oct',
+                            'Nov',
+                            'Dec',
+                          ];
+                          return `Delivery: ${d.getDate()} ${
+                            months[d.getMonth()]
+                          }, ${d.getFullYear()}`;
+                        } else if (order.delivery_day_date) { 
+                          return `Delivery: ${order.delivery_day_date}`;
+                        } else { 
+                          return 'Updates will be sent to your email soon.';
+                        }
+                      })()}
+                    </Text>
+                    <Icon
+                      name="chevron-forward"
+                      size={20}
+                      color={Colors.primaryBlue}
+                    />
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+
+          {/* Need Coconuts Fast Card - Only show when customer has no orders */}
+          {recentOrders.length === 0 && !loading && (
+            <View style={styles.needCoconutsCard}>
+              <View style={styles.needCoconutsIconContainer}>
+                <Icon name="sparkles" size={32} color={Colors.cardBackground} />
+              </View>
+              <Text style={styles.needCoconutsTitle}>Need Coconuts Fast?</Text>
+              <Text style={styles.needCoconutsSubtitle}>
+                Quick ordering with next-day delivery available
+              </Text>
+              <TouchableOpacity
+                style={styles.startNewOrderButton}
+                activeOpacity={0.8}
+                onPress={() =>
+                  navigation.navigate('NewStack', { screen: 'CreateOrder' })
+                }
+              >
+                <Text style={styles.startNewOrderText}>Start New Order</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Bottom spacing for navigation */}
+        </ScrollView>
       )}
-
     </>
   );
 };
@@ -781,7 +939,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.backgroundGray,
-  }, 
+  },
   scrollView: {
     flex: 1,
   },
@@ -795,7 +953,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.backgroundGray,
   },
   logo: {
-    alignSelf: 'flex-start', 
+    alignSelf: 'flex-start',
     marginBottom: 8,
   },
   // Top Header Styles
@@ -805,11 +963,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 55 : 20,
-    paddingBottom: 16, 
+    paddingBottom: 16,
   },
-  
+
   headerTextContainer: {
-    flex: 1, 
+    flex: 1,
     justifyContent: 'flex-start',
   },
   brandText: {
@@ -1223,7 +1381,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primaryBlue,
   },
- 
 });
 
 export default HomeScreen;

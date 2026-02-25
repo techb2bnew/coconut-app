@@ -3,7 +3,13 @@
  * Shows all orders with search and filter functionality
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from 'react';
 import {
   View,
   Text,
@@ -50,7 +56,7 @@ const OrdersListScreen = ({ navigation }) => {
   });
 
   // Helper function to format date
-  const formatDate = (dateString) => {
+  const formatDate = dateString => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -60,10 +66,10 @@ const OrdersListScreen = ({ navigation }) => {
   };
 
   // Helper function to get status color (light background colors)
-  const getStatusColor = (status) => {
+  const getStatusColor = status => {
     if (!status) return '#E0E0E0';
     const statusLower = status.trim().toLowerCase();
-    
+
     if (statusLower === 'completed') return '#C8E6C9'; // Light Green for Completed
     if (statusLower === 'processing') return '#FFF9C4'; // Light Yellow for Processing
     if (statusLower.includes('completed')) return '#C8E6C9'; // Light Green for completed
@@ -78,10 +84,10 @@ const OrdersListScreen = ({ navigation }) => {
   };
 
   // Helper function to get status text color (dark colors)
-  const getStatusTextColor = (status) => {
+  const getStatusTextColor = status => {
     if (!status) return '#424242';
     const statusLower = status.trim().toLowerCase();
-    
+
     if (statusLower === 'completed') return '#2E7D32'; // Dark Green for Completed
     if (statusLower === 'processing') return '#F57F17'; // Dark Yellow/Orange for Processing
     if (statusLower.includes('completed')) return '#2E7D32'; // Dark Green for completed
@@ -98,7 +104,9 @@ const OrdersListScreen = ({ navigation }) => {
   // Fetch customer ID and company ID
   const fetchCustomerId = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || !user.email) {
         return null;
       }
@@ -119,39 +127,45 @@ const OrdersListScreen = ({ navigation }) => {
       }
 
       const status = (customer?.status || '').trim().toLowerCase();
-      const isInactive = status === 'inactive' || status === 'disabled' || status === 'deactivated';
+      const isInactive =
+        status === 'inactive' ||
+        status === 'disabled' ||
+        status === 'deactivated';
       if (isInactive) {
         await performLogoutAndNavigateToLogin();
         return null;
       }
 
-      return { 
-        customerId: customer?.id || null, 
-        companyId: customer?.company_id || null 
+      return {
+        customerId: customer?.id || null,
+        companyId: customer?.company_id || null,
       };
     } catch (error) {
       console.error('Error in fetchCustomerId:', error);
       return null;
     }
   };
-  const getSelectedDeliveryAddressFromOrder = (order) => {
+  const getSelectedDeliveryAddressFromOrder = order => {
     if (!order?.customer_details) return null;
-  
+
     try {
       const customer = JSON.parse(order.customer_details);
-      
+
       // Check if delivery_address exists and is an array
       if (!customer?.delivery_address) return null;
-      
+
       // If delivery_address is not an array, return null
       if (!Array.isArray(customer.delivery_address)) {
-        console.warn('delivery_address is not an array:', customer.delivery_address);
+        console.warn(
+          'delivery_address is not an array:',
+          customer.delivery_address,
+        );
         return null;
       }
-      
+
       // Check if array has items
       if (customer.delivery_address.length === 0) return null;
-  
+
       // Find selected address
       return customer.delivery_address.find(addr => addr && addr.isSelected);
     } catch (e) {
@@ -161,7 +175,7 @@ const OrdersListScreen = ({ navigation }) => {
   };
 
   // Helper function to format date to YYYY-MM-DD
-  const formatDateToString = (date) => {
+  const formatDateToString = date => {
     if (!date) return '';
     const d = date instanceof Date ? date : new Date(date);
     const year = d.getFullYear();
@@ -171,7 +185,7 @@ const OrdersListScreen = ({ navigation }) => {
   };
 
   // Helper function to normalize date to YYYY-MM-DD format for comparison
-  const normalizeDateToString = (date) => {
+  const normalizeDateToString = date => {
     if (!date) return null;
     const d = new Date(date);
     if (isNaN(d.getTime())) return null;
@@ -186,7 +200,8 @@ const OrdersListScreen = ({ navigation }) => {
     if (!startStr || !endStr) return [];
     const start = new Date(startStr);
     const end = new Date(endStr);
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return [];
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end)
+      return [];
     const dates = [];
     const d = new Date(start);
     while (d <= end) {
@@ -197,47 +212,75 @@ const OrdersListScreen = ({ navigation }) => {
   };
 
   // Apply filters based on search, time period, and date range
-  const applyFilters = (ordersList, query, timePeriod, rangeStart, rangeEnd) => {
+  const applyFilters = (
+    ordersList,
+    query,
+    timePeriod,
+    rangeStart,
+    rangeEnd,
+  ) => {
     let filtered = [...ordersList];
 
     // Apply search filter
     if (query.trim()) {
       const queryLower = query.toLowerCase();
       filtered = filtered.filter(
-        (order) =>
+        order =>
           order.orderName.toLowerCase().includes(queryLower) ||
-          (order.poNumber && order.poNumber.toLowerCase().includes(queryLower))
+          (order.poNumber && order.poNumber.toLowerCase().includes(queryLower)),
       );
     }
 
     // Apply date range filter if range is selected
     if (rangeStart && rangeEnd) {
-      filtered = filtered.filter((order) => {
-        const createdDate = order.createdAt || order.created_at || order.orderDateRaw;
+      filtered = filtered.filter(order => {
+        const createdDate =
+          order.createdAt || order.created_at || order.orderDateRaw;
         if (!createdDate) return false;
         const orderDateNormalized = normalizeDateToString(createdDate);
         if (!orderDateNormalized) return false;
-        return orderDateNormalized >= rangeStart && orderDateNormalized <= rangeEnd;
+        return (
+          orderDateNormalized >= rangeStart && orderDateNormalized <= rangeEnd
+        );
       });
     } else {
       // Apply time period filter based on created_at date (only if no dates selected)
       if (timePeriod !== 'all') {
         const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-        
-        filtered = filtered.filter((order) => {
+        const todayStart = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          0,
+          0,
+          0,
+          0,
+        );
+        const todayEnd = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          23,
+          59,
+          59,
+          999,
+        );
+
+        filtered = filtered.filter(order => {
           // Use created_at if available, otherwise fallback to order_date
-          const createdDate = order.createdAt || order.created_at || order.orderDateRaw;
+          const createdDate =
+            order.createdAt || order.created_at || order.orderDateRaw;
           if (!createdDate) return false;
           const orderCreatedDate = new Date(createdDate);
-          
+
           // Validate date
           if (isNaN(orderCreatedDate.getTime())) return false;
-          
+
           if (timePeriod === 'today') {
             // Check if order was created today
-            return orderCreatedDate >= todayStart && orderCreatedDate <= todayEnd;
+            return (
+              orderCreatedDate >= todayStart && orderCreatedDate <= todayEnd
+            );
           } else if (timePeriod === 'week') {
             // Check if order was created in last 7 days (including today)
             const weekAgo = new Date(now);
@@ -246,8 +289,18 @@ const OrdersListScreen = ({ navigation }) => {
             return orderCreatedDate >= weekAgo && orderCreatedDate <= todayEnd;
           } else if (timePeriod === 'month') {
             // Check if order was created in current calendar month
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-            return orderCreatedDate >= monthStart && orderCreatedDate <= todayEnd;
+            const monthStart = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              1,
+              0,
+              0,
+              0,
+              0,
+            );
+            return (
+              orderCreatedDate >= monthStart && orderCreatedDate <= todayEnd
+            );
           }
           return true;
         });
@@ -258,7 +311,7 @@ const OrdersListScreen = ({ navigation }) => {
   };
 
   // Fetch orders for the entire company
-  const fetchOrders = async (customerData) => {
+  const fetchOrders = async customerData => {
     if (!customerData || !customerData.companyId) {
       setLoading(false);
       return;
@@ -266,7 +319,7 @@ const OrdersListScreen = ({ navigation }) => {
 
     try {
       console.log('📥 Fetching orders for company:', customerData.companyId);
-      
+
       // Get all customers in this company
       const { data: companyCustomers, error: customersError } = await supabase
         .from('customers')
@@ -305,17 +358,22 @@ const OrdersListScreen = ({ navigation }) => {
 
       console.log('✅ Fetched company orders count:', ordersData?.length || 0);
 
-      const processedOrders = (ordersData || []).map((order) => {
+      const processedOrders = (ordersData || []).map(order => {
         const status = (order.status || 'Pending').trim();
         // Use deliveryStatus if available, otherwise fallback to status
-        const deliveryStatusValue = order.delivery_status || order.deliveryStatus || status;
+        const deliveryStatusValue =
+          order.delivery_status || order.deliveryStatus || status;
         const displayStatus = deliveryStatusValue.trim();
         const statusColor = getStatusColor(displayStatus);
         const statusTextColor = getStatusTextColor(displayStatus);
         const selectedAddress = getSelectedDeliveryAddressFromOrder(order);
-        
+
         // Get created_at date (check multiple possible field names)
-        const createdAt = order.created_at || order.createdAt || order.created_date || order.order_date;
+        const createdAt =
+          order.created_at ||
+          order.createdAt ||
+          order.created_date ||
+          order.order_date;
 
         // Safely construct delivery address string
         let delivery_address = 'No delivery address selected';
@@ -323,13 +381,17 @@ const OrdersListScreen = ({ navigation }) => {
           const street = selectedAddress.street || '';
           const city = selectedAddress.city || '';
           const state = selectedAddress.state || '';
-          const zipCode = selectedAddress.zipCode || selectedAddress.zip_code || '';
-          delivery_address = `${street}, ${city}, ${state}${zipCode ? ' - ' + zipCode : ''}`.trim();
+          const zipCode =
+            selectedAddress.zipCode || selectedAddress.zip_code || '';
+          delivery_address = `${street}, ${city}, ${state}${
+            zipCode ? ' - ' + zipCode : ''
+          }`.trim();
         } else if (order.delivery_address) {
           // Fallback to order.delivery_address if it's a string
-          delivery_address = typeof order.delivery_address === 'string' 
-            ? order.delivery_address 
-            : 'No delivery address selected';
+          delivery_address =
+            typeof order.delivery_address === 'string'
+              ? order.delivery_address
+              : 'No delivery address selected';
         }
         return {
           id: order.id,
@@ -376,12 +438,12 @@ const OrdersListScreen = ({ navigation }) => {
       // Calculate stats
       const activeCount = processedOrders.filter(o => {
         const status = (o.deliveryStatus || o.status || '').toLowerCase();
-        return !status.includes('completed') && !status.includes('delivered')  ;
+        return !status.includes('completed') && !status.includes('delivered');
       }).length;
-      
+
       const pendingCount = processedOrders.filter(o => {
         const status = (o.deliveryStatus || o.status || '').toLowerCase();
-        return status.includes('pending')  ;
+        return status.includes('pending');
       }).length;
 
       setStats({
@@ -391,7 +453,13 @@ const OrdersListScreen = ({ navigation }) => {
       });
 
       setOrders(processedOrders);
-      applyFilters(processedOrders, searchQuery, timeFilter, dateRangeStart, dateRangeEnd);
+      applyFilters(
+        processedOrders,
+        searchQuery,
+        timeFilter,
+        dateRangeStart,
+        dateRangeEnd,
+      );
     } catch (error) {
       console.error('❌ Error in fetchOrders:', error);
     } finally {
@@ -437,7 +505,10 @@ const OrdersListScreen = ({ navigation }) => {
         return;
       }
 
-      console.log('🔄 Screen focused, refreshing orders for customer:', customerId);
+      console.log(
+        '🔄 Screen focused, refreshing orders for customer:',
+        customerId,
+      );
       setRefreshing(true);
       const loadData = async () => {
         const data = await fetchCustomerId();
@@ -448,7 +519,7 @@ const OrdersListScreen = ({ navigation }) => {
         }
       };
       loadData();
-    }, [customerId])
+    }, [customerId]),
   );
 
   // Search filter
@@ -478,20 +549,20 @@ const OrdersListScreen = ({ navigation }) => {
     }
   };
 
-  const handleViewDetails = (order) => {
+  const handleViewDetails = order => {
     if (navigation) {
       navigation.navigate('OrderDetail', { order });
     }
   };
 
   // Check if order is completed
-  const isOrderCompleted = (order) => {
+  const isOrderCompleted = order => {
     const status = (order.deliveryStatus || order.status || '').toLowerCase();
     return status.includes('completed') || status.includes('delivered');
   };
 
   // Handle reorder - use existing order data and navigate to CreateOrder
-  const handleReorder = (order) => {
+  const handleReorder = order => {
     if (!order) return;
 
     // Navigate to CreateOrder with pre-filled data from the order
@@ -512,7 +583,7 @@ const OrdersListScreen = ({ navigation }) => {
   };
 
   // Handle time filter change
-  const handleTimeFilterChange = (filter) => {
+  const handleTimeFilterChange = filter => {
     setTimeFilter(filter);
     if (filter !== 'all') {
       setDateRangeStart(null);
@@ -556,7 +627,7 @@ const OrdersListScreen = ({ navigation }) => {
   };
 
   // Handle date selection for range: first tap = start, second tap = end (swap if reversed)
-  const handleDayPress = (day) => {
+  const handleDayPress = day => {
     const dateStr = day.dateString;
     if (!dateRangeStart) {
       setDateRangeStart(dateStr);
@@ -594,7 +665,7 @@ const OrdersListScreen = ({ navigation }) => {
     // Remove spaces, parentheses, and dashes for tel: protocol
     const phoneNumber = '+15551234567';
     const phoneUrl = `tel:${phoneNumber}`;
-    
+
     try {
       // Directly open phone dialer - tel: protocol is standard
       await Linking.openURL(phoneUrl);
@@ -611,7 +682,7 @@ const OrdersListScreen = ({ navigation }) => {
     }
   };
   // Format date for display
-  const formatDateDisplay = (dateStr) => {
+  const formatDateDisplay = dateStr => {
     const date = new Date(dateStr);
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -625,363 +696,528 @@ const OrdersListScreen = ({ navigation }) => {
       colors={['#eff6ff', '#ffffff']}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      style={styles.orderCard}>
+      style={styles.orderCard}
+    >
       <View style={styles.orderCardHeader}>
         <View style={styles.orderHeaderLeft}>
-          <View style={[styles.skeletonBox, { width: 120, height: 16, marginBottom: 8 }]} />
+          <View
+            style={[
+              styles.skeletonBox,
+              { width: 120, height: 16, marginBottom: 8 },
+            ]}
+          />
           <View style={[styles.skeletonBox, { width: 150, height: 14 }]} />
         </View>
-        <View style={[styles.skeletonBox, { width: 80, height: 28, borderRadius: 20 }]} />
+        <View
+          style={[
+            styles.skeletonBox,
+            { width: 80, height: 28, borderRadius: 20 },
+          ]}
+        />
       </View>
-      
+
       <View style={[styles.deliveryDateRow, { marginBottom: 12 }]}>
-        <View style={[styles.skeletonBox, { width: 18, height: 18, borderRadius: 9, marginRight: 8 }]} />
+        <View
+          style={[
+            styles.skeletonBox,
+            { width: 18, height: 18, borderRadius: 9, marginRight: 8 },
+          ]}
+        />
         <View style={[styles.skeletonBox, { width: 100, height: 14 }]} />
       </View>
-      
+
       <View style={styles.productInfoRow}>
         <View style={styles.productInfoItem}>
-          <View style={[styles.skeletonBox, { width: 80, height: 12, marginBottom: 6 }]} />
+          <View
+            style={[
+              styles.skeletonBox,
+              { width: 80, height: 12, marginBottom: 6 },
+            ]}
+          />
           <View style={[styles.skeletonBox, { width: 40, height: 16 }]} />
         </View>
         <View style={styles.productInfoDivider} />
         <View style={styles.productInfoItem}>
-          <View style={[styles.skeletonBox, { width: 60, height: 12, marginBottom: 6 }]} />
+          <View
+            style={[
+              styles.skeletonBox,
+              { width: 60, height: 12, marginBottom: 6 },
+            ]}
+          />
           <View style={[styles.skeletonBox, { width: 30, height: 16 }]} />
         </View>
       </View>
-      
+
       <View style={styles.actionButtonsContainer}>
-        <View style={[styles.skeletonBox, { flex: 1, height: 40, borderRadius: 8 }]} />
-        <View style={[styles.skeletonBox, { flex: 1, height: 40, borderRadius: 8, marginLeft: 12 }]} />
+        <View
+          style={[styles.skeletonBox, { flex: 1, height: 40, borderRadius: 8 }]}
+        />
+        <View
+          style={[
+            styles.skeletonBox,
+            { flex: 1, height: 40, borderRadius: 8, marginLeft: 12 },
+          ]}
+        />
       </View>
     </LinearGradient>
   );
 
-  return ( 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={Colors.primaryPink}
-          />
-        }>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Icon name="arrow-back" size={24} color={Colors.cardBackground} />
-            <Text style={styles.backText}>Dashboard</Text>
+  return (
+    <ScrollView
+      style={styles.scrollView}
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={Colors.primaryPink}
+        />
+      }
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <Icon name="arrow-back" size={24} color={Colors.cardBackground} />
+          <Text style={styles.backText}>Dashboard</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Company Orders</Text>
+        <Text style={styles.headerSubtitle}>
+          View all orders from your company
+        </Text>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Icon name="search" size={20} color={Colors.textSecondary} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by order or PO number..."
+              placeholderTextColor={Colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                style={styles.clearButton}
+                activeOpacity={0.7}
+              >
+                <Icon
+                  name="close-circle"
+                  size={20}
+                  color={Colors.textSecondary}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {/* Summary Cards */}
+      <View style={styles.summaryContainer}>
+        <View style={styles.summaryCard}>
+          <View
+            style={[
+              styles.iconContainer,
+              { backgroundColor: Colors.primaryPink },
+            ]}
+          >
+            <Icon name="cube-outline" size={24} color="#ffffff" />
+          </View>
+          <Text style={styles.summaryNumber}>{stats.active}</Text>
+          <Text style={styles.summaryLabel}>Active</Text>
+        </View>
+
+        <View style={styles.summaryCard}>
+          <View style={[styles.iconContainer, { backgroundColor: '#fd5b00' }]}>
+            <Icon name="time-outline" size={24} color="#ffffff" />
+          </View>
+          <Text style={styles.summaryNumber}>{stats.pending}</Text>
+          <Text style={styles.summaryLabel}>Pending</Text>
+        </View>
+
+        <View style={styles.summaryCard}>
+          <View style={[styles.iconContainer, { backgroundColor: '#4CAF50' }]}>
+            <Icon name="trending-up-outline" size={24} color="#ffffff" />
+          </View>
+          <Text style={styles.summaryNumber}>{stats.total}</Text>
+          <Text style={styles.summaryLabel}>Total</Text>
+        </View>
+      </View>
+
+      {/* Create New Order Button */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={styles.createButton}
+          activeOpacity={0.8}
+          onPress={() =>
+            navigation.navigate('NewStack', { screen: 'CreateOrder' })
+          }
+        >
+          <Icon name="cube-outline" size={24} color={Colors.cardBackground} />
+          <Text style={styles.createButtonText}>Create New Order</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Time Period Filter */}
+      <View style={styles.timeFilterContainer}>
+        <View style={styles.timeFilterLabelRow}>
+          <Text style={styles.timeFilterLabel}>Time Period</Text>
+          <TouchableOpacity
+            onPress={handleOpenDatePicker}
+            style={styles.dateIconButton}
+            activeOpacity={0.7}
+          >
+            <Icon name="filter-outline" size={16} color={'#ffffff'} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Company Orders</Text>
-          <Text style={styles.headerSubtitle}>View all orders from your company</Text>
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
-              <Icon name="search" size={20} color={Colors.textSecondary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search by order or PO number..."
-                placeholderTextColor={Colors.textSecondary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
+        </View>
+        {dateRangeStart && dateRangeEnd && (
+          <View style={styles.selectedDatesContainer}>
+            <View style={styles.selectedDatesHeader}>
+              <Text style={styles.selectedDatesLabel}>
+                Range: {formatDateDisplay(dateRangeStart)} –{' '}
+                {formatDateDisplay(dateRangeEnd)}
+              </Text>
+              <TouchableOpacity
+                onPress={handleClearDates}
+                style={styles.clearAllButton}
+              >
+                <Icon
+                  name="close-circle"
+                  size={18}
+                  color={Colors.textSecondary}
+                />
+                <Text style={styles.clearAllText}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+        <View style={styles.timeFilterButtons}>
+          {[
+            { key: 'all', label: 'All Time' },
+            { key: 'today', label: 'Today' },
+            { key: 'week', label: 'This Week' },
+            { key: 'month', label: 'This Month' },
+          ].map(filter => (
+            <TouchableOpacity
+              key={filter.key}
+              style={[
+                styles.timeFilterButton,
+                timeFilter === filter.key && styles.timeFilterButtonActive,
+              ]}
+              onPress={() => handleTimeFilterChange(filter.key)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.timeFilterButtonText,
+                  timeFilter === filter.key &&
+                    styles.timeFilterButtonTextActive,
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Orders List */}
+      {loading ? (
+        <View>
+          {[1, 2, 3].map(index => (
+            <OrderCardSkeleton key={index} />
+          ))}
+        </View>
+      ) : filteredOrders.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No orders found</Text>
+        </View>
+      ) : (
+        filteredOrders.map(order => (
+          <View key={order.id} style={styles.orderCard}>
+            {/* Header with Order ID and Status */}
+            <View style={styles.orderCardHeader}>
+              <View style={styles.orderHeaderLeft}>
+                <Text style={styles.orderId}>{order.orderName}</Text>
+                {order.poNumber ? (
+                  <View style={styles.poNumberContainer}>
+                    <Text style={styles.poNumberLabel}>PO Number - </Text>
+                    <Text style={styles.poNumber}>{order.poNumber}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: order.statusColor || '#E0E0E0' },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusText,
+                    { color: order.statusTextColor || '#424242' },
+                  ]}
+                >
+                  {order.deliveryStatus || order.status}
+                </Text>
+              </View>
+            </View>
+
+            {(() => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const orderDate = new Date(
+                order.order_date || order.orderDateRaw,
+              );
+              orderDate.setHours(0, 0, 0, 0);
+              const isFutureDate = orderDate > today;
+
+              if (isFutureDate && (order.order_date || order.orderDateRaw)) {
+                // Aaj se aage → order_date show karo
+                const d = new Date(order.order_date || order.orderDateRaw);
+                const months = [
+                  'Jan',
+                  'Feb',
+                  'Mar',
+                  'Apr',
+                  'May',
+                  'Jun',
+                  'Jul',
+                  'Aug',
+                  'Sep',
+                  'Oct',
+                  'Nov',
+                  'Dec',
+                ];
+                const formatted = `${d.getDate()} ${
+                  months[d.getMonth()]
+                }, ${d.getFullYear()}`;
+                return (
+                  <View style={styles.deliveryDateRow}>
+                    <Icon
+                      name="calendar-outline"
+                      size={18}
+                      color={Colors.primaryBlue}
+                    />
+                    <Text
+                      style={[
+                        styles.deliveryDateText,
+                        { color: Colors.success, fontWeight: '600' },
+                      ]}
+                    >
+                      Delivery: {formatted}
+                    </Text>
+                  </View>
+                );
+              } else if (order.delivery_day_date) {
+                // Aaj ki date → delivery_day_date show karo
+                return (
+                  <View style={styles.deliveryDateRow}>
+                    <Icon
+                      name="calendar-outline"
+                      size={18}
+                      color={Colors.primaryBlue}
+                    />
+                    <Text
+                      style={[
+                        styles.deliveryDateText,
+                        { color: Colors.success, fontWeight: '600' },
+                      ]}
+                    >
+                      Delivery: {order.delivery_day_date}
+                    </Text>
+                  </View>
+                );
+              } else {
+                // Dono nahi → default message
+                return (
+                  <View style={styles.deliveryDateRow}>
+                    <Icon
+                      name="calendar-outline"
+                      size={18}
+                      color={Colors.primaryBlue}
+                    />
+                    <Text
+                      style={[
+                        styles.deliveryDateText,
+                        { color: Colors.textSecondary },
+                      ]}
+                    >
+                      Delivery updates will be sent to your email soon.
+                    </Text>
+                  </View>
+                );
+              }
+            })()}
+
+            {/* Product Type and Quantity Together */}
+            <View style={styles.productInfoRow}>
+              <View style={styles.productInfoItem}>
+                <Text style={styles.productInfoLabel}>Product Type</Text>
+                <Text style={styles.productInfoValue}>Case</Text>
+              </View>
+              <View style={styles.productInfoDivider} />
+              <View style={styles.productInfoItem}>
+                <Text style={styles.productInfoLabel}>Quantity</Text>
+                <Text style={styles.productInfoValue}>
+                  {order.cases > 0 ? `${order.cases}` : 'N/A'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity
+                style={styles.viewDetailsButton}
+                onPress={() => handleViewDetails(order)}
+                activeOpacity={0.8}
+              >
+                <Icon
+                  name="eye-outline"
+                  size={20}
+                  color={Colors.cardBackground}
+                />
+                <Text style={styles.viewDetailsText}>View Details</Text>
+              </TouchableOpacity>
+
+              {isOrderCompleted(order) && (
                 <TouchableOpacity
-                  onPress={() => setSearchQuery('')}
-                  style={styles.clearButton}
-                  activeOpacity={0.7}>
-                  <Icon name="close-circle" size={20} color={Colors.textSecondary} />
+                  style={styles.reorderButton}
+                  onPress={() => handleReorder(order)}
+                  activeOpacity={0.8}
+                >
+                  <Icon
+                    name="refresh"
+                    size={20}
+                    color={Colors.cardBackground}
+                  />
+                  <Text style={styles.reorderText}>Reorder</Text>
                 </TouchableOpacity>
               )}
             </View>
           </View>
-        </View>
-  
-        {/* Summary Cards */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryCard}>
-            <View style={[styles.iconContainer, { backgroundColor: Colors.primaryPink }]}>
-              <Icon name="cube-outline" size={24} color="#ffffff" />
-            </View>
-            <Text style={styles.summaryNumber}>{stats.active}</Text>
-            <Text style={styles.summaryLabel}>Active</Text>
-          </View>
-
-          <View style={styles.summaryCard}>
-            <View style={[styles.iconContainer, { backgroundColor: '#fd5b00' }]}>
-              <Icon name="time-outline" size={24} color="#ffffff" />
-            </View>
-            <Text style={styles.summaryNumber}>{stats.pending}</Text>
-            <Text style={styles.summaryLabel}>Pending</Text>
-          </View>
-
-          <View style={styles.summaryCard}>
-            <View style={[styles.iconContainer, { backgroundColor: '#4CAF50' }]}>
-              <Icon name="trending-up-outline" size={24} color="#ffffff" />
-            </View>
-            <Text style={styles.summaryNumber}>{stats.total}</Text>
-            <Text style={styles.summaryLabel}>Total</Text>
-          </View>
-        </View> 
-
-        {/* Create New Order Button */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.createButton}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('NewStack', { screen: 'CreateOrder' })}>
-            <Icon name="cube-outline" size={24} color={Colors.cardBackground} />
-            <Text style={styles.createButtonText}>Create New Order</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Time Period Filter */}
-        <View style={styles.timeFilterContainer}>
-          <View style={styles.timeFilterLabelRow}>
-            <Text style={styles.timeFilterLabel}>Time Period</Text>
-            <TouchableOpacity
-              onPress={handleOpenDatePicker}
-              style={styles.dateIconButton}
-              activeOpacity={0.7}>
-              <Icon name="filter-outline" size={16} color={'#ffffff'} />
-            </TouchableOpacity>
-          </View>
-          {dateRangeStart && dateRangeEnd && (
-            <View style={styles.selectedDatesContainer}>
-              <View style={styles.selectedDatesHeader}>
-                <Text style={styles.selectedDatesLabel}>
-                  Range: {formatDateDisplay(dateRangeStart)} – {formatDateDisplay(dateRangeEnd)}
-                </Text>
+        ))
+      )}
+      <View style={styles.contactCard}>
+        <Text style={styles.sectionTitle}>
+          Need to modify or cancel an order?
+        </Text>
+        <Text style={styles.contactSubtitle}>
+          Call us if you want to modify or cancel your order
+        </Text>
+        <TouchableOpacity style={styles.phoneButton} onPress={handlePhoneCall}>
+          <Icon name="call-outline" size={20} color={Colors.cardBackground} />
+          <Text style={styles.phoneButtonText}>+1 (555) 123-4567</Text>
+        </TouchableOpacity>
+      </View>
+      {/* Date Picker Bottom Sheet */}
+      <Modal
+        visible={showDatePickerModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          bottomSheetRef.current?.close();
+          setShowDatePickerModal(false);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <BottomSheet
+            ref={bottomSheetRef}
+            index={0}
+            snapPoints={snapPoints}
+            enablePanDownToClose={true}
+            onClose={() => setShowDatePickerModal(false)}
+            backgroundStyle={styles.bottomSheetBackground}
+            handleIndicatorStyle={styles.bottomSheetIndicator}
+          >
+            <BottomSheetScrollView
+              contentContainerStyle={styles.bottomSheetContent}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled={true}
+            >
+              <View style={styles.datePickerHeader}>
+                <Text style={styles.datePickerTitle}>Select Date Range</Text>
                 <TouchableOpacity
-                  onPress={handleClearDates}
-                  style={styles.clearAllButton}>
-                  <Icon name="close-circle" size={18} color={Colors.textSecondary} />
-                  <Text style={styles.clearAllText}>Clear</Text>
+                  onPress={() => {
+                    bottomSheetRef.current?.close();
+                    setShowDatePickerModal(false);
+                  }}
+                  style={styles.closeButton}
+                >
+                  <Icon name="close" size={24} color={Colors.textPrimary} />
                 </TouchableOpacity>
               </View>
-            </View>
-          )}
-          <View style={styles.timeFilterButtons}>
-            {[
-              { key: 'all', label: 'All Time' },
-              { key: 'today', label: 'Today' },
-              { key: 'week', label: 'This Week' },
-              { key: 'month', label: 'This Month' },
-            ].map((filter) => (
+
+              <View style={styles.datePickerContainer}>
+                <Text style={styles.datePickerLabel}>
+                  Select start and end date
+                </Text>
+                <Text style={styles.datePickerSubLabel}>
+                  Tap first date, then second date. Tap again to pick a new
+                  range.
+                </Text>
+                <Calendar
+                  onDayPress={handleDayPress}
+                  markedDates={markedDates}
+                  markingType="period"
+                  theme={{
+                    backgroundColor: Colors.cardBackground,
+                    calendarBackground: Colors.cardBackground,
+                    textSectionTitleColor: Colors.textPrimary,
+                    selectedDayBackgroundColor: Colors.primaryBlue,
+                    selectedDayTextColor: Colors.cardBackground,
+                    todayTextColor: Colors.primaryBlue,
+                    dayTextColor: Colors.textPrimary,
+                    textDisabledColor: Colors.textSecondary,
+                    dotColor: Colors.primaryBlue,
+                    selectedDotColor: Colors.cardBackground,
+                    arrowColor: Colors.primaryBlue,
+                    monthTextColor: Colors.textPrimary,
+                    textDayFontFamily: fontFamilyBody,
+                    textMonthFontFamily: fontFamilyHeading,
+                    textDayHeaderFontFamily: fontFamilyBody,
+                    textDayFontSize: 14,
+                    textMonthFontSize: 16,
+                    textDayHeaderFontSize: 12,
+                  }}
+                  style={styles.calendar}
+                />
+              </View>
+
+              {(dateRangeStart || dateRangeEnd) && (
+                <View style={styles.selectedDatesListContainer}>
+                  <Text style={styles.selectedDatesListTitle}>
+                    {dateRangeStart && dateRangeEnd
+                      ? `From ${formatDateDisplay(
+                          dateRangeStart,
+                        )} – To ${formatDateDisplay(dateRangeEnd)}`
+                      : dateRangeStart
+                      ? `From ${formatDateDisplay(
+                          dateRangeStart,
+                        )} (tap end date)`
+                      : 'Select start date'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={handleClearDates}
+                    style={styles.clearAllDatesButton}
+                  >
+                    <Text style={styles.clearAllDatesText}>Clear Range</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               <TouchableOpacity
-                key={filter.key}
-                style={[
-                  styles.timeFilterButton,
-                  timeFilter === filter.key && styles.timeFilterButtonActive,
-                ]}
-                onPress={() => handleTimeFilterChange(filter.key)}
-                activeOpacity={0.7}>
-                <Text
-                  style={[
-                    styles.timeFilterButtonText,
-                    timeFilter === filter.key && styles.timeFilterButtonTextActive,
-                  ]}>
-                  {filter.label}
-                </Text>
+                onPress={handleApplyDates}
+                style={styles.applyDatesButton}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.applyDatesButtonText}>Apply Filter</Text>
               </TouchableOpacity>
-            ))}
-          </View>
+            </BottomSheetScrollView>
+          </BottomSheet>
         </View>
-
-        {/* Orders List */}
-        {loading ? (
-          <View>
-            {[1, 2, 3].map((index) => (
-              <OrderCardSkeleton key={index} />
-            ))}
-          </View>
-        ) : filteredOrders.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No orders found</Text>
-          </View>
-        ) : (
-          filteredOrders.map((order) => (
-            <View
-              key={order.id}
-              style={styles.orderCard}>
-              {/* Header with Order ID and Status */}
-              <View style={styles.orderCardHeader}>
-                <View style={styles.orderHeaderLeft}>
-                  <Text style={styles.orderId}>{order.orderName}</Text>
-                  {order.poNumber ? (
-                    <View style={styles.poNumberContainer}>
-                      <Text style={styles.poNumberLabel}>PO Number - </Text>
-                      <Text style={styles.poNumber}>{order.poNumber}</Text>
-                    </View>
-                  ) : null}
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: order.statusColor || '#E0E0E0' }]}>
-                  <Text style={[styles.statusText, { color: order.statusTextColor || '#424242' }]}>{order.deliveryStatus || order.status}</Text>
-                </View>
-              </View>
- 
-                  {order.delivery_day_date ? (
-                <View style={styles.deliveryDateRow}>
-                  <Icon name="calendar-outline" size={18} color={Colors.primaryBlue} /> 
-                    <Text style={[styles.deliveryDateText, { color: Colors.success,   fontWeight: '600' }]}>
-                      Delivery: {order.delivery_day_date}
-                    </Text>
-                    </View>
-                  ) : (
-                <View style={styles.deliveryDateRow}>
-                  <Icon name="calendar-outline" size={18} color={Colors.primaryBlue} /> 
-                    <Text style={[styles.deliveryDateText, { color: Colors.textSecondary,   }]}>
-                      Delivery updates will be sent to your email soon.
-                    </Text>
-                    </View>
-                  )} 
-
-              {/* Product Type and Quantity Together */}
-              <View style={styles.productInfoRow}>
-                <View style={styles.productInfoItem}>
-                  <Text style={styles.productInfoLabel}>Product Type</Text>
-                  <Text style={styles.productInfoValue}>Case</Text>
-                </View>
-                <View style={styles.productInfoDivider} />
-                <View style={styles.productInfoItem}>
-                  <Text style={styles.productInfoLabel}>Quantity</Text>
-                  <Text style={styles.productInfoValue}>
-                    {order.cases > 0 ? `${order.cases}` : 'N/A'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Action Buttons */}
-              <View style={styles.actionButtonsContainer}>
-                <TouchableOpacity
-                  style={styles.viewDetailsButton}
-                  onPress={() => handleViewDetails(order)}
-                  activeOpacity={0.8}>
-                  <Icon name="eye-outline" size={20} color={Colors.cardBackground} />
-                  <Text style={styles.viewDetailsText}>View Details</Text>
-                </TouchableOpacity>
-                
-                {isOrderCompleted(order) && (
-                  <TouchableOpacity
-                    style={styles.reorderButton}
-                    onPress={() => handleReorder(order)}
-                    activeOpacity={0.8}>
-                    <Icon name="refresh" size={20} color={Colors.cardBackground} />
-                    <Text style={styles.reorderText}>Reorder</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          ))
-        )}
-         <View style={styles.contactCard}>
-          <Text style={styles.sectionTitle}>Need to modify or cancel an order?</Text>
-          <Text style={styles.contactSubtitle}>Call us if you want to modify or cancel your order</Text>
-          <TouchableOpacity 
-            style={styles.phoneButton}
-            onPress={handlePhoneCall}>
-            <Icon name="call-outline" size={20} color={Colors.cardBackground} />
-            <Text style={styles.phoneButtonText}>+1 (555) 123-4567</Text>
-          </TouchableOpacity>
-        </View>
-        {/* Date Picker Bottom Sheet */}
-        <Modal
-          visible={showDatePickerModal}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => {
-            bottomSheetRef.current?.close();
-            setShowDatePickerModal(false);
-          }}>
-          <View style={styles.modalOverlay}>
-            <BottomSheet
-              ref={bottomSheetRef}
-              index={0}
-              snapPoints={snapPoints}
-              enablePanDownToClose={true}
-              onClose={() => setShowDatePickerModal(false)}
-              backgroundStyle={styles.bottomSheetBackground}
-              handleIndicatorStyle={styles.bottomSheetIndicator}>
-              <BottomSheetScrollView
-                contentContainerStyle={styles.bottomSheetContent}
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled={true}>
-                <View style={styles.datePickerHeader}>
-                  <Text style={styles.datePickerTitle}>Select Date Range</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      bottomSheetRef.current?.close();
-                      setShowDatePickerModal(false);
-                    }}
-                    style={styles.closeButton}>
-                    <Icon name="close" size={24} color={Colors.textPrimary} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.datePickerContainer}>
-                  <Text style={styles.datePickerLabel}>Select start and end date</Text>
-                  <Text style={styles.datePickerSubLabel}>
-                    Tap first date, then second date. Tap again to pick a new range.
-                  </Text>
-                  <Calendar
-                    onDayPress={handleDayPress}
-                    markedDates={markedDates}
-                    markingType="period"
-                    theme={{
-                      backgroundColor: Colors.cardBackground,
-                      calendarBackground: Colors.cardBackground,
-                      textSectionTitleColor: Colors.textPrimary,
-                      selectedDayBackgroundColor: Colors.primaryBlue,
-                      selectedDayTextColor: Colors.cardBackground,
-                      todayTextColor: Colors.primaryBlue,
-                      dayTextColor: Colors.textPrimary,
-                      textDisabledColor: Colors.textSecondary,
-                      dotColor: Colors.primaryBlue,
-                      selectedDotColor: Colors.cardBackground,
-                      arrowColor: Colors.primaryBlue,
-                      monthTextColor: Colors.textPrimary,
-                      textDayFontFamily: fontFamilyBody,
-                      textMonthFontFamily: fontFamilyHeading,
-                      textDayHeaderFontFamily: fontFamilyBody,
-                      textDayFontSize: 14,
-                      textMonthFontSize: 16,
-                      textDayHeaderFontSize: 12,
-                    }}
-                    style={styles.calendar}
-                  />
-                </View>
-
-                {(dateRangeStart || dateRangeEnd) && (
-                  <View style={styles.selectedDatesListContainer}>
-                    <Text style={styles.selectedDatesListTitle}>
-                      {dateRangeStart && dateRangeEnd
-                        ? `From ${formatDateDisplay(dateRangeStart)} – To ${formatDateDisplay(dateRangeEnd)}`
-                        : dateRangeStart
-                          ? `From ${formatDateDisplay(dateRangeStart)} (tap end date)`
-                          : 'Select start date'}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={handleClearDates}
-                      style={styles.clearAllDatesButton}>
-                      <Text style={styles.clearAllDatesText}>Clear Range</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                <TouchableOpacity
-                  onPress={handleApplyDates}
-                  style={styles.applyDatesButton}
-                  activeOpacity={0.8}>
-                  <Text style={styles.applyDatesButtonText}>Apply Filter</Text>
-                </TouchableOpacity>
-              </BottomSheetScrollView>
-            </BottomSheet>
-          </View>
-        </Modal>
-      </ScrollView> 
+      </Modal>
+    </ScrollView>
   );
 };
 
@@ -1057,7 +1293,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: fontFamilyHeading,
     fontWeight: '700',
-    color: Colors.textPrimary, 
+    color: Colors.textPrimary,
   },
   summaryLabel: {
     fontSize: 12,
@@ -1065,7 +1301,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
   },
-  searchContainer: { 
+  searchContainer: {
     width: '100%',
     paddingTop: Platform.OS === 'ios' ? 14 : 10,
     marginTop: Platform.OS === 'ios' ? 6 : 0,
@@ -1134,7 +1370,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: fontFamilyHeading,
     fontWeight: '500',
-    color: Colors.textPrimary, 
+    color: Colors.textPrimary,
   },
   timeFilterButtons: {
     flexDirection: 'row',
@@ -1205,7 +1441,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fontFamilyBody,
     fontWeight: '700',
-    color: '#000000', 
+    color: '#000000',
   },
   poNumberContainer: {
     flexDirection: 'row',
@@ -1214,7 +1450,7 @@ const styles = StyleSheet.create({
   poNumberLabel: {
     fontSize: 14,
     fontFamily: fontFamilyBody,
-    fontWeight: '600', 
+    fontWeight: '600',
     marginRight: 4,
   },
   poNumber: {
@@ -1239,7 +1475,7 @@ const styles = StyleSheet.create({
   },
   deliveryDateRow: {
     flexDirection: 'row',
-    alignItems: 'center', 
+    alignItems: 'center',
     paddingVertical: 1,
     paddingHorizontal: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -1373,7 +1609,7 @@ const styles = StyleSheet.create({
   },
   actionButtonsContainer: {
     flexDirection: 'row',
-    gap: 12, 
+    gap: 12,
   },
   viewDetailsButton: {
     flex: 1,
@@ -1468,7 +1704,7 @@ const styles = StyleSheet.create({
   calendar: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.borderLight, 
+    borderColor: Colors.borderLight,
     paddingBottom: 10,
     overflow: 'hidden', // Prevent calendar from expanding too much
   },
@@ -1479,7 +1715,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fontFamilyBody,
     fontWeight: '600',
-    color: Colors.textPrimary, 
+    color: Colors.textPrimary,
     marginBottom: 10,
   },
   selectedDatesList: {
@@ -1576,4 +1812,3 @@ const styles = StyleSheet.create({
 });
 
 export default OrdersListScreen;
-

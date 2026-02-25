@@ -36,6 +36,15 @@ import Dropdown from '../components/Dropdown';
 
 const { width, height } = Dimensions.get('window');
 
+// Component ke BAHAR (styles se pehle) yeh helper define karo:
+const getFormattedToday = () => {
+  const date = new Date();
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+};
+ 
+
 // Banner image
 const orderBannerImage = require('../assest/coconut1.png');
 const BANNER_HEIGHT = height * 0.6; // 60% of screen height
@@ -67,8 +76,9 @@ const CreateOrderScreen = ({ navigation, route }) => {
   
   // Date picker states
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedOrderDate, setSelectedOrderDate] = useState(new Date());
-  const [orderDateText, setOrderDateText] = useState('');
+  const [selectedOrderDate, setSelectedOrderDate] = useState(new Date());  
+  const [orderDateText, setOrderDateText] = useState(getFormattedToday());
+
   
   // Bottom sheet ref and snap points
   const bottomSheetRef = useRef(null);
@@ -600,11 +610,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
         
         
         const result = await fetchDeliveryRulesAndCalculate(
-          franchiseId,
-          quantityValue,
-          new Date(),
-          deliveryZone,
-          zoneCity
+          franchiseId, quantityValue, selectedOrderDate, deliveryZone, zoneCity
         );
 
         // Check if this is still the latest call (prevent race condition)
@@ -643,7 +649,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
     };
     // Recalculate when quantity, franchiseId, or zone data changes
     // But quantity rules take priority - if they match, zone rules won't override
-  }, [franchiseId, quantity, deliveryZone, zoneCity]);
+  }, [franchiseId, quantity, deliveryZone, zoneCity, selectedOrderDate]);
 
   // Fetch customer data on mount
   useEffect(() => {
@@ -1165,7 +1171,11 @@ const CreateOrderScreen = ({ navigation, route }) => {
     label: `${addr.label || 'Address'}: ${formatAddressForDropdown(addr)}`,
     value: addr.id,
   }));
-
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const selectedDay = new Date(selectedOrderDate);
+  selectedDay.setHours(0, 0, 0, 0);
+  const isTodaySelected = selectedDay <= today;
   return (
     <>
       {/* Banner Section with Animation */}
@@ -1296,7 +1306,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
           </View>
 
           {/* Delivery Date Card */}
-          {quantity && estimatedDeliveryDate && (
+          {quantity && estimatedDeliveryDate && isTodaySelected && (
             <View style={styles.deliveryDateCard}>
               <Icon name="calendar-outline" size={24} color={Colors.success} />
               <View style={styles.deliveryDateContent}>
@@ -1313,7 +1323,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
                 )}
               </View>
             </View>
-          )}
+          )} 
 
           {/* Coconut Opener Kit */}
           <View style={styles.formCard}>

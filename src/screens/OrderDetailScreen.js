@@ -73,13 +73,20 @@ const OrderDetailScreen = ({ navigation, route }) => {
   const bottomSheetRef = useRef(null);
 
   // Snap points for bottom sheet
-  const snapPoints = useMemo(() => ['26%', '85%'], []);
-
+  const snapPoints = useMemo(() => ['26%', '90%'], []); 
   // State
   const [restaurantName, setRestaurantName] = useState('Restaurant Name');
   const [companyLogo, setCompanyLogo] = useState(null);
   const [orderLogo, setOrderLogo] = useState(null);
   const [isCompanyCollapsed, setIsCompanyCollapsed] = useState(true);
+
+  // Component mount hone pe force top pe le jao
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      bottomSheetRef.current?.snapToIndex(1);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Handle sheet position changes - Map is now fixed, no height changes
   const handleSheetChange = useCallback(index => {
@@ -1236,13 +1243,13 @@ const OrderDetailScreen = ({ navigation, route }) => {
       {/* Bottom Sheet */}
       <BottomSheet
         ref={bottomSheetRef}
-        index={0}
+        index={1}
         snapPoints={snapPoints}
         onChange={handleSheetChange}
+        animateOnMount={false}
         enablePanDownToClose={false}
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.handleIndicator}
-        animateOnMount={true}
       >
         <BottomSheetScrollView
           contentContainerStyle={styles.bottomSheetContent}
@@ -1252,25 +1259,76 @@ const OrderDetailScreen = ({ navigation, route }) => {
           <View style={styles.restaurantSection}>
             <View style={styles.restaurantInfo}>
               <Text style={styles.restaurantName}>{getOrderId()}</Text>
-              {order.delivery_day_date ? (
-                <Text
-                  style={[
-                    styles.orderDate,
-                    { color: Colors.success, marginTop: 4, fontWeight: '600' },
-                  ]}
-                >
-                  Delivery: {order.delivery_day_date}
-                </Text>
-              ) : (
-                <Text
-                  style={[
-                    styles.orderDate,
-                    { color: Colors.textSecondary, marginTop: 4 },
-                  ]}
-                >
-                  Delivery updates will be sent to your email soon.
-                </Text>
-              )}
+              {(() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const orderDate = new Date(
+                  order.order_date || order.orderDateRaw,
+                );
+                orderDate.setHours(0, 0, 0, 0);
+                const isFutureDate = orderDate > today;
+
+                if (isFutureDate && (order.order_date || order.orderDateRaw)) {
+                  const d = new Date(order.order_date || order.orderDateRaw);
+                  const months = [
+                    'Jan',
+                    'Feb',
+                    'Mar',
+                    'Apr',
+                    'May',
+                    'Jun',
+                    'Jul',
+                    'Aug',
+                    'Sep',
+                    'Oct',
+                    'Nov',
+                    'Dec',
+                  ];
+                  const formatted = `${d.getDate()} ${
+                    months[d.getMonth()]
+                  }, ${d.getFullYear()}`;
+                  return (
+                    <Text
+                      style={[
+                        styles.orderDate,
+                        {
+                          color: Colors.success,
+                          marginTop: 4,
+                          fontWeight: '600',
+                        },
+                      ]}
+                    >
+                      Delivery: {formatted}
+                    </Text>
+                  );
+                } else if (order.delivery_day_date) {
+                  return (
+                    <Text
+                      style={[
+                        styles.orderDate,
+                        {
+                          color: Colors.success,
+                          marginTop: 4,
+                          fontWeight: '600',
+                        },
+                      ]}
+                    >
+                      Delivery: {order.delivery_day_date}
+                    </Text>
+                  );
+                } else {
+                  return (
+                    <Text
+                      style={[
+                        styles.orderDate,
+                        { color: Colors.textSecondary, marginTop: 4 },
+                      ]}
+                    >
+                      Delivery updates will be sent to your email soon.
+                    </Text>
+                  );
+                }
+              })()}
               <Text style={styles.orderItems}>{order.cases || 0} Cases</Text>
             </View>
             {/* Order Status Badge */}
@@ -1417,24 +1475,6 @@ const OrderDetailScreen = ({ navigation, route }) => {
                     </Text>
                   </View>
                 )}
-
-                {/* Delivery Timeline */}
-                {order.delivery_day_date && (
-                  <View style={styles.additionalDetailRow}>
-                    <Text style={styles.additionalDetailLabel}>
-                      Delivery Timeline:
-                    </Text>
-                    <Text
-                      style={[
-                        styles.additionalDetailValue,
-                        { color: Colors.success },
-                      ]}
-                    >
-                      {order.delivery_day_date}
-                    </Text>
-                  </View>
-                )}
-
                 {/* Delivery Address */}
                 {order.delivery_address && (
                   <View style={styles.additionalDetailRow}>
@@ -2131,7 +2171,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     fontWeight: '500',
-    marginBottom: 6, 
+    marginBottom: 6,
     letterSpacing: 0.5,
   },
   detailValue: {
@@ -2175,7 +2215,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilyBody,
     color: Colors.textSecondary,
     fontWeight: '500',
-    marginBottom: 8, 
+    marginBottom: 8,
     letterSpacing: 0.5,
   },
   logoPreview: {
