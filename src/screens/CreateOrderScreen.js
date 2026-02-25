@@ -3,7 +3,13 @@
  * Form to create a new order with product type, quantity, addons, and logo upload
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from 'react';
 import {
   View,
   Text,
@@ -26,7 +32,10 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Toast from 'react-native-toast-message';
-import BottomSheet, { BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import BottomSheet, {
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+} from '@gorhom/bottom-sheet';
 import Colors from '../theme/colors';
 import TextStyles from '../theme/textStyles';
 import { fontFamilyHeading, fontFamilyBody } from '../theme/fonts';
@@ -40,10 +49,24 @@ const { width, height } = Dimensions.get('window');
 const getFormattedToday = () => {
   const date = new Date();
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return `${days[date.getDay()]}, ${
+    months[date.getMonth()]
+  } ${date.getDate()}, ${date.getFullYear()}`;
 };
- 
 
 // Banner image
 const orderBannerImage = require('../assest/coconut1.png');
@@ -51,7 +74,7 @@ const BANNER_HEIGHT = height * 0.6; // 60% of screen height
 
 const CreateOrderScreen = ({ navigation, route }) => {
   const reorderData = route?.params?.reorderData || null;
-  
+
   const [productType, setProductType] = useState('case');
   const [quantity, setQuantity] = useState('');
   const [openerKit, setOpenerKit] = useState(false);
@@ -73,13 +96,12 @@ const CreateOrderScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  
+  const [isScheduledOrder, setIsScheduledOrder] = useState(false);
   // Date picker states
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedOrderDate, setSelectedOrderDate] = useState(new Date());  
+  const [selectedOrderDate, setSelectedOrderDate] = useState(new Date());
   const [orderDateText, setOrderDateText] = useState(getFormattedToday());
 
-  
   // Bottom sheet ref and snap points
   const bottomSheetRef = useRef(null);
   const scrollViewRef = useRef(null);
@@ -95,13 +117,16 @@ const CreateOrderScreen = ({ navigation, route }) => {
   const snapPoints = useMemo(() => ['50%', '80%'], []);
 
   // Handle sheet position changes to ensure it doesn't go beyond 80%
-  const handleSheetChange = useCallback((index) => {
-    // Ensure sheet doesn't go beyond 80% snap point
-    if (index >= snapPoints.length) {
-      bottomSheetRef.current?.snapToIndex(snapPoints.length - 1);
-    }
-  }, [snapPoints]);
-  
+  const handleSheetChange = useCallback(
+    index => {
+      // Ensure sheet doesn't go beyond 80% snap point
+      if (index >= snapPoints.length) {
+        bottomSheetRef.current?.snapToIndex(snapPoints.length - 1);
+      }
+    },
+    [snapPoints],
+  );
+
   // Animation for banner
   const bannerAnim = useRef(new Animated.Value(0)).current;
 
@@ -111,17 +136,22 @@ const CreateOrderScreen = ({ navigation, route }) => {
   ];
 
   // Parse delivery addresses and get selected/default address
-  const getSelectedAddressFromArray = (deliveryAddress) => {
+  const getSelectedAddressFromArray = deliveryAddress => {
     if (!deliveryAddress) return null;
     try {
       let addresses = [];
-      
+
       // If it's a string, try to parse it
       if (typeof deliveryAddress === 'string') {
         try {
           const parsed = JSON.parse(deliveryAddress);
           // If it's an object with "address" key (old format)
-          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.address) {
+          if (
+            parsed &&
+            typeof parsed === 'object' &&
+            !Array.isArray(parsed) &&
+            parsed.address
+          ) {
             return parsed.address;
           }
           // If it's already an array
@@ -134,7 +164,10 @@ const CreateOrderScreen = ({ navigation, route }) => {
         }
       } else if (Array.isArray(deliveryAddress)) {
         addresses = deliveryAddress;
-      } else if (typeof deliveryAddress === 'object' && deliveryAddress.address) {
+      } else if (
+        typeof deliveryAddress === 'object' &&
+        deliveryAddress.address
+      ) {
         return deliveryAddress.address;
       }
 
@@ -172,26 +205,28 @@ const CreateOrderScreen = ({ navigation, route }) => {
   };
 
   // Parse delivery addresses from customer data
-  const parseDeliveryAddresses = (deliveryAddress) => {
+  const parseDeliveryAddresses = deliveryAddress => {
     if (!deliveryAddress) return [];
     try {
       let addresses = [];
-      
+
       if (typeof deliveryAddress === 'string') {
         try {
           const parsed = JSON.parse(deliveryAddress);
           if (Array.isArray(parsed)) {
             addresses = parsed;
           } else if (parsed && typeof parsed === 'object' && parsed.address) {
-            addresses = [{
-              id: '1',
-              label: 'Main Office',
-              street: parsed.address,
-              city: '',
-              state: '',
-              zipCode: '',
-              isSelected: true,
-            }];
+            addresses = [
+              {
+                id: '1',
+                label: 'Main Office',
+                street: parsed.address,
+                city: '',
+                state: '',
+                zipCode: '',
+                isSelected: true,
+              },
+            ];
           }
         } catch {
           return [];
@@ -199,7 +234,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
       } else if (Array.isArray(deliveryAddress)) {
         addresses = deliveryAddress;
       }
-      
+
       // Ensure all addresses have IDs
       return addresses.map((addr, index) => ({
         ...addr,
@@ -215,36 +250,71 @@ const CreateOrderScreen = ({ navigation, route }) => {
   // Fetch customer ID and delivery addresses
   const fetchCustomerData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || !user.email) {
-        return { customerId: null, deliveryAddresses: [], selectedAddress: null, franchiseId: null, deliveryZone: null, zoneCity: null };
+        return {
+          customerId: null,
+          deliveryAddresses: [],
+          selectedAddress: null,
+          franchiseId: null,
+          deliveryZone: null,
+          zoneCity: null,
+        };
       }
 
       const { data: customer, error } = await supabase
         .from('customers')
-        .select('id, delivery_address, franchise_id, delivery_zone, zoneCity, status')
+        .select(
+          'id, delivery_address, franchise_id, delivery_zone, zoneCity, status',
+        )
         .eq('email', user.email)
         .single();
 
       if (error) {
         if (error.code === 'PGRST116') {
           await performLogoutAndNavigateToLogin();
-          return { customerId: null, deliveryAddresses: [], selectedAddress: null, franchiseId: null, deliveryZone: null, zoneCity: null };
+          return {
+            customerId: null,
+            deliveryAddresses: [],
+            selectedAddress: null,
+            franchiseId: null,
+            deliveryZone: null,
+            zoneCity: null,
+          };
         }
         console.error('Error fetching customer:', error);
-        return { customerId: null, deliveryAddresses: [], selectedAddress: null, franchiseId: null, deliveryZone: null, zoneCity: null };
+        return {
+          customerId: null,
+          deliveryAddresses: [],
+          selectedAddress: null,
+          franchiseId: null,
+          deliveryZone: null,
+          zoneCity: null,
+        };
       }
 
       const status = (customer?.status || '').trim().toLowerCase();
-      const isInactive = status === 'inactive' || status === 'disabled' || status === 'deactivated';
+      const isInactive =
+        status === 'inactive' ||
+        status === 'disabled' ||
+        status === 'deactivated';
       if (isInactive) {
         await performLogoutAndNavigateToLogin();
-        return { customerId: null, deliveryAddresses: [], selectedAddress: null, franchiseId: null, deliveryZone: null, zoneCity: null };
+        return {
+          customerId: null,
+          deliveryAddresses: [],
+          selectedAddress: null,
+          franchiseId: null,
+          deliveryZone: null,
+          zoneCity: null,
+        };
       }
 
       // Parse all addresses
       const addresses = parseDeliveryAddresses(customer?.delivery_address);
-      
+
       // Find selected address or use first one
       const selected = addresses.find(addr => addr.isSelected) || addresses[0];
 
@@ -258,32 +328,51 @@ const CreateOrderScreen = ({ navigation, route }) => {
       };
     } catch (error) {
       console.error('Error in fetchCustomerData:', error);
-      return { customerId: null, deliveryAddresses: [], selectedAddress: null, franchiseId: null, deliveryZone: null, zoneCity: null };
+      return {
+        customerId: null,
+        deliveryAddresses: [],
+        selectedAddress: null,
+        franchiseId: null,
+        deliveryZone: null,
+        zoneCity: null,
+      };
     }
   };
 
   // Fetch delivery rules and calculate delivery date
   // Returns: { deliveryDate: Date, deliveryDayText: string } or null
-  const fetchDeliveryRulesAndCalculate = async (franchiseId, orderQuantity, orderTime, customerZone, zoneCityName) => {
+  const fetchDeliveryRulesAndCalculate = async (
+    franchiseId,
+    orderQuantity,
+    orderTime,
+    customerZone,
+    zoneCityName,
+  ) => {
     console.log('🔄 Starting delivery date calculation:', {
       franchiseId,
       orderQuantity,
       orderTime,
       customerZone,
-      zoneCityName
+      zoneCityName,
     });
 
     if (!franchiseId) {
-      console.log('❌ No franchise ID, using fallback - delivery_day_date will be blank');
+      console.log(
+        '❌ No franchise ID, using fallback - delivery_day_date will be blank',
+      );
       const defaultDate = new Date();
       defaultDate.setHours(0, 0, 0, 0);
       setCalculatedDeliveryDate(defaultDate);
       setDeliveryDayText(''); // Empty for fallback case
-      return { deliveryDate: defaultDate, deliveryDayText: null, isFallback: true };
+      return {
+        deliveryDate: defaultDate,
+        deliveryDayText: null,
+        isFallback: true,
+      };
     }
 
     // Parse order quantity
-    const orderQty = parseInt(orderQuantity) || 0; 
+    const orderQty = parseInt(orderQuantity) || 0;
 
     try {
       // PRIORITY 1: Fetch quantity-based rules first (exactly like warehouse code)
@@ -294,36 +383,41 @@ const CreateOrderScreen = ({ navigation, route }) => {
         .eq('status', 'Active')
         .order('min_quantity', { ascending: true });
 
-     
-
       let quantityRuleMatched = false;
 
       if (!qError && quantityRules && quantityRules.length > 0) {
-       
-        
         // Find ALL matching quantity rules first, then select the best match
         // Handle null max_quantity properly - if null, don't use Infinity, skip that rule
         const matchingRules = quantityRules.filter(rule => {
           const min = parseInt(rule.min_quantity);
-          const max = rule.max_quantity !== null && rule.max_quantity !== undefined 
-            ? parseInt(rule.max_quantity) 
-            : null;
-          
+          const max =
+            rule.max_quantity !== null && rule.max_quantity !== undefined
+              ? parseInt(rule.max_quantity)
+              : null;
+
           // If max is null or invalid, skip this rule
           if (max === null || isNaN(min) || isNaN(max)) {
-            console.log(`⚠️ Skipping invalid rule: min=${rule.min_quantity} (${typeof rule.min_quantity}), max=${rule.max_quantity} (${typeof rule.max_quantity})`);
+            console.log(
+              `⚠️ Skipping invalid rule: min=${
+                rule.min_quantity
+              } (${typeof rule.min_quantity}), max=${
+                rule.max_quantity
+              } (${typeof rule.max_quantity})`,
+            );
             return false;
           }
-          
+
           // Check if order quantity falls within range
           const matches = orderQty >= min && orderQty <= max;
           const range = max - min;
-          console.log(`🔍 Checking quantity rule: min=${min}, max=${max}, range=${range}, orderQty=${orderQty}, matches=${matches}, delivery_offset=${rule.delivery_offset} (${typeof rule.delivery_offset})`);
+          console.log(
+            `🔍 Checking quantity rule: min=${min}, max=${max}, range=${range}, orderQty=${orderQty}, matches=${matches}, delivery_offset=${
+              rule.delivery_offset
+            } (${typeof rule.delivery_offset})`,
+          );
           return matches;
         });
-        
-        
-        
+
         // If multiple rules match, select the one with the smallest range (most specific)
         // This handles overlapping ranges correctly
         let matchingRule = null;
@@ -333,32 +427,42 @@ const CreateOrderScreen = ({ navigation, route }) => {
           } else {
             // Multiple matches - find the one with smallest range (most specific)
             matchingRule = matchingRules.reduce((best, current) => {
-              const bestRange = parseInt(best.max_quantity) - parseInt(best.min_quantity);
-              const currentRange = parseInt(current.max_quantity) - parseInt(current.min_quantity);
+              const bestRange =
+                parseInt(best.max_quantity) - parseInt(best.min_quantity);
+              const currentRange =
+                parseInt(current.max_quantity) - parseInt(current.min_quantity);
               return currentRange < bestRange ? current : best;
             });
-           
           }
         }
 
         if (matchingRule) {
-        
-          
           // delivery_offset can be number (0, 1, 2) or text ("Same Day", "1 day", "2 day")
           let deliveryOffset = 0;
           const offsetValue = matchingRule.delivery_offset;
-           
-          
+
           if (offsetValue === null || offsetValue === undefined) {
             deliveryOffset = 0;
           } else if (typeof offsetValue === 'string') {
             // Handle text format: "Same Day", "1 day", "2 day", "2 days", etc.
             const offsetLower = String(offsetValue).toLowerCase().trim();
-            if (offsetLower.includes('same') || offsetLower === '0' || offsetLower === 'same day') {
+            if (
+              offsetLower.includes('same') ||
+              offsetLower === '0' ||
+              offsetLower === 'same day'
+            ) {
               deliveryOffset = 0;
-            } else if (offsetLower.includes('1 day') || offsetLower === '1' || offsetLower.startsWith('1')) {
+            } else if (
+              offsetLower.includes('1 day') ||
+              offsetLower === '1' ||
+              offsetLower.startsWith('1')
+            ) {
               deliveryOffset = 1;
-            } else if (offsetLower.includes('2 day') || offsetLower === '2' || offsetLower.startsWith('2')) {
+            } else if (
+              offsetLower.includes('2 day') ||
+              offsetLower === '2' ||
+              offsetLower.startsWith('2')
+            ) {
               deliveryOffset = 2;
             } else {
               // Try to extract number from string
@@ -366,7 +470,10 @@ const CreateOrderScreen = ({ navigation, route }) => {
               if (numMatch) {
                 deliveryOffset = parseInt(numMatch[0]);
               } else {
-                console.warn('⚠️ Could not parse delivery_offset from string:', offsetValue);
+                console.warn(
+                  '⚠️ Could not parse delivery_offset from string:',
+                  offsetValue,
+                );
                 deliveryOffset = 0;
               }
             }
@@ -374,20 +481,22 @@ const CreateOrderScreen = ({ navigation, route }) => {
             // Handle numeric format
             deliveryOffset = parseInt(offsetValue) || 0;
           }
-          
+
           // Validate delivery_offset
           if (isNaN(deliveryOffset)) {
-            console.warn('⚠️ Invalid delivery_offset after parsing, defaulting to Same Day. Original value:', offsetValue);
+            console.warn(
+              '⚠️ Invalid delivery_offset after parsing, defaulting to Same Day. Original value:',
+              offsetValue,
+            );
             const deliveryDate = new Date();
             deliveryDate.setHours(0, 0, 0, 0);
             setCalculatedDeliveryDate(deliveryDate);
             setDeliveryDayText('Same Day');
             return deliveryDate;
           }
-          
-           
+
           const deliveryDate = new Date();
-          
+
           if (deliveryOffset === 0) {
             deliveryDate.setHours(0, 0, 0, 0);
             setDeliveryDayText('Same Day');
@@ -403,24 +512,37 @@ const CreateOrderScreen = ({ navigation, route }) => {
             // Fallback for any other value
             deliveryDate.setDate(deliveryDate.getDate() + deliveryOffset);
             deliveryDate.setHours(0, 0, 0, 0);
-            setDeliveryDayText(`${deliveryOffset} ${deliveryOffset === 1 ? 'day' : 'days'}`);
+            setDeliveryDayText(
+              `${deliveryOffset} ${deliveryOffset === 1 ? 'day' : 'days'}`,
+            );
           }
-          
-          const dayText = deliveryOffset === 0 ? 'Same Day' : deliveryOffset === 1 ? '1 day' : '2 days';
-         
+
+          const dayText =
+            deliveryOffset === 0
+              ? 'Same Day'
+              : deliveryOffset === 1
+              ? '1 day'
+              : '2 days';
+
           setCalculatedDeliveryDate(deliveryDate);
           setDeliveryDayText(dayText);
-          console.log('🛑 Quantity rule matched - RETURNING EARLY, zone rules will NOT be checked');
+          console.log(
+            '🛑 Quantity rule matched - RETURNING EARLY, zone rules will NOT be checked',
+          );
           return { deliveryDate, deliveryDayText: dayText };
         } else {
-          console.log('❌ No matching quantity rule found for order quantity:', orderQty, 'Available rules:', quantityRules.map(r => `${r.min_quantity}-${r.max_quantity}`));
+          console.log(
+            '❌ No matching quantity rule found for order quantity:',
+            orderQty,
+            'Available rules:',
+            quantityRules.map(r => `${r.min_quantity}-${r.max_quantity}`),
+          );
         }
       } else {
         console.log('❌ No quantity rules found or error:', qError);
-      } 
-      
-      if (customerZone || zoneCityName) { 
-        
+      }
+
+      if (customerZone || zoneCityName) {
         let zoneRules = null;
         let zError = null;
 
@@ -432,11 +554,13 @@ const CreateOrderScreen = ({ navigation, route }) => {
             .select('*')
             .eq('franchise_id', franchiseId)
             .eq('status', 'Active');
-          
+
           // Try to match by zone_id
           const { data: allZoneRules } = await result;
           if (allZoneRules && allZoneRules.length > 0) {
-            zoneRules = allZoneRules.find(rule => String(rule.zone_id) === customerZoneStr);
+            zoneRules = allZoneRules.find(
+              rule => String(rule.zone_id) === customerZoneStr,
+            );
             if (!zoneRules) {
               zError = { message: 'Zone rule not found' };
             }
@@ -463,59 +587,79 @@ const CreateOrderScreen = ({ navigation, route }) => {
               .select('*')
               .eq('franchise_id', franchiseId)
               .eq('status', 'Active');
-            
+
             const { data: allZoneRules } = await result;
             if (allZoneRules && allZoneRules.length > 0) {
-              zoneRules = allZoneRules.find(rule => String(rule.zone_id) === zoneIdStr);
+              zoneRules = allZoneRules.find(
+                rule => String(rule.zone_id) === zoneIdStr,
+              );
             }
           }
         }
 
-        if (zoneRules && zoneRules.cutoff_time) { 
-          
+        if (zoneRules && zoneRules.cutoff_time) {
           // Use next_day_offset (before cutoff) and after_cutoff_offset (after cutoff) - exactly like warehouse code
           const cutoffTime = zoneRules.cutoff_time; // Format: "HH:MM:SS" or "HH:MM"
           // Parse offsets - handle 0 as valid value (don't use || fallback for 0)
           // Use Number() instead of parseInt() to handle both integers and ensure 0 is preserved
-          const nextDayOffsetParsed = zoneRules.next_day_offset != null ? Number(zoneRules.next_day_offset) : null;
-          const afterCutoffOffsetParsed = zoneRules.after_cutoff_offset != null ? Number(zoneRules.after_cutoff_offset) : null;
-          const nextDayOffset = (nextDayOffsetParsed != null && !isNaN(nextDayOffsetParsed)) ? nextDayOffsetParsed : 1; // Before cutoff offset
-          const afterCutoffOffset = (afterCutoffOffsetParsed != null && !isNaN(afterCutoffOffsetParsed)) ? afterCutoffOffsetParsed : 2; // After cutoff offset
-          
-         
+          const nextDayOffsetParsed =
+            zoneRules.next_day_offset != null
+              ? Number(zoneRules.next_day_offset)
+              : null;
+          const afterCutoffOffsetParsed =
+            zoneRules.after_cutoff_offset != null
+              ? Number(zoneRules.after_cutoff_offset)
+              : null;
+          const nextDayOffset =
+            nextDayOffsetParsed != null && !isNaN(nextDayOffsetParsed)
+              ? nextDayOffsetParsed
+              : 1; // Before cutoff offset
+          const afterCutoffOffset =
+            afterCutoffOffsetParsed != null && !isNaN(afterCutoffOffsetParsed)
+              ? afterCutoffOffsetParsed
+              : 2; // After cutoff offset
 
           // Parse cutoff time (format: "HH:MM:SS" or "HH:MM")
-          const [cutoffHours, cutoffMinutes] = cutoffTime.split(':').map(Number);
-          
+          const [cutoffHours, cutoffMinutes] = cutoffTime
+            .split(':')
+            .map(Number);
+
           // Get order time in local timezone (convert from UTC if needed)
           let orderTimeLocal;
-          const orderDateStr = orderTime ? orderTime.toISOString() : new Date().toISOString();
-          
+          const orderDateStr = orderTime
+            ? orderTime.toISOString()
+            : new Date().toISOString();
+
           // If order_date is in ISO format without timezone, treat as UTC
-          if (orderDateStr.includes('T') && !orderDateStr.includes('Z') && !orderDateStr.includes('+') && !orderDateStr.match(/-\d{2}:\d{2}$/)) {
+          if (
+            orderDateStr.includes('T') &&
+            !orderDateStr.includes('Z') &&
+            !orderDateStr.includes('+') &&
+            !orderDateStr.match(/-\d{2}:\d{2}$/)
+          ) {
             orderTimeLocal = new Date(orderDateStr + 'Z');
           } else {
             orderTimeLocal = new Date(orderDateStr);
           }
-          
+
           // Get local time hours and minutes
           const orderHours = orderTimeLocal.getHours();
           const orderMinutes = orderTimeLocal.getMinutes();
-          
+
           // Compare order time with cutoff time (using LOCAL time)
           const orderTimeMinutes = orderHours * 60 + orderMinutes;
           const cutoffTimeMinutes = cutoffHours * 60 + cutoffMinutes;
-          
+
           // Zone-based rule logic (exactly like warehouse code):
           // - If order time is BEFORE cutoff time → use next_day_offset
           // - If order time is AFTER or EQUAL to cutoff time → use after_cutoff_offset
           const isAfterCutoff = orderTimeMinutes >= cutoffTimeMinutes;
-          const deliveryOffset = isAfterCutoff ? afterCutoffOffset : nextDayOffset;
-          
-          
+          const deliveryOffset = isAfterCutoff
+            ? afterCutoffOffset
+            : nextDayOffset;
 
           const deliveryDate = new Date();
-          
+
           if (deliveryOffset === 0) {
             deliveryDate.setHours(0, 0, 0, 0);
             setDeliveryDayText('Same Day');
@@ -530,11 +674,23 @@ const CreateOrderScreen = ({ navigation, route }) => {
           } else {
             deliveryDate.setDate(deliveryDate.getDate() + deliveryOffset);
             deliveryDate.setHours(0, 0, 0, 0);
-            setDeliveryDayText(`${deliveryOffset} ${deliveryOffset === 1 ? 'day' : 'days'}`);
+            setDeliveryDayText(
+              `${deliveryOffset} ${deliveryOffset === 1 ? 'day' : 'days'}`,
+            );
           }
 
-          const dayText = deliveryOffset === 0 ? 'Same Day' : deliveryOffset === 1 ? '1 day' : '2 days';
-          console.log('✅ Calculated delivery date from zone rule:', deliveryDate, 'Text:', dayText);
+          const dayText =
+            deliveryOffset === 0
+              ? 'Same Day'
+              : deliveryOffset === 1
+              ? '1 day'
+              : '2 days';
+          console.log(
+            '✅ Calculated delivery date from zone rule:',
+            deliveryDate,
+            'Text:',
+            dayText,
+          );
           setCalculatedDeliveryDate(deliveryDate);
           setDeliveryDayText(dayText);
           return { deliveryDate, deliveryDayText: dayText };
@@ -543,12 +699,16 @@ const CreateOrderScreen = ({ navigation, route }) => {
         }
       }
 
-      // Default fallback (only if no rules matched) 
+      // Default fallback (only if no rules matched)
       const defaultDate = new Date();
       defaultDate.setHours(0, 0, 0, 0);
       setCalculatedDeliveryDate(defaultDate);
       setDeliveryDayText(''); // Empty for fallback case
-      return { deliveryDate: defaultDate, deliveryDayText: null, isFallback: true };
+      return {
+        deliveryDate: defaultDate,
+        deliveryDayText: null,
+        isFallback: true,
+      };
     } catch (error) {
       console.error('Error calculating delivery date:', error);
       // Default fallback
@@ -556,7 +716,11 @@ const CreateOrderScreen = ({ navigation, route }) => {
       defaultDate.setHours(0, 0, 0, 0);
       setCalculatedDeliveryDate(defaultDate);
       setDeliveryDayText(''); // Empty for fallback case
-      return { deliveryDate: defaultDate, deliveryDayText: null, isFallback: true };
+      return {
+        deliveryDate: defaultDate,
+        deliveryDayText: null,
+        isFallback: true,
+      };
     }
   };
 
@@ -584,61 +748,96 @@ const CreateOrderScreen = ({ navigation, route }) => {
       const calculateDeliveryDate = async () => {
         // Increment call counter to track latest call
         const callId = ++calculationRef.current;
-        console.log(`🔄 [Call ${callId}] Starting calculation for quantity:`, quantity);
-        
+        console.log(
+          `🔄 [Call ${callId}] Starting calculation for quantity:`,
+          quantity,
+        );
+
         // If no franchise, show default Same Day
         if (!franchiseId) {
-      const today = new Date();
-      const deliveryDate = new Date(today);
+          const today = new Date();
+          const deliveryDate = new Date(today);
           deliveryDate.setHours(0, 0, 0, 0);
-      
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      
-      const dayName = days[deliveryDate.getDay()];
-      const monthName = months[deliveryDate.getMonth()];
-      const day = deliveryDate.getDate();
-      const year = deliveryDate.getFullYear();
-      
-      setEstimatedDeliveryDate(`${dayName}, ${monthName} ${day}, ${year}`);
+
+          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const months = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ];
+
+          const dayName = days[deliveryDate.getDay()];
+          const monthName = months[deliveryDate.getMonth()];
+          const day = deliveryDate.getDate();
+          const year = deliveryDate.getFullYear();
+
+          setEstimatedDeliveryDate(`${dayName}, ${monthName} ${day}, ${year}`);
           setDeliveryDayText('Same Day');
           return;
         }
 
         // Calculate based on rules - trim and parse quantity
         const quantityValue = quantity ? quantity.trim() : '';
-        
-        
+
         const result = await fetchDeliveryRulesAndCalculate(
-          franchiseId, quantityValue, selectedOrderDate, deliveryZone, zoneCity
+          franchiseId,
+          quantityValue,
+          selectedOrderDate,
+          deliveryZone,
+          zoneCity,
         );
 
         // Check if this is still the latest call (prevent race condition)
         if (callId !== calculationRef.current) {
-          console.log(`⏭️ [Call ${callId}] Skipping state update - newer call (${calculationRef.current}) is in progress`);
+          console.log(
+            `⏭️ [Call ${callId}] Skipping state update - newer call (${calculationRef.current}) is in progress`,
+          );
           return;
         }
 
         if (result && result.deliveryDate) {
           const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          
+          const months = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ];
+
           const dayName = days[result.deliveryDate.getDay()];
           const monthName = months[result.deliveryDate.getMonth()];
           const day = result.deliveryDate.getDate();
           const year = result.deliveryDate.getFullYear();
-          
+
           setEstimatedDeliveryDate(`${dayName}, ${monthName} ${day}, ${year}`);
           // Set deliveryDayText from the returned result (not from state)
           // If isFallback is true, deliveryDayText will be null and message will show
           setDeliveryDayText(result.deliveryDayText || '');
-         
         } else {
-          console.log(`⚠️ [Call ${callId}] No delivery date returned from fetchDeliveryRulesAndCalculate`);
+          console.log(
+            `⚠️ [Call ${callId}] No delivery date returned from fetchDeliveryRulesAndCalculate`,
+          );
         }
-    };
+      };
 
-    calculateDeliveryDate();
+      calculateDeliveryDate();
     }, 500); // 500ms debounce delay
 
     // Cleanup: Clear timeout on unmount or when dependencies change
@@ -657,10 +856,17 @@ const CreateOrderScreen = ({ navigation, route }) => {
     if (productTypeOptions.length > 0 && !productType) {
       setProductType(productTypeOptions[0].value);
     }
-    
+
     // Fetch customer ID and delivery addresses
     const loadCustomerData = async () => {
-      const { customerId: id, deliveryAddresses: addresses, selectedAddress, franchiseId: fid, deliveryZone: zone, zoneCity: zCity } = await fetchCustomerData();
+      const {
+        customerId: id,
+        deliveryAddresses: addresses,
+        selectedAddress,
+        franchiseId: fid,
+        deliveryZone: zone,
+        zoneCity: zCity,
+      } = await fetchCustomerData();
       setCustomerId(id);
       setDeliveryAddresses(addresses);
       setFranchiseId(fid);
@@ -673,12 +879,14 @@ const CreateOrderScreen = ({ navigation, route }) => {
           selectedAddress.city,
           selectedAddress.state,
           selectedAddress.zipCode,
-        ].filter(Boolean).join(', ');
+        ]
+          .filter(Boolean)
+          .join(', ');
         setCustomerDeliveryAddress(addressStr);
       }
     };
     loadCustomerData();
-    
+
     // Animate banner on mount
     Animated.timing(bannerAnim, {
       toValue: 1,
@@ -691,7 +899,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
   useEffect(() => {
     if (reorderData) {
       console.log('🔄 Pre-filling form with reorder data:', reorderData);
-      
+
       // Pre-fill form fields
       if (reorderData.quantity) {
         setQuantity(String(reorderData.quantity));
@@ -705,12 +913,12 @@ const CreateOrderScreen = ({ navigation, route }) => {
       if (reorderData.openerKit !== undefined) {
         setOpenerKit(reorderData.openerKit);
       }
-      
+
       // Handle Special Event toggle - set this first
       if (reorderData.specialEvent !== undefined) {
         setSpecialEvent(reorderData.specialEvent);
       }
-      
+
       // Handle logo if available - set after specialEvent is set
       if (reorderData.specialEventLogo) {
         setLogoPreview(reorderData.specialEventLogo);
@@ -723,12 +931,13 @@ const CreateOrderScreen = ({ navigation, route }) => {
           isReorderLogo: true, // Flag to identify reorder logo
         });
       }
-      
+
       // Handle delivery address
       if (reorderData.deliveryAddress) {
         const addresses = parseDeliveryAddresses(reorderData.deliveryAddress);
         setDeliveryAddresses(addresses);
-        const selected = addresses.find(addr => addr.isSelected) || addresses[0];
+        const selected =
+          addresses.find(addr => addr.isSelected) || addresses[0];
         if (selected) {
           setSelectedAddressId(selected.id);
           const addressStr = [
@@ -736,7 +945,9 @@ const CreateOrderScreen = ({ navigation, route }) => {
             selected.city,
             selected.state,
             selected.zipCode,
-          ].filter(Boolean).join(', ');
+          ]
+            .filter(Boolean)
+            .join(', ');
           setCustomerDeliveryAddress(addressStr);
         }
       }
@@ -751,7 +962,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
 
     try {
       const apiLevel = Platform.Version;
-      
+
       if (apiLevel >= 33) {
         // Android 13+ - request READ_MEDIA_IMAGES
         const granted = await PermissionsAndroid.request(
@@ -762,7 +973,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',
-          }
+          },
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       } else {
@@ -775,7 +986,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',
-          }
+          },
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       }
@@ -789,7 +1000,10 @@ const CreateOrderScreen = ({ navigation, route }) => {
   const handleLogoUpload = async () => {
     const hasPermission = await requestImagePickerPermissions();
     if (!hasPermission) {
-      Alert.alert('Permission Denied', 'Please grant permission to access photos.');
+      Alert.alert(
+        'Permission Denied',
+        'Please grant permission to access photos.',
+      );
       return;
     }
 
@@ -801,7 +1015,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
       maxHeight: 2048,
     };
 
-    launchImageLibrary(options, (response) => {
+    launchImageLibrary(options, response => {
       if (response.didCancel) {
         console.log('User cancelled image picker');
       } else if (response.errorMessage) {
@@ -848,7 +1062,10 @@ const CreateOrderScreen = ({ navigation, route }) => {
     }
 
     if (!customerId) {
-      Alert.alert('Error', 'Customer information not found. Please login again.');
+      Alert.alert(
+        'Error',
+        'Customer information not found. Please login again.',
+      );
       return;
     }
 
@@ -865,7 +1082,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
     try {
       // Step 1: Handle logo if Special Event is enabled
       let logoUrl = null;
-      
+
       // If special event is enabled and we have a logo
       if (specialEvent) {
         // Check if it's a reorder logo (existing URL) or new upload
@@ -876,108 +1093,151 @@ const CreateOrderScreen = ({ navigation, route }) => {
         } else if (logoFile && !logoFile.isReorderLogo) {
           // New logo upload required
           try {
-          const timestamp = Date.now();
-          const filenameSafe = logoFile.fileName || `logo-${timestamp}.jpg`;
-          const path = `order-logos/${timestamp}-${filenameSafe}`;
-          const bucketName = 'logos';
-          const fileExt = filenameSafe.split('.').pop() || 'jpg';
-          const contentType = logoFile.type || `image/${fileExt === 'png' ? 'png' : 'jpeg'}`;
+            const timestamp = Date.now();
+            const filenameSafe = logoFile.fileName || `logo-${timestamp}.jpg`;
+            const path = `order-logos/${timestamp}-${filenameSafe}`;
+            const bucketName = 'logos';
+            const fileExt = filenameSafe.split('.').pop() || 'jpg';
+            const contentType =
+              logoFile.type || `image/${fileExt === 'png' ? 'png' : 'jpeg'}`;
 
-          console.log('Starting logo upload...', { filenameSafe, path, bucketName, contentType });
-          console.log('logoFile:', { hasBase64: !!logoFile.base64, hasUri: !!logoFile.uri, type: logoFile.type });
+            console.log('Starting logo upload...', {
+              filenameSafe,
+              path,
+              bucketName,
+              contentType,
+            });
+            console.log('logoFile:', {
+              hasBase64: !!logoFile.base64,
+              hasUri: !!logoFile.uri,
+              type: logoFile.type,
+            });
 
-          if (logoFile.base64) {
-            console.log('Uploading from base64...');
-            const base64Data = logoFile.base64;
-            const binaryString = atob(base64Data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
-            const fileData = bytes.buffer;
-
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from(bucketName)
-              .upload(path, fileData, {
-                upsert: true,
-                contentType: contentType,
-                cacheControl: '3600',
-              });
-
-            console.log('Upload result (base64):', { uploadData, uploadError });
-
-            if (uploadError) {
-              console.error('Upload error:', uploadError);
-              Alert.alert('Upload Error', `Failed to upload logo: ${uploadError.message}`);
-              setLoading(false);
-              return;
-            }
-
-            if (uploadData) {
-              const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(uploadData.path);
-              logoUrl = urlData.publicUrl;
-              console.log('Logo URL generated:', logoUrl);
-            }
-          } else if (logoFile.uri) {
-            console.log('Uploading from URI...');
-            try {
-              const response = await fetch(logoFile.uri);
-              if (!response.ok) {
-                throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+            if (logoFile.base64) {
+              console.log('Uploading from base64...');
+              const base64Data = logoFile.base64;
+              const binaryString = atob(base64Data);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
               }
-              const blob = await response.blob();
-              const arrayBuffer = await blob.arrayBuffer();
+              const fileData = bytes.buffer;
 
-              const { data: uploadData, error: uploadError } = await supabase.storage
-                .from(bucketName)
-                .upload(path, arrayBuffer, {
+              const { data: uploadData, error: uploadError } =
+                await supabase.storage.from(bucketName).upload(path, fileData, {
                   upsert: true,
                   contentType: contentType,
                   cacheControl: '3600',
                 });
 
-              console.log('Upload result (URI):', { uploadData, uploadError });
+              console.log('Upload result (base64):', {
+                uploadData,
+                uploadError,
+              });
 
               if (uploadError) {
                 console.error('Upload error:', uploadError);
-                Alert.alert('Upload Error', `Failed to upload logo: ${uploadError.message}`);
+                Alert.alert(
+                  'Upload Error',
+                  `Failed to upload logo: ${uploadError.message}`,
+                );
                 setLoading(false);
                 return;
               }
 
               if (uploadData) {
-                const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(uploadData.path);
+                const { data: urlData } = supabase.storage
+                  .from(bucketName)
+                  .getPublicUrl(uploadData.path);
                 logoUrl = urlData.publicUrl;
                 console.log('Logo URL generated:', logoUrl);
               }
-            } catch (uriError) {
-              console.error('Error reading file from URI:', uriError);
-              Alert.alert('Upload Error', `Failed to read logo file: ${uriError.message}`);
+            } else if (logoFile.uri) {
+              console.log('Uploading from URI...');
+              try {
+                const response = await fetch(logoFile.uri);
+                if (!response.ok) {
+                  throw new Error(
+                    `Failed to fetch file: ${response.status} ${response.statusText}`,
+                  );
+                }
+                const blob = await response.blob();
+                const arrayBuffer = await blob.arrayBuffer();
+
+                const { data: uploadData, error: uploadError } =
+                  await supabase.storage
+                    .from(bucketName)
+                    .upload(path, arrayBuffer, {
+                      upsert: true,
+                      contentType: contentType,
+                      cacheControl: '3600',
+                    });
+
+                console.log('Upload result (URI):', {
+                  uploadData,
+                  uploadError,
+                });
+
+                if (uploadError) {
+                  console.error('Upload error:', uploadError);
+                  Alert.alert(
+                    'Upload Error',
+                    `Failed to upload logo: ${uploadError.message}`,
+                  );
+                  setLoading(false);
+                  return;
+                }
+
+                if (uploadData) {
+                  const { data: urlData } = supabase.storage
+                    .from(bucketName)
+                    .getPublicUrl(uploadData.path);
+                  logoUrl = urlData.publicUrl;
+                  console.log('Logo URL generated:', logoUrl);
+                }
+              } catch (uriError) {
+                console.error('Error reading file from URI:', uriError);
+                Alert.alert(
+                  'Upload Error',
+                  `Failed to read logo file: ${uriError.message}`,
+                );
+                setLoading(false);
+                return;
+              }
+            } else {
+              console.error('No base64 or URI found in logoFile');
+              Alert.alert(
+                'Upload Error',
+                'Logo file data is missing. Please select the logo again.',
+              );
               setLoading(false);
               return;
             }
-          } else {
-            console.error('No base64 or URI found in logoFile');
-            Alert.alert('Upload Error', 'Logo file data is missing. Please select the logo again.');
-            setLoading(false);
-            return;
-          }
 
-          if (!logoUrl) {
-            console.error('Logo URL is null after upload attempt');
-            Alert.alert('Upload Error', 'Failed to generate logo URL. Please try again.');
+            if (!logoUrl) {
+              console.error('Logo URL is null after upload attempt');
+              Alert.alert(
+                'Upload Error',
+                'Failed to generate logo URL. Please try again.',
+              );
+              setLoading(false);
+              return;
+            }
+          } catch (err) {
+            console.error('Logo upload error:', err);
+            Alert.alert(
+              'Upload Error',
+              `Failed to upload logo: ${err.message || 'Unknown error'}`,
+            );
             setLoading(false);
             return;
-          }
-        } catch (err) {
-          console.error('Logo upload error:', err);
-          Alert.alert('Upload Error', `Failed to upload logo: ${err.message || 'Unknown error'}`);
-          setLoading(false);
-          return;
           }
         } else if (specialEvent && !logoFile && !logoPreview) {
           // Special event enabled but no logo provided
-          Alert.alert('Logo Required', 'Please upload a logo for Special Event or disable Special Event.');
+          Alert.alert(
+            'Logo Required',
+            'Please upload a logo for Special Event or disable Special Event.',
+          );
           setLoading(false);
           return;
         }
@@ -990,22 +1250,26 @@ const CreateOrderScreen = ({ navigation, route }) => {
         quantity,
         orderTime,
         deliveryZone,
-        zoneCity
+        zoneCity,
       );
 
       // Extract deliveryDate and deliveryDayText from result object (now returns { deliveryDate, deliveryDayText, isFallback })
       let deliveryDate = calculationResult?.deliveryDate;
       let deliveryDayText = calculationResult?.deliveryDayText || null;
       const isFallback = calculationResult?.isFallback || false;
-      
+
       // Ensure deliveryDate is a valid Date object
-      if (!deliveryDate || !(deliveryDate instanceof Date) || isNaN(deliveryDate.getTime())) {
+      if (
+        !deliveryDate ||
+        !(deliveryDate instanceof Date) ||
+        isNaN(deliveryDate.getTime())
+      ) {
         console.warn('Invalid deliveryDate from calculation, using fallback');
         deliveryDate = new Date();
-      deliveryDate.setHours(0, 0, 0, 0);
+        deliveryDate.setHours(0, 0, 0, 0);
         deliveryDayText = null; // Blank for fallback
       }
-      
+
       // If fallback, set delivery_day_date to null
       if (isFallback) {
         deliveryDayText = null;
@@ -1024,7 +1288,9 @@ const CreateOrderScreen = ({ navigation, route }) => {
         special_event_logo: logoUrl || null,
         special_event_amount: specialEvent ? 150 : null,
         openerKit: openerKit || false,
-        order_date: orderDateText ? selectedOrderDate.toISOString() : new Date().toISOString(), // Use selected date or today
+        order_date: orderDateText
+          ? selectedOrderDate.toISOString()
+          : new Date().toISOString(), // Use selected date or today
         delivery_date: deliveryDate.toISOString(),
         delivery_day_date: deliveryDayText || null, // Text value: "Same Day", "1 day", "2 days", or null for fallback
         status: 'pending',
@@ -1040,7 +1306,10 @@ const CreateOrderScreen = ({ navigation, route }) => {
 
       if (orderError) {
         console.error('Error creating order:', orderError);
-        Alert.alert('Error', orderError.message || 'Failed to create order. Please try again.');
+        Alert.alert(
+          'Error',
+          orderError.message || 'Failed to create order. Please try again.',
+        );
         setLoading(false);
         return;
       }
@@ -1099,7 +1368,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
     setOrderDateText('');
     setErrors({});
     setProductType('case');
-    
+
     Toast.show({
       type: 'info',
       text1: 'Order Cancelled',
@@ -1107,12 +1376,12 @@ const CreateOrderScreen = ({ navigation, route }) => {
       position: 'top',
       visibilityTime: 2000,
     });
-    
+
     handleBack();
   };
 
   // Handle address selection
-  const handleAddressSelect = (addressId) => {
+  const handleAddressSelect = addressId => {
     const selected = deliveryAddresses.find(addr => addr.id === addressId);
     if (selected) {
       setSelectedAddressId(addressId);
@@ -1121,13 +1390,15 @@ const CreateOrderScreen = ({ navigation, route }) => {
         selected.city,
         selected.state,
         selected.zipCode,
-      ].filter(Boolean).join(', ');
+      ]
+        .filter(Boolean)
+        .join(', ');
       setCustomerDeliveryAddress(addressStr);
     }
   };
 
   // Format address for dropdown display
-  const formatAddressForDropdown = (address) => {
+  const formatAddressForDropdown = address => {
     if (!address) return '';
     const parts = [
       address.street,
@@ -1135,23 +1406,36 @@ const CreateOrderScreen = ({ navigation, route }) => {
       address.state,
       address.zipCode,
     ].filter(Boolean);
-    return parts.length > 0 ? parts.join(', ') : (address.label || 'Address');
+    return parts.length > 0 ? parts.join(', ') : address.label || 'Address';
   };
 
   // Date picker functions
-  const formatDateForDisplay = (date) => {
+  const formatDateForDisplay = date => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
     const dayName = days[date.getDay()];
     const monthName = months[date.getMonth()];
     const day = date.getDate();
     const year = date.getFullYear();
-    
+
     return `${dayName}, ${monthName} ${day}, ${year}`;
   };
 
-  const handleDateChange = (date) => {
+  const handleDateChange = date => {
     setSelectedOrderDate(date);
     setOrderDateText(formatDateForDisplay(date));
   };
@@ -1162,8 +1446,13 @@ const CreateOrderScreen = ({ navigation, route }) => {
 
   const handleDatePickerCancel = () => {
     setShowDatePicker(false);
-    setSelectedOrderDate(new Date());
-    setOrderDateText('');
+    if (isScheduledOrder) {
+      // Keep tomorrow as default if scheduled is on
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setSelectedOrderDate(tomorrow);
+      setOrderDateText(formatDateForDisplay(tomorrow));
+    }
   };
 
   // Prepare dropdown options for addresses
@@ -1193,7 +1482,8 @@ const CreateOrderScreen = ({ navigation, route }) => {
               },
             ],
           },
-        ]}>
+        ]}
+      >
         {/* Background Image with Blur Effect */}
         <View style={styles.bannerImageBackground}>
           <Image
@@ -1205,20 +1495,22 @@ const CreateOrderScreen = ({ navigation, route }) => {
           {/* Dark Overlay */}
           <View style={styles.bannerOverlay} />
         </View>
-        
+
         {/* Content Overlay */}
         <View style={styles.bannerContentWrapper}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Icon name="arrow-back" size={24} color={Colors.cardBackground} />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
-          
+
           <View style={styles.bannerContent}>
             <View style={styles.bannerTitleRow}>
               <Text style={styles.bannerSparkleIcon}>✨</Text>
               <Text style={styles.bannerTitle}>Create New Order</Text>
             </View>
-            <Text style={styles.bannerSubtitle}>Fresh coconuts delivered to your door</Text>
+            <Text style={styles.bannerSubtitle}>
+              Fresh coconuts delivered to your door
+            </Text>
           </View>
         </View>
       </Animated.View>
@@ -1244,12 +1536,14 @@ const CreateOrderScreen = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
-          nestedScrollEnabled={true}> 
-
+          nestedScrollEnabled={true}
+        >
           {/* Product Type */}
           <View style={styles.formCard}>
             <Text style={styles.label}>Product Type</Text>
-            <View style={[styles.inputContainer, styles.readOnlyInputContainer]}>
+            <View
+              style={[styles.inputContainer, styles.readOnlyInputContainer]}
+            >
               <TextInput
                 style={[styles.input, styles.readOnlyInput]}
                 value="Case (9 pieces or 9 units)"
@@ -1259,37 +1553,79 @@ const CreateOrderScreen = ({ navigation, route }) => {
             </View>
           </View>
 
-          {/* Order Date Picker */}
-          <View style={styles.formCard}>
-            <Text style={styles.label}>Order Date (Optional)</Text>
-            <TouchableOpacity
-              style={[styles.inputContainer, styles.datePickerInput]}
-              onPress={() => setShowDatePicker(true)}
-              activeOpacity={0.8}>
-              <View style={styles.datePickerContent}>
-                <Icon name="calendar-outline" size={20} color={Colors.primaryPink} />
-                <Text style={[styles.input, styles.datePickerText, { flex: 1 }]}>
-                  {orderDateText || 'Select order date'}
+          {/* Order Date Picker with Checkbox */}
+          {/* <View style={styles.formCard}>
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleContent}>
+                <Text style={styles.label}>Schedule Future Delivery</Text>
+                <Text style={styles.toggleSubtitle}>
+                  Select a future date for your order
                 </Text>
-                <Icon name="chevron-down" size={16} color={Colors.textSecondary} />
               </View>
-            </TouchableOpacity>
-            <Text style={styles.helperText}>Leave empty to use today's date</Text>
-          </View>
+              <Switch
+                value={isScheduledOrder}
+                onValueChange={val => {
+                  setIsScheduledOrder(val);
+                  if (!val) { 
+                    setSelectedOrderDate(new Date());
+                    setOrderDateText(getFormattedToday());
+                  } else {
+                    // Auto-open date picker and set tomorrow as default
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    setSelectedOrderDate(tomorrow);
+                    setOrderDateText(formatDateForDisplay(tomorrow));
+                    setShowDatePicker(true);
+                  }
+                }}
+                trackColor={{ false: '#E0E0E0', true: Colors.primaryPink }}
+                thumbColor={Colors.cardBackground}
+              />
+            </View>
+
+            {isScheduledOrder && (
+              <TouchableOpacity
+                style={[
+                  styles.inputContainer,
+                  styles.datePickerInput,
+                  { marginTop: 12 },
+                ]}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.datePickerContent}>
+                  <Icon
+                    name="calendar-outline"
+                    size={20}
+                    color={Colors.primaryPink}
+                  />
+                  <Text
+                    style={[styles.input, styles.datePickerText, { flex: 1 }]}
+                  >
+                    {orderDateText || 'Select order date'}
+                  </Text>
+                  <Icon
+                    name="chevron-down"
+                    size={16}
+                    color={Colors.textSecondary}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
+          </View> */}
 
           {/* Quantity */}
-          <View 
+          <View
             ref={quantityCardRef}
-            onLayout={(event) => {
+            onLayout={event => {
               const { y } = event.nativeEvent.layout;
               // Store Y position relative to scroll content
               quantityCardRef.current._yPosition = y;
             }}
-            style={styles.formCard}>
+            style={styles.formCard}
+          >
             <Text style={styles.label}>Quantity</Text>
-            <View 
-              ref={quantityContainerRef}
-              style={styles.inputContainer}>
+            <View ref={quantityContainerRef} style={styles.inputContainer}>
               <BottomSheetTextInput
                 ref={quantityInputRef}
                 style={styles.input}
@@ -1306,31 +1642,115 @@ const CreateOrderScreen = ({ navigation, route }) => {
           </View>
 
           {/* Delivery Date Card */}
-          {quantity && estimatedDeliveryDate && isTodaySelected && (
+          {quantity && estimatedDeliveryDate && (
             <View style={styles.deliveryDateCard}>
               <Icon name="calendar-outline" size={24} color={Colors.success} />
               <View style={styles.deliveryDateContent}>
                 <Text style={styles.deliveryDateLabel}>Estimated Delivery</Text>
-                <Text style={styles.deliveryDateValue}>{estimatedDeliveryDate}</Text>
-                {deliveryDayText && deliveryDayText.trim() !== '' ? (
-                  <Text style={[styles.deliveryDateLabel, { fontSize: 12, marginTop: 4 }]}>
-                    ({deliveryDayText})
-                  </Text>
-                ) : (
-                  <Text style={[styles.deliveryDateLabel, { fontSize: 12, marginTop: 4, fontStyle: 'italic', color: Colors.textSecondary }]}>
-                    Delivery updates will be sent to your email soon.
+
+                {/* Delivery date aur day text sirf tab show hoga jab scheduled order NA ho */}
+                {!isScheduledOrder && (
+                  <>
+                    <Text style={styles.deliveryDateValue}>
+                      {estimatedDeliveryDate}
+                    </Text>
+                    {deliveryDayText && deliveryDayText.trim() !== '' ? (
+                      <Text
+                        style={[
+                          styles.deliveryDateLabel,
+                          { fontSize: 12, marginTop: 4 },
+                        ]}
+                      >
+                        ({deliveryDayText})
+                      </Text>
+                    ) : (
+                      <Text
+                        style={[
+                          styles.deliveryDateLabel,
+                          {
+                            fontSize: 12,
+                            marginTop: 4,
+                            fontStyle: 'italic',
+                            color: Colors.textSecondary,
+                          },
+                        ]}
+                      >
+                        Delivery updates will be sent to your email soon.
+                      </Text>
+                    )}
+                  </>
+                )}
+
+                {/* Scheduled order selected hone par sirf yeh show hoga */}
+                {isScheduledOrder && (
+                  <Text
+                    style={[
+                      styles.deliveryDateLabel,
+                      {
+                        fontSize: 13,
+                        marginTop: 2,
+                        color: Colors.primaryPink,
+                        fontWeight: '600',
+                      },
+                    ]}
+                  >
+                    Scheduled: {orderDateText}
                   </Text>
                 )}
+
+                {/* Click here / close button */}
+                <View style={styles.scheduleRow}>
+                  {!isScheduledOrder && (
+                    <>
+                      <Text style={styles.scheduleText}>
+                        Want delivery on a specific date?{' '}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setIsScheduledOrder(true);
+                          const tomorrow = new Date();
+                          tomorrow.setDate(tomorrow.getDate() + 1);
+                          setSelectedOrderDate(tomorrow);
+                          setOrderDateText(formatDateForDisplay(tomorrow));
+                          setShowDatePicker(true);
+                        }}
+                      >
+                        <Text style={styles.clickHereText}>click here</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                  {isScheduledOrder && (
+                    <TouchableOpacity
+                      style={styles.resetScheduleButton}
+                      onPress={() => {
+                        setIsScheduledOrder(false);
+                        setSelectedOrderDate(new Date());
+                        setOrderDateText(getFormattedToday());
+                      }}
+                    >
+                      <Icon
+                        name="close-circle"
+                        size={16}
+                        color={Colors.textSecondary}
+                      />
+                      <Text style={styles.resetScheduleText}>
+                        Remove scheduled date
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </View>
-          )} 
+          )}
 
           {/* Coconut Opener Kit */}
           <View style={styles.formCard}>
             <View style={styles.toggleRow}>
               <View style={styles.toggleContent}>
                 <Text style={styles.toggleTitle}>Coconut Opener Kit</Text>
-                <Text style={styles.toggleSubtitle}>Add opener kit (+$15.00)</Text>
+                <Text style={styles.toggleSubtitle}>
+                  Add opener kit (+$15.00)
+                </Text>
               </View>
               <Switch
                 value={openerKit}
@@ -1342,12 +1762,18 @@ const CreateOrderScreen = ({ navigation, route }) => {
           </View>
 
           {/* Special Event - New Logo */}
-          <View style={[styles.formCard, specialEvent && styles.specialEventCard]}>
+          <View
+            style={[styles.formCard, specialEvent && styles.specialEventCard]}
+          >
             <View style={styles.toggleRow}>
               <View style={styles.toggleContent}>
                 <Text style={styles.toggleTitle}>Special Event - New Logo</Text>
-                <Text style={styles.toggleSubtitle}>For events with different branding</Text>
-                <Text style={styles.toggleSubtitle}>One-time setup fee (+$150.00)</Text>
+                <Text style={styles.toggleSubtitle}>
+                  For events with different branding
+                </Text>
+                <Text style={styles.toggleSubtitle}>
+                  One-time setup fee (+$150.00)
+                </Text>
               </View>
               <Switch
                 value={specialEvent}
@@ -1360,7 +1786,7 @@ const CreateOrderScreen = ({ navigation, route }) => {
             {specialEvent && (
               <View style={styles.logoUploadSection}>
                 <Text style={styles.logoUploadTitle}>Upload New Logo</Text>
-                
+
                 <View style={styles.infoBox}>
                   <Text style={styles.infoText}>
                     Preferred: Vector files (SVG, AI, EPS) for best quality
@@ -1372,19 +1798,31 @@ const CreateOrderScreen = ({ navigation, route }) => {
 
                 <View style={styles.warningBox}>
                   <Icon name="warning-outline" size={20} color={Colors.error} />
-                  <Text style={styles.warningText}>Screenshots not accepted</Text>
+                  <Text style={styles.warningText}>
+                    Screenshots not accepted
+                  </Text>
                 </View>
 
                 <TouchableOpacity
                   style={styles.uploadButton}
                   onPress={handleLogoUpload}
-                  activeOpacity={0.8}>
+                  activeOpacity={0.8}
+                >
                   {logoPreview ? (
-                    <Image source={{ uri: logoPreview }} style={styles.logoPreview} />
+                    <Image
+                      source={{ uri: logoPreview }}
+                      style={styles.logoPreview}
+                    />
                   ) : (
                     <>
-                      <Icon name="cloud-upload-outline" size={32} color={Colors.primaryPink} />
-                      <Text style={styles.uploadText}>Click to upload logo file</Text>
+                      <Icon
+                        name="cloud-upload-outline"
+                        size={32}
+                        color={Colors.primaryPink}
+                      />
+                      <Text style={styles.uploadText}>
+                        Click to upload logo file
+                      </Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -1395,8 +1833,8 @@ const CreateOrderScreen = ({ navigation, route }) => {
             )}
           </View>
 
-              {/* Delivery Address Dropdown */}
-              {deliveryAddresses.length > 0 && (
+          {/* Delivery Address Dropdown */}
+          {deliveryAddresses.length > 0 && (
             <View style={styles.formCard}>
               <Text style={styles.label}>Delivery Address</Text>
               <Dropdown
@@ -1410,17 +1848,16 @@ const CreateOrderScreen = ({ navigation, route }) => {
           )}
 
           {/* PO Number */}
-          <View 
+          <View
             ref={poNumberCardRef}
-            onLayout={(event) => {
+            onLayout={event => {
               const { y } = event.nativeEvent.layout;
               poNumberCardRef.current._yPosition = y;
             }}
-            style={styles.formCard}>
+            style={styles.formCard}
+          >
             <Text style={styles.label}>PO Number (Optional)</Text>
-            <View 
-              ref={poNumberContainerRef}
-              style={styles.inputContainer}>
+            <View ref={poNumberContainerRef} style={styles.inputContainer}>
               <BottomSheetTextInput
                 ref={poNumberInputRef}
                 style={styles.input}
@@ -1433,17 +1870,19 @@ const CreateOrderScreen = ({ navigation, route }) => {
           </View>
 
           {/* Order Notes */}
-          <View 
+          <View
             ref={notesCardRef}
-            onLayout={(event) => {
+            onLayout={event => {
               const { y } = event.nativeEvent.layout;
               notesCardRef.current._yPosition = y;
             }}
-            style={styles.formCard}>
+            style={styles.formCard}
+          >
             <Text style={styles.label}>Order Notes (Optional)</Text>
-            <View 
+            <View
               ref={notesContainerRef}
-              style={[styles.inputContainer, styles.textAreaContainer]}>
+              style={[styles.inputContainer, styles.textAreaContainer]}
+            >
               <BottomSheetTextInput
                 ref={notesInputRef}
                 style={[styles.input, styles.textArea]}
@@ -1468,22 +1907,23 @@ const CreateOrderScreen = ({ navigation, route }) => {
               />
             </View>
           </View>
-
         </BottomSheetScrollView>
-        
+
         {/* Footer Buttons - Fixed at bottom */}
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={handleCancel}
-            activeOpacity={0.8}>
+            activeOpacity={0.8}
+          >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.confirmButton}
             onPress={handleConfirmOrderClick}
             activeOpacity={0.8}
-            disabled={loading}>
+            disabled={loading}
+          >
             <Text style={styles.confirmButtonText}>
               {loading ? 'Creating...' : 'Confirm Order'}
             </Text>
@@ -1496,7 +1936,8 @@ const CreateOrderScreen = ({ navigation, route }) => {
         visible={showConfirmModal}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setShowConfirmModal(false)}>
+        onRequestClose={() => setShowConfirmModal(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
@@ -1522,7 +1963,9 @@ const CreateOrderScreen = ({ navigation, route }) => {
                 {orderDateText && (
                   <View style={styles.orderSummaryRow}>
                     <Text style={styles.orderSummaryLabel}>Order Date:</Text>
-                    <Text style={styles.orderSummaryValue}>{orderDateText}</Text>
+                    <Text style={styles.orderSummaryValue}>
+                      {orderDateText}
+                    </Text>
                   </View>
                 )}
                 {estimatedDeliveryDate && (
@@ -1553,7 +1996,8 @@ const CreateOrderScreen = ({ navigation, route }) => {
                 <TouchableOpacity
                   style={[styles.modalButton, styles.modalButtonNo]}
                   onPress={() => setShowConfirmModal(false)}
-                  activeOpacity={0.8}>
+                  activeOpacity={0.8}
+                >
                   <Text style={styles.modalButtonNoText}>No</Text>
                 </TouchableOpacity>
                 <View style={{ width: 12 }} />
@@ -1561,7 +2005,8 @@ const CreateOrderScreen = ({ navigation, route }) => {
                   style={[styles.modalButton, styles.modalButtonYes]}
                   onPress={handleCreateOrder}
                   activeOpacity={0.8}
-                  disabled={loading}>
+                  disabled={loading}
+                >
                   <Text style={styles.modalButtonYesText}>
                     {loading ? 'Creating...' : 'Yes'}
                   </Text>
@@ -1577,21 +2022,24 @@ const CreateOrderScreen = ({ navigation, route }) => {
         visible={showDatePicker}
         transparent={true}
         animationType="slide"
-        onRequestClose={handleDatePickerCancel}>
+        onRequestClose={handleDatePickerCancel}
+      >
         <View style={styles.datePickerModalOverlay}>
           <View style={styles.datePickerModalContainer}>
             <View style={styles.datePickerHeader}>
               <TouchableOpacity
                 style={styles.datePickerCancelButton}
                 onPress={handleDatePickerCancel}
-                activeOpacity={0.8}>
+                activeOpacity={0.8}
+              >
                 <Text style={styles.datePickerCancelText}>Cancel</Text>
               </TouchableOpacity>
               <Text style={styles.datePickerTitle}>Select Order Date</Text>
               <TouchableOpacity
                 style={styles.datePickerConfirmButton}
                 onPress={handleDatePickerConfirm}
-                activeOpacity={0.8}>
+                activeOpacity={0.8}
+              >
                 <Text style={styles.datePickerConfirmText}>Done</Text>
               </TouchableOpacity>
             </View>
@@ -1619,7 +2067,6 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
     overflow: 'hidden',
-    
   },
   bannerImageBackground: {
     position: 'absolute',
@@ -1963,6 +2410,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  resetScheduleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  resetScheduleText: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+    marginLeft: 4,
+    textDecorationLine: 'underline',
+  },
+  scheduleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  scheduleText: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.textSecondary,
+  },
+  clickHereText: {
+    fontSize: 12,
+    fontFamily: fontFamilyBody,
+    color: Colors.primaryPink,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
   modalTitle: {
     fontSize: 24,
     fontFamily: fontFamilyHeading,
@@ -2110,4 +2587,3 @@ const styles = StyleSheet.create({
 });
 
 export default CreateOrderScreen;
-
